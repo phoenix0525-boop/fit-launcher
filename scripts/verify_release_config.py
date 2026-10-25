@@ -30,6 +30,7 @@ def main() -> int:
     root_gradle = read("build.gradle.kts")
     wrapper = read("gradle/wrapper/gradle-wrapper.properties")
     manifest = read("app/src/main/AndroidManifest.xml")
+    main_activity = read("app/src/main/java/tw/fitcar/launcher/MainActivity.kt")
     workflow = read(".github/workflows/build-apk.yml")
     workflow_backup = read("build-apk.github-workflow.yml")
     gitignore = read(".gitignore")
@@ -62,6 +63,15 @@ def main() -> int:
     ):
         if forbidden in manifest:
             errors.append(f"Manifest must not request {forbidden}")
+
+    if "override fun dispatchKeyEvent" in main_activity:
+        errors.append("MainActivity must use public key callbacks instead of restricted dispatchKeyEvent")
+    require(
+        r"override fun onKeyDown\(",
+        main_activity,
+        "MainActivity must preserve hardware-key diagnostics through onKeyDown",
+        errors,
+    )
 
     # Optional hardware must not filter installs on head units (same as reference APK).
     for feature in ("android.hardware.location.gps", "android.hardware.location", "android.hardware.touchscreen"):
