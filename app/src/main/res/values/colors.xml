@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_day">#FFE8E6DF</color>
+    <color name="bg_night">#FF1B1E20</color>
+    <color name="accent">#FF47768B</color>
+</resources>

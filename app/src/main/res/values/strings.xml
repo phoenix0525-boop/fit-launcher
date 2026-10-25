@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FIT 桌面</string>
+    <string name="companion_name">FIT 側欄</string>
+    <string name="media_listener_name">FIT 桌面音樂資訊</string>
+</resources>

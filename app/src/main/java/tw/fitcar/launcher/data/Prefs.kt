@@ -1,0 +1,112 @@
+package tw.fitcar.launcher.data
+
+import android.content.Context
+import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+enum class NavOpenMode { SPLIT_FIRST, FULLSCREEN }
+
+/** 導航／音樂／測速三個綁定，存的是使用者從實際清單選的 ComponentName 字串。 */
+data class Bindings(
+    val navigation: String? = null,
+    val music: String? = null,
+    val shield: String? = null,
+)
+
+data class LauncherState(
+    val display: DisplaySettings = DisplaySettings(),
+    val shortcuts: List<String?> = List(ShortcutSlots.COUNT) { null },
+    val bindings: Bindings = Bindings(),
+    val navOpenMode: NavOpenMode = NavOpenMode.SPLIT_FIRST,
+    /** 最近一次分割畫面測試結果：null = 尚未測試。 */
+    val lastSplitResult: Boolean? = null,
+    val manualOverride: Boolean = false,
+)
+
+/**
+ * 以 SharedPreferences 保存設定，重新開機後保留。
+ * 單例，所有 Activity／Receiver 共用同一份狀態。
+ */
+class Prefs private constructor(context: Context) {
+    private val sp: SharedPreferences =
+        context.applicationContext.getSharedPreferences("fit_launcher", Context.MODE_PRIVATE)
+
+    private val _state = MutableStateFlow(load())
+    val state: StateFlow<LauncherState> = _state.asStateFlow()
+
+    fun update(transform: (LauncherState) -> LauncherState) {
+        val next = transform(_state.value)
+        _state.value = next
+        save(next)
+    }
+
+    private fun load(): LauncherState {
+        val periods = DEFAULT_PERIODS.map { p ->
+            Period(
+                id = p.id,
+                label = p.label,
+                startMinutes = sp.getInt("period_${p.id}_start", p.startMinutes).coerceIn(0, 1439),
+                endMinutes = sp.getInt("period_${p.id}_end", p.endMinutes).coerceIn(0, 1439),
+                brightness = Schedule.clampBrightness(sp.getInt("period_${p.id}_brightness", p.brightness)),
+            )
+        }
+        val display = DisplaySettings(
+            autoSchedule = sp.getBoolean("auto_schedule", true),
+            autoTheme = sp.getBoolean("auto_theme", true),
+            manualTheme = if (sp.getString("manual_theme", "day") == "night") ThemeChoice.NIGHT else ThemeChoice.DAY,
+            manualBrightness = Schedule.clampBrightness(sp.getInt("manual_brightness", 48)),
+            smoothTransition = sp.getBoolean("smooth_transition", true),
+            periods = periods,
+        )
+        val shortcuts = ShortcutSlots.normalize(
+            List(ShortcutSlots.COUNT) { i -> sp.getString("shortcut_$i", null) }
+        )
+        val split = if (sp.contains("last_split_result")) sp.getBoolean("last_split_result", false) else null
+        return LauncherState(
+            display = display,
+            shortcuts = shortcuts,
+            bindings = Bindings(
+                navigation = sp.getString("bind_navigation", null),
+                music = sp.getString("bind_music", null),
+                shield = sp.getString("bind_shield", null),
+            ),
+            navOpenMode = if (sp.getString("nav_open_mode", "split") == "full") NavOpenMode.FULLSCREEN else NavOpenMode.SPLIT_FIRST,
+            lastSplitResult = split,
+            manualOverride = sp.getBoolean("manual_override", false),
+        )
+    }
+
+    private fun save(s: LauncherState) {
+        sp.edit().apply {
+            putBoolean("auto_schedule", s.display.autoSchedule)
+            putBoolean("auto_theme", s.display.autoTheme)
+            putString("manual_theme", if (s.display.manualTheme == ThemeChoice.NIGHT) "night" else "day")
+            putInt("manual_brightness", s.display.manualBrightness)
+            putBoolean("smooth_transition", s.display.smoothTransition)
+            s.display.periods.forEach { p ->
+                putInt("period_${p.id}_start", p.startMinutes)
+                putInt("period_${p.id}_end", p.endMinutes)
+                putInt("period_${p.id}_brightness", p.brightness)
+            }
+            s.shortcuts.forEachIndexed { i, v -> if (v == null) remove("shortcut_$i") else putString("shortcut_$i", v) }
+            putOrRemove("bind_navigation", s.bindings.navigation)
+            putOrRemove("bind_music", s.bindings.music)
+            putOrRemove("bind_shield", s.bindings.shield)
+            putString("nav_open_mode", if (s.navOpenMode == NavOpenMode.FULLSCREEN) "full" else "split")
+            if (s.lastSplitResult == null) remove("last_split_result") else putBoolean("last_split_result", s.lastSplitResult)
+            putBoolean("manual_override", s.manualOverride)
+        }.apply()
+    }
+
+    private fun SharedPreferences.Editor.putOrRemove(key: String, value: String?) {
+        if (value == null) remove(key) else putString(key, value)
+    }
+
+    companion object {
+        @Volatile private var instance: Prefs? = null
+        fun get(context: Context): Prefs =
+            instance ?: synchronized(this) { instance ?: Prefs(context).also { instance = it } }
+    }
+}
