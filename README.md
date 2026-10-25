@@ -7,8 +7,13 @@ Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、200
 - minSdk 31（Android 12）、targetSdk／compileSdk 36；套件名稱 `tw.fitcar.launcher`
 - 不刷韌體、不需 root、不假設 FYT 主板；不使用 `QUERY_ALL_PACKAGES`
 
-> 狀態：v0.3.0 已完成本機 28 項單元測試、Debug APK、Lint，以及含 R8／資源縮減的 Release APK／AAB 建置；尚待 AKZ ZX09 實機再驗證。
+> 狀態：v0.3.1 修正導航卡限制文字與 App 選擇器異常小黑點；已完成本機測試、Debug APK、Lint，以及含 R8／資源縮減的 Release APK／AAB 建置；尚待 AKZ ZX09 實機再驗證。
 > 所有版本都**尚未在 AKZ ZX09 車機實測**，不能把 CI 建置成功視為車機相容性證明。
+
+## v0.3.1 介面修正（2026-10-26）
+
+- 導航主卡改顯示可用的分割畫面／全螢幕操作，不再把 Android 跨 App 嵌入限制當成錯誤訊息。
+- App 圖示統一放在低對比圓角底板；圖示轉換失敗、透明面積過大或只剩小黑點時，改顯示一致的通用 App 圖示。
 
 ## v0.3.0 更新（2026-10-26，參考開車趣與原廠桌面）
 

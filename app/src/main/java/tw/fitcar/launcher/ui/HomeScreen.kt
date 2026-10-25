@@ -223,16 +223,7 @@ private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, g
                 }
             }
         }
-        Hint(
-            "導航王地圖無法嵌入桌面（Android 不允許嵌入其他 App 畫面）。" +
-                "「開始導航」會先嘗試分割畫面，車機不支援時自動改為全螢幕；分割比例請拖曳中間分隔線。" +
-                when (splitResult) {
-                    true -> "　最近一次：分割畫面成功。"
-                    false -> "　最近一次：車機未進入分割畫面，已改全螢幕。"
-                    null -> "　尚未實測分割畫面。"
-                },
-            size = 14,
-        )
+        Hint(NavPanelCopy.supportMessage(splitResult), size = 14)
     }
 }
 

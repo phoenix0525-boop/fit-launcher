@@ -119,14 +119,27 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
 fun AppIcon(drawable: Drawable?, size: Dp, modifier: Modifier = Modifier) {
     val bitmap: ImageBitmap? = remember(drawable) {
         drawable?.let {
-            try { it.toBitmap(192, 192).asImageBitmap() } catch (e: Exception) { null }
+            try {
+                val rendered = it.toBitmap(192, 192)
+                val pixels = IntArray(rendered.width * rendered.height)
+                rendered.getPixels(pixels, 0, rendered.width, 0, 0, rendered.width, rendered.height)
+                val visible = pixels.count { pixel -> android.graphics.Color.alpha(pixel) >= 32 }
+                if (IconQuality.isUsable(visible, pixels.size)) rendered.asImageBitmap() else null
+            } catch (e: Exception) {
+                null
+            }
         }
     }
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
-    } else {
-        val p = LocalPalette.current
-        Box(modifier.size(size).clip(RadiusMd).background(p.surfaceMuted))
+    val p = LocalPalette.current
+    Box(
+        modifier.size(size).clip(RadiusMd).background(p.surfaceMuted),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(size * 0.86f))
+        } else {
+            GlyphIcon(Glyph.GRID, size = size * 0.48f, tint = p.textSoft)
+        }
     }
 }
 
