@@ -260,8 +260,8 @@ class MainActivity : ComponentActivity() {
                         actions = HomeActions(
                             openAllApps = { screen = Screen.AllApps },
                             openSettings = { screen = Screen.Settings },
-                            openNav = { handleNav(NavLauncher.open(this)) },
-                            openNavFullscreen = { handleNav(NavLauncher.open(this, forceFullscreen = true)) },
+                            openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
+                            openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
                             bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
                             openMusicApp = { launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) } },
                             bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
@@ -322,24 +322,24 @@ class MainActivity : ComponentActivity() {
                                     toast("請先綁定導航 App")
                                 } else {
                                     prefs.update { st -> st.copy(navOpenMode = NavOpenMode.SPLIT_FIRST) }
-                                    handleNav(NavLauncher.open(this))
+                                    handleNav(NavLauncher.open(this@MainActivity))
                                 }
                             },
                             requestLocation = { locationRequest?.invoke() },
-                            requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this), "車機沒有提供修改系統設定頁") },
+                            requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this@MainActivity), "車機沒有提供修改系統設定頁") },
                         ),
                     )
                     Screen.Settings -> {
                         val data = remember(tick, state, media.permissionGranted) {
                             SettingsData(
                                 state = state, nav = nav, music = music, shield = shield,
-                                canWriteBrightness = BrightnessController.canWrite(this),
-                                currentBrightness = BrightnessController.currentPercent(this),
-                                notificationGranted = MediaRepository.isPermissionGranted(this),
-                                locationGranted = GpsSpeed.hasPermission(this),
-                                otherHomes = AppRepository.otherHomeApps(this),
-                                diagnostics = Diagnostics.collect(this, state, media, gps),
-                                versionName = BuildInfo.versionName(this),
+                                canWriteBrightness = BrightnessController.canWrite(this@MainActivity),
+                                currentBrightness = BrightnessController.currentPercent(this@MainActivity),
+                                notificationGranted = MediaRepository.isPermissionGranted(this@MainActivity),
+                                locationGranted = GpsSpeed.hasPermission(this@MainActivity),
+                                otherHomes = AppRepository.otherHomeApps(this@MainActivity),
+                                diagnostics = Diagnostics.collect(this@MainActivity, state, media, gps),
+                                versionName = BuildInfo.versionName(this@MainActivity),
                             )
                         }
                         SettingsScreen(
@@ -349,8 +349,8 @@ class MainActivity : ComponentActivity() {
                                 updateDisplay = { f -> prefs.update { st -> st.copy(display = f(st.display)) }; afterDisplayChange() },
                                 setManualBrightness = { v ->
                                     prefs.update { st -> st.copy(display = st.display.copy(manualBrightness = v), manualOverride = true) }
-                                    BrightnessController.apply(this, v, smooth = false)
-                                    BrightnessController.scheduleNext(this)
+                                    BrightnessController.apply(this@MainActivity, v, smooth = false)
+                                    BrightnessController.scheduleNext(this@MainActivity)
                                 },
                                 restoreAuto = {
                                     prefs.update { st -> st.copy(manualOverride = false, display = st.display.copy(autoSchedule = true)) }
@@ -358,7 +358,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 applyNow = { afterDisplayChange() },
                                 pickTime = { i, start -> pickTime(i, start) },
-                                requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this), "車機沒有提供修改系統設定頁") },
+                                requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this@MainActivity), "車機沒有提供修改系統設定頁") },
                                 requestNotificationAccess = { openNotificationAccess() },
                                 requestLocation = {
                                     locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
@@ -368,7 +368,7 @@ class MainActivity : ComponentActivity() {
                                 setNavMode = { m -> prefs.update { st -> st.copy(navOpenMode = m) } },
                                 testSplit = {
                                     prefs.update { st -> st.copy(navOpenMode = tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) }
-                                    handleNav(NavLauncher.open(this))
+                                    handleNav(NavLauncher.open(this@MainActivity))
                                 },
                                 openOtherHome = { home ->
                                     val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
