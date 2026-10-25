@@ -73,7 +73,8 @@ app/src/main/java/tw/fitcar/launcher/
   system/                亮度控制與排程、開機接收器、GPS 車速
   ui/                    主題色票、元件、主畫面、App 清單、設定頁
 app/src/test/            Schedule／捷徑單元測試
-.github/workflows/       GitHub Actions 自動編譯 APK
+  .github/workflows/build-apk.yml  GitHub Actions 正式編譯流程
+  build-apk.github-workflow.yml    同內容的可見備份，避免上傳時漏掉隱藏資料夾
 ```
 
 ## 如何編譯 APK（三選一）
@@ -87,7 +88,7 @@ app/src/test/            Schedule／捷徑單元測試
 建議先把資料夾複製到本機磁碟（例如 `C:\dev\fit-launcher-android`）再開啟，避免 Google 雲端硬碟同步 build 暫存檔。
 
 **B. GitHub Actions（不用裝 Android Studio）**
-把資料夾內容上傳到 GitHub 私人 repo（流程檔在 `.github/workflows/build-apk.yml`），Actions 會自動跑測試並產出 APK（Actions → 最新一次 → Artifacts → `fit-launcher-debug-apk`）。
+把專案內容（包含 `.github` 隱藏資料夾）推到 GitHub 私人 repo；Actions 會自動跑測試並產出 APK（Actions → 最新一次 → Artifacts → `fit-launcher-debug-apk`）。若網頁上傳漏掉 `.github`，可依根目錄的 `build-apk.github-workflow.yml` 重建 `.github/workflows/build-apk.yml`。
 
 **C. 讓 Claude 直接編譯**
 在 claude.ai 網頁版 Settings → Capabilities 允許：`dl.google.com`、`maven.google.com`、`services.gradle.org`、`plugins.gradle.org`、`repo.maven.apache.org`、`repo1.maven.org`。
