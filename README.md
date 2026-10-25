@@ -7,9 +7,8 @@ Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、200
 - minSdk 26、targetSdk／compileSdk 34；套件名稱 `tw.fitcar.launcher`
 - 不刷韌體、不需 root、不假設 FYT 主板；不使用 `QUERY_ALL_PACKAGES`
 
-> 狀態：程式碼已完成，但 **尚未編譯、尚未在車機實測**。撰寫環境無法連到 Google／Gradle 下載站，
-> 只有純邏輯（排程、捷徑排序）以 Kotlin 編譯器實際執行測試通過；Android／Compose 部分為人工檢查。
-> 第一次編譯若有錯誤，把錯誤訊息交給接手的 AI 修正即可。
+> 狀態：GitHub Actions 已在提交 `832bcb5` 完成 `testDebugUnitTest` 與 `assembleDebug`，並產出 debug APK；
+> **尚未在 AKZ ZX09 車機實測**。請先從原廠桌面開啟測試，不要直接設為預設首頁。
 
 ## 功能
 
