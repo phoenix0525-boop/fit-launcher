@@ -39,6 +39,7 @@ object AutoChecks {
         val out = mutableListOf<CheckResult>()
         val apps = AppRepository.launchableApps(context)
         out += device()
+        out += platform(context)
         out += memory(context)
         out += storage()
         out += cpu()
@@ -62,6 +63,26 @@ object AutoChecks {
         "${Build.MANUFACTURER} ${Build.MODEL}／裝置 ${Build.DEVICE}／主板 ${Build.BOARD}／硬體 ${Build.HARDWARE}／品牌 ${Build.BRAND}",
         "若主板或硬體欄位出現 FYT、sp7731、ums512 等字樣再評估板型；目前仍不假設 FYT。",
     )
+
+    /** 平台與 Google Play：只檢查套件是否存在，不呼叫任何私有介面。 */
+    private fun platform(context: Context): List<CheckResult> {
+        val found = AppRepository.installedPackages(context, tw.fitcar.launcher.data.FactoryApps.PLATFORM_MARKERS)
+        val fyt = tw.fitcar.launcher.data.FactoryApps.detectPlatform(found) == tw.fitcar.launcher.data.Platform.FYT_SYU
+        val platform = CheckResult(
+            "platform", "車機硬體", "車機平台", Status.INFO,
+            if (fyt) "偵測到 FYT／SYU 平台套件：${found.sorted().joinToString("、")}。" else "未偵測到 FYT／SYU 平台套件（${found.sorted().joinToString("、").ifEmpty { "無" }}）。",
+            if (fyt) "原廠收音機、藍牙電話、藍牙音樂、EQ 等已補進「所有 App」與捷徑選單；FIT 桌面不呼叫 FYT 私有服務、不刷韌體。"
+            else "原廠車機 App 若有一般圖示仍會出現在「所有 App」。",
+        )
+        val hasPlay = AppRepository.installedPackages(context, listOf("com.android.vending")).isNotEmpty()
+        val play = CheckResult(
+            "google_play", "車機硬體", "Google Play 商店", if (hasPlay) Status.PASS else Status.INFO,
+            if (hasPlay) "車機有 Google Play 商店。" else "車機沒有 Google Play 商店。",
+            if (hasPlay) "若車機是 Google 認證裝置，2027 年起側載 App 需登記開發者；可考慮登記 Google「有限發布」（免費、上限 20 台）。"
+            else "沒有 Play 商店的車機通常不是 Google 認證裝置，不受開發者驗證限制，維持側載即可。",
+        )
+        return listOf(platform, play)
+    }
 
     private fun memory(context: Context): CheckResult {
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
