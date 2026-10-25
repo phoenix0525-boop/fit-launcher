@@ -1,14 +1,14 @@
 # FIT 桌面（Android 啟動器 APK）
 
 Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、2000×1200）的個人化桌面。
-第三階段第一版（v0.1.0），由第一階段 Web 原型 `launcher-prototype` 移植為原生 Android。
+第三階段 v0.2.0，以既有原生啟動器為主體，開始分階段加入測速、路況與按鍵式語音功能。
 
-- 語言／框架：Kotlin 2.0.20、Jetpack Compose（BOM 2024.09.00）、AGP 8.5.2、Gradle 8.9
-- minSdk 26、targetSdk／compileSdk 34；套件名稱 `tw.fitcar.launcher`
+- 語言／框架：Kotlin 2.0.20、Jetpack Compose（BOM 2024.09.00）、AGP 8.10.1、Gradle 8.11.1
+- minSdk 31（Android 12）、targetSdk／compileSdk 36；套件名稱 `tw.fitcar.launcher`
 - 不刷韌體、不需 root、不假設 FYT 主板；不使用 `QUERY_ALL_PACKAGES`
 
-> 狀態：GitHub Actions 已在提交 `832bcb5` 完成 `testDebugUnitTest` 與 `assembleDebug`，並產出 debug APK；
-> **尚未在 AKZ ZX09 車機實測**。請先從原廠桌面開啟測試，不要直接設為預設首頁。
+> 狀態：v0.1.0 Debug 曾由 GitHub Actions 完成測試與編譯；v0.2.0 平台／正式簽章基線正在驗證。
+> 所有版本都**尚未在 AKZ ZX09 車機實測**，不能把 CI 建置成功視為車機相容性證明。
 
 ## 功能
 
@@ -72,22 +72,29 @@ app/src/main/java/tw/fitcar/launcher/
   system/                亮度控制與排程、開機接收器、GPS 車速
   ui/                    主題色票、元件、主畫面、App 清單、設定頁
 app/src/test/            Schedule／捷徑單元測試
-  .github/workflows/build-apk.yml  GitHub Actions 正式編譯流程
-  build-apk.github-workflow.yml    同內容的可見備份，避免上傳時漏掉隱藏資料夾
+.github/workflows/build-apk.yml  GitHub Actions 測試、APK／AAB 正式簽章流程
+scripts/verify_release_config.py  發行版本、權限、工具鏈與秘密排除檢查
 ```
+
+## 正式簽章
+
+- v0.2.0 使用 FIT 桌面專屬 `fitlauncher` 憑證，金鑰不在 Git 儲存庫內。
+- 本機由環境變數或 Gradle property 提供 `FIT_KEYSTORE_PATH`、`FIT_KEYSTORE_PASSWORD`、`FIT_KEY_ALIAS`；金鑰密碼不同時另設 `FIT_KEY_PASSWORD`。
+- GitHub Actions 從 Secrets 暫時還原金鑰，完成 APK／AAB 後立即刪除。
+- 未提供正式金鑰時，Release 不會回退使用 Debug 憑證。
 
 ## 如何編譯 APK（三選一）
 
 **A. Android Studio（電腦上）**
-1. 安裝 Android Studio（含 Android SDK 34）。
+1. 安裝 Android Studio（含 Android SDK 36）。
 2. File → Open，選 `fit-launcher-android` 資料夾，等 Gradle 同步完成。
 3. Build → Build App Bundle(s) / APK(s) → Build APK(s)。
-4. 產出：`app/build/outputs/apk/debug/app-debug.apk`。
+4. Debug 產出：`app/build/outputs/apk/debug/app-debug.apk`；正式產物由 Release 簽章流程產生 APK 與 AAB。
 
 建議先把資料夾複製到本機磁碟（例如 `C:\dev\fit-launcher-android`）再開啟，避免 Google 雲端硬碟同步 build 暫存檔。
 
 **B. GitHub Actions（不用裝 Android Studio）**
-把專案內容（包含 `.github` 隱藏資料夾）推到 GitHub 私人 repo；Actions 會自動跑測試並產出 APK（Actions → 最新一次 → Artifacts → `fit-launcher-debug-apk`）。若網頁上傳漏掉 `.github`，可依根目錄的 `build-apk.github-workflow.yml` 重建 `.github/workflows/build-apk.yml`。
+GitHub Secrets 設定完成後，Actions 會執行設定檢查、單元測試、Debug APK，以及正式簽章 APK／AAB；Artifacts 名稱為 `fit-launcher-v0.2.0-release`。
 
 **C. 讓 Claude 直接編譯**
 在 claude.ai 網頁版 Settings → Capabilities 允許：`dl.google.com`、`maven.google.com`、`services.gradle.org`、`plugins.gradle.org`、`repo.maven.apache.org`、`repo1.maven.org`。
@@ -113,4 +120,4 @@ app/src/test/            Schedule／捷徑單元測試
 - 導航王地圖嵌入（需勤崴正式 SDK）、神盾資料重繪、KKBOX 歌詞：沒有合法資料來源前不做。
 - 雙指音量手勢：先實測原車機能力是否沿用，消失才實作。
 - 捷徑拖曳排序：第一版以「往前移／往後移」代替，實機確認操作習慣後再評估。
-- 發布簽章：release 暫用 debug 簽章，僅供個人側載。
+- 固定測速、路況與語音：依 `docs/feature-integration-v0.2-plan.md` 分增量實作，未完成前不顯示假資料。

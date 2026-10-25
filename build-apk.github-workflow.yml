@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Android release
 
 on:
   push:
@@ -18,12 +18,62 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Verify release configuration
+        run: python scripts/verify_release_config.py
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug --stacktrace
+
+      - name: Prepare release signing key
+        env:
+          FIT_KEYSTORE_BASE64: ${{ secrets.FIT_KEYSTORE_BASE64 }}
+          FIT_KEYSTORE_PASSWORD: ${{ secrets.FIT_KEYSTORE_PASSWORD }}
+          FIT_KEY_ALIAS: ${{ secrets.FIT_KEY_ALIAS }}
+        shell: bash
+        run: |
+          test -n "$FIT_KEYSTORE_BASE64" || { echo "::error::Missing FIT_KEYSTORE_BASE64"; exit 1; }
+          test -n "$FIT_KEYSTORE_PASSWORD" || { echo "::error::Missing FIT_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$FIT_KEY_ALIAS" || { echo "::error::Missing FIT_KEY_ALIAS"; exit 1; }
+          printf '%s' "$FIT_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fit-launcher-release.p12"
+          chmod 600 "$RUNNER_TEMP/fit-launcher-release.p12"
+          echo "FIT_KEYSTORE_PATH=$RUNNER_TEMP/fit-launcher-release.p12" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK and AAB
+        env:
+          FIT_KEYSTORE_PASSWORD: ${{ secrets.FIT_KEYSTORE_PASSWORD }}
+          FIT_KEY_ALIAS: ${{ secrets.FIT_KEY_ALIAS }}
+          FIT_KEY_PASSWORD: ${{ secrets.FIT_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease bundleRelease --stacktrace
+
+      - name: Verify release signature and identity
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          EXPECTED="52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6"
+          test -f "$APK" || { echo "::error::Signed release APK is missing"; exit 1; }
+          test -f "$AAB" || { echo "::error::Release AAB is missing"; exit 1; }
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee signature.txt
+          ACTUAL=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' signature.txt | tr -d ':' | tr '[:lower:]' '[:upper:]')
+          test "$ACTUAL" = "$EXPECTED" || { echo "::error::Release certificate does not match FIT launcher identity"; exit 1; }
+          jarsigner -verify -strict "$AAB"
+          mv "$APK" "fit-launcher-v0.2.0-release.apk"
+          mv "$AAB" "fit-launcher-v0.2.0-release.aab"
+
+      - name: Remove temporary signing key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/fit-launcher-release.p12"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: fit-launcher-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: fit-launcher-v0.2.0-release
+          path: |
+            fit-launcher-v0.2.0-release.apk
+            fit-launcher-v0.2.0-release.aab
+            signature.txt
           if-no-files-found: error

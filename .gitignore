@@ -18,3 +18,5 @@ captures/
 keystore.properties
 secrets.properties
 local-secrets.properties
+__pycache__/
+*.pyc

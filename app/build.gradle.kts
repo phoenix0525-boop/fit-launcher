@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "tw.fitcar.launcher"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tw.fitcar.launcher"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 2
-        versionName = "0.1.1"
+        minSdk = 31
+        targetSdk = 36
+        versionCode = 3
+        versionName = "0.2.0"
     }
 
     // Release signing material is supplied only by local Gradle properties or CI secrets.
