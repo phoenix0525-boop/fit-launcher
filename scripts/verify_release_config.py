@@ -40,8 +40,10 @@ def main() -> int:
         r"\bcompileSdk\s*=\s*36\b": "compileSdk must be 36",
         r"\bminSdk\s*=\s*31\b": "minSdk must be 31 (Android 12)",
         r"\btargetSdk\s*=\s*36\b": "targetSdk must be 36",
-        r"\bversionCode\s*=\s*4\b": "versionCode must be 4",
-        r'\bversionName\s*=\s*"0\.2\.1"': "versionName must be 0.2.1",
+        r"\bversionCode\s*=\s*5\b": "versionCode must be 5",
+        r'\bversionName\s*=\s*"0\.3\.0"': "versionName must be 0.3.0",
+        r"\bisMinifyEnabled\s*=\s*true\b": "Release must enable R8 minification (reference APK is 2.4 MB)",
+        r"\bisShrinkResources\s*=\s*true\b": "Release must shrink unused resources",
     }
     for pattern, message in expected.items():
         require(pattern, app_gradle, message, errors)
@@ -60,6 +62,16 @@ def main() -> int:
     ):
         if forbidden in manifest:
             errors.append(f"Manifest must not request {forbidden}")
+
+    # Optional hardware must not filter installs on head units (same as reference APK).
+    for feature in ("android.hardware.location.gps", "android.hardware.location", "android.hardware.touchscreen"):
+        if re.search(r'<uses-feature\s+android:name="' + re.escape(feature) + r'"\s+android:required="false"', manifest) is None:
+            errors.append(f"Manifest must declare {feature} as required=false")
+
+    if "upload-artifact" not in workflow or "fit-launcher-debug" not in workflow:
+        errors.append("GitHub Actions must always upload the debug APK, even without signing secrets")
+    if "v0.2.1" in workflow:
+        errors.append("Workflow must derive the version from Gradle instead of hard-coding it")
 
     if 'signingConfigs.getByName("debug")' in app_gradle:
         errors.append("Release build must never fall back to the debug signing key")

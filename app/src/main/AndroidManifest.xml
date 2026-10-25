@@ -9,6 +9,11 @@
     <!-- 開機後重新排程亮度 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- 硬體皆為選用：車機缺少時仍可安裝（與開車趣相同宣告方式） -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
     <!-- 套件可見性：只查詢可啟動 App 與其他桌面，不使用 QUERY_ALL_PACKAGES -->
     <queries>
         <intent>

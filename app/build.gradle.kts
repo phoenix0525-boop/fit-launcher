@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 31
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.2.1"
+        versionCode = 5
+        versionName = "0.3.0"
     }
 
     // Release signing material is supplied only by local Gradle properties or CI secrets.
@@ -37,7 +37,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // 與參考 APK（開車趣 2.4 MB）一致：R8 縮減程式與資源，Debug 版不受影響。
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (keystorePath != null) signingConfigs.getByName("release") else null
         }
     }

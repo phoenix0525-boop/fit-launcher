@@ -28,24 +28,53 @@ jobs:
         run: python scripts/verify_release_config.py
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
+      - name: Read app version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)
+          test -n "$VERSION" || { echo "::error::versionName not found"; exit 1; }
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug --stacktrace
 
-      - name: Prepare release signing key
+      # Debug 版每次在新的 runner 用臨時金鑰簽章，無法覆蓋前一版；只供首次安裝測試。
+      - name: Upload debug APK
+        shell: bash
+        run: mv app/build/outputs/apk/debug/app-debug.apk "fit-launcher-v${APP_VERSION}-debug.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fit-launcher-debug
+          path: fit-launcher-v*-debug.apk
+          if-no-files-found: error
+
+      - name: Check signing secrets
+        id: secrets
         env:
           FIT_KEYSTORE_BASE64: ${{ secrets.FIT_KEYSTORE_BASE64 }}
           FIT_KEYSTORE_PASSWORD: ${{ secrets.FIT_KEYSTORE_PASSWORD }}
           FIT_KEY_ALIAS: ${{ secrets.FIT_KEY_ALIAS }}
         shell: bash
         run: |
-          test -n "$FIT_KEYSTORE_BASE64" || { echo "::error::Missing FIT_KEYSTORE_BASE64"; exit 1; }
-          test -n "$FIT_KEYSTORE_PASSWORD" || { echo "::error::Missing FIT_KEYSTORE_PASSWORD"; exit 1; }
-          test -n "$FIT_KEY_ALIAS" || { echo "::error::Missing FIT_KEY_ALIAS"; exit 1; }
+          if [ -n "$FIT_KEYSTORE_BASE64" ] && [ -n "$FIT_KEYSTORE_PASSWORD" ] && [ -n "$FIT_KEY_ALIAS" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::未設定簽章 Secrets（FIT_KEYSTORE_BASE64／FIT_KEYSTORE_PASSWORD／FIT_KEY_ALIAS），本次只產出 Debug APK。"
+          fi
+
+      - name: Prepare release signing key
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          FIT_KEYSTORE_BASE64: ${{ secrets.FIT_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
           printf '%s' "$FIT_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fit-launcher-release.p12"
           chmod 600 "$RUNNER_TEMP/fit-launcher-release.p12"
           echo "FIT_KEYSTORE_PATH=$RUNNER_TEMP/fit-launcher-release.p12" >> "$GITHUB_ENV"
 
       - name: Build signed release APK and AAB
+        if: steps.secrets.outputs.ready == 'true'
         env:
           FIT_KEYSTORE_PASSWORD: ${{ secrets.FIT_KEYSTORE_PASSWORD }}
           FIT_KEY_ALIAS: ${{ secrets.FIT_KEY_ALIAS }}
@@ -53,6 +82,7 @@ jobs:
         run: ./gradlew --no-daemon assembleRelease bundleRelease --stacktrace
 
       - name: Verify release signature and identity
+        if: steps.secrets.outputs.ready == 'true'
         shell: bash
         run: |
           APK="app/build/outputs/apk/release/app-release.apk"
@@ -65,8 +95,8 @@ jobs:
           ACTUAL=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' signature.txt | tr -d ':' | tr '[:lower:]' '[:upper:]')
           test "$ACTUAL" = "$EXPECTED" || { echo "::error::Release certificate does not match FIT launcher identity"; exit 1; }
           jarsigner -verify -strict "$AAB"
-          mv "$APK" "fit-launcher-v0.2.1-release.apk"
-          mv "$AAB" "fit-launcher-v0.2.1-release.aab"
+          mv "$APK" "fit-launcher-v${APP_VERSION}-release.apk"
+          mv "$AAB" "fit-launcher-v${APP_VERSION}-release.aab"
 
       - name: Remove temporary signing key
         if: always()
@@ -74,10 +104,11 @@ jobs:
         run: rm -f "$RUNNER_TEMP/fit-launcher-release.p12"
 
       - uses: actions/upload-artifact@v4
+        if: steps.secrets.outputs.ready == 'true'
         with:
-          name: fit-launcher-v0.2.1-release
+          name: fit-launcher-release
           path: |
-            fit-launcher-v0.2.1-release.apk
-            fit-launcher-v0.2.1-release.aab
+            fit-launcher-v*-release.apk
+            fit-launcher-v*-release.aab
             signature.txt
           if-no-files-found: error
