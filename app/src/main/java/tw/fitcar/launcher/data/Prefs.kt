@@ -23,6 +23,9 @@ data class LauncherState(
     /** 最近一次分割畫面測試結果：null = 尚未測試。 */
     val lastSplitResult: Boolean? = null,
     val manualOverride: Boolean = false,
+    /** 常用地點（回家／去公司），交給導航 App 的地址文字。 */
+    val homeAddress: String? = null,
+    val workAddress: String? = null,
 )
 
 /**
@@ -75,6 +78,8 @@ class Prefs private constructor(context: Context) {
             navOpenMode = if (sp.getString("nav_open_mode", "split") == "full") NavOpenMode.FULLSCREEN else NavOpenMode.SPLIT_FIRST,
             lastSplitResult = split,
             manualOverride = sp.getBoolean("manual_override", false),
+            homeAddress = sp.getString("home_address", null),
+            workAddress = sp.getString("work_address", null),
         )
     }
 
@@ -97,6 +102,8 @@ class Prefs private constructor(context: Context) {
             putString("nav_open_mode", if (s.navOpenMode == NavOpenMode.FULLSCREEN) "full" else "split")
             if (s.lastSplitResult == null) remove("last_split_result") else putBoolean("last_split_result", s.lastSplitResult)
             putBoolean("manual_override", s.manualOverride)
+            putOrRemove("home_address", s.homeAddress)
+            putOrRemove("work_address", s.workAddress)
         }.apply()
     }
 

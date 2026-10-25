@@ -44,6 +44,7 @@ import tw.fitcar.launcher.media.MediaRepository
 import tw.fitcar.launcher.nav.LaunchResult
 import tw.fitcar.launcher.nav.NavGuidanceRepository
 import tw.fitcar.launcher.nav.NavLauncher
+import tw.fitcar.launcher.nav.Places
 import tw.fitcar.launcher.system.BrightnessController
 import tw.fitcar.launcher.system.GpsSpeed
 import tw.fitcar.launcher.ui.BindingTarget
@@ -266,6 +267,8 @@ class MainActivity : ComponentActivity() {
                             openSettings = { screen = Screen.Settings },
                             openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
                             openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
+                            goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, state.homeAddress)) },
+                            goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, state.workAddress)) },
                             bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
                             openMusicApp = { launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) } },
                             bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
@@ -370,6 +373,10 @@ class MainActivity : ComponentActivity() {
                                 bind = { t -> screen = Screen.PickForBinding(t, true) },
                                 clearBinding = { t -> setBinding(t, null) },
                                 setNavMode = { m -> prefs.update { st -> st.copy(navOpenMode = m) } },
+                                savePlaces = { home, work ->
+                                    prefs.update { st -> st.copy(homeAddress = Places.clean(home), workAddress = Places.clean(work)) }
+                                    toast("已儲存常用地點")
+                                },
                                 testSplit = {
                                     prefs.update { st -> st.copy(navOpenMode = tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) }
                                     handleNav(NavLauncher.open(this@MainActivity))

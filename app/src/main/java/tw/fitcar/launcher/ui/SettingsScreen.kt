@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
@@ -72,6 +73,7 @@ class SettingsActions(
     val bind: (BindingTarget) -> Unit,
     val clearBinding: (BindingTarget) -> Unit,
     val setNavMode: (NavOpenMode) -> Unit,
+    val savePlaces: (home: String, work: String) -> Unit,
     val testSplit: () -> Unit,
     val openOtherHome: (AppEntry) -> Unit,
     val openHomeSettings: () -> Unit,
@@ -283,6 +285,14 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
                 }
             }
         }
+    }
+    Section("常用地點") {
+        Hint("主畫面導航區的「回家」「去公司」會把地址交給綁定的導航 App。導航王是否接受地址需實機確認；不接受時會讓你選其他導航 App。", size = 13)
+        var home by remember(data.state.homeAddress) { mutableStateOf(data.state.homeAddress.orEmpty()) }
+        var work by remember(data.state.workAddress) { mutableStateOf(data.state.workAddress.orEmpty()) }
+        OutlinedTextField(home, { home = it }, Modifier.fillMaxWidth(), label = { Text("住家地址") }, singleLine = true)
+        OutlinedTextField(work, { work = it }, Modifier.fillMaxWidth(), label = { Text("公司地址") }, singleLine = true)
+        PrimaryButton("儲存", { actions.savePlaces(home, work) })
     }
     Section("分割畫面實測") {
         Text(

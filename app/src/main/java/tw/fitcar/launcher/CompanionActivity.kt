@@ -111,6 +111,8 @@ class CompanionActivity : ComponentActivity() {
             openAllApps = { goHome() }, openSettings = { goHome() },
             openNav = { NavLauncher.launchAdjacent(this) }, openNavFullscreen = { NavLauncher.open(this, true) },
             bindNav = { goHome() },
+            goHome = { NavLauncher.openPlace(this, Prefs.get(this).state.value.homeAddress) },
+            goWork = { NavLauncher.openPlace(this, Prefs.get(this).state.value.workAddress) },
             openMusicApp = { launch(state.bindings.music) }, bindMusic = { goHome() },
             grantNotificationAccess = { goHome() },
             playPause = { MediaRepository.playPause() }, next = { MediaRepository.next() },

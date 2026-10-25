@@ -64,6 +64,8 @@ class HomeActions(
     val openSettings: () -> Unit,
     val openNav: () -> Unit,
     val openNavFullscreen: () -> Unit,
+    val goHome: () -> Unit,
+    val goWork: () -> Unit,
     val bindNav: () -> Unit,
     val openMusicApp: () -> Unit,
     val bindMusic: () -> Unit,
@@ -213,6 +215,10 @@ private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, g
                             GlyphIcon(Glyph.NAV, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
                         })
                         SecondaryButton("全螢幕開啟", actions.openNavFullscreen, Modifier.height(72.dp), icon = { GlyphIcon(Glyph.EXPAND, size = 24.dp) })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        SecondaryButton("回家", actions.goHome, Modifier.height(64.dp), icon = { GlyphIcon(Glyph.HOME, size = 22.dp) })
+                        SecondaryButton("去公司", actions.goWork, Modifier.height(64.dp), icon = { GlyphIcon(Glyph.NAV, size = 22.dp) })
                     }
                 }
             }
