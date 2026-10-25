@@ -66,6 +66,8 @@ def main() -> int:
     for task in ("testDebugUnitTest", "assembleDebug", "assembleRelease", "bundleRelease"):
         if task not in workflow:
             errors.append(f"GitHub Actions must run {task}")
+    if "SDKMANAGER=" not in workflow:
+        errors.append("GitHub Actions must resolve sdkmanager from ANDROID_HOME explicitly")
     if workflow_backup != workflow:
         errors.append("Visible workflow backup must exactly match .github/workflows/build-apk.yml")
 
