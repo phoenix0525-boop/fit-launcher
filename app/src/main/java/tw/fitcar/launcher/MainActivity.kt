@@ -42,6 +42,7 @@ import tw.fitcar.launcher.data.Schedule
 import tw.fitcar.launcher.data.ShortcutSlots
 import tw.fitcar.launcher.media.MediaRepository
 import tw.fitcar.launcher.nav.LaunchResult
+import tw.fitcar.launcher.nav.NavGuidanceRepository
 import tw.fitcar.launcher.nav.NavLauncher
 import tw.fitcar.launcher.system.BrightnessController
 import tw.fitcar.launcher.system.GpsSpeed
@@ -202,6 +203,7 @@ class MainActivity : ComponentActivity() {
             })
         }
         if (target == BindingTarget.MUSIC) MediaRepository.refresh(this)
+        if (target == BindingTarget.NAVIGATION) NavGuidanceRepository.clear()
     }
 
     @Composable
@@ -209,6 +211,7 @@ class MainActivity : ComponentActivity() {
         val state by prefs.state.collectAsState()
         val media by MediaRepository.state.collectAsState()
         val gps by GpsSpeed.state.collectAsState()
+        val navGuidance by NavGuidanceRepository.state.collectAsState()
         val tick = resumeTick
 
         // 每 30 秒重新計算日／夜主題（跨日與系統時間變更都會反映）
@@ -256,6 +259,7 @@ class MainActivity : ComponentActivity() {
                         nav = nav,
                         navModeLabel = if (state.navOpenMode == tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) "分割畫面優先" else "全螢幕",
                         splitResult = state.lastSplitResult,
+                        guidance = navGuidance.guidance,
                         music = music, shield = shield, media = media, gps = gps, slots = slots,
                         actions = HomeActions(
                             openAllApps = { screen = Screen.AllApps },

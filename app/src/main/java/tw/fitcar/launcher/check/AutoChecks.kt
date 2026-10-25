@@ -47,6 +47,7 @@ object AutoChecks {
         out += defaultHome(context)
         out += navigation(context, apps)
         out += multiWindow(context)
+        out += navGuidance(context)
         out += music(context, apps)
         out += shield(context, apps)
         out += brightness(context)
@@ -159,6 +160,24 @@ object AutoChecks {
             candidates.isNotEmpty() -> CheckResult(id, group, title, Status.WARN, "尚未綁定；偵測到可能的$appName：$names。",
                 "綁定後才能從 FIT 桌面直接開啟。", Fix("綁定 ${candidates.first().label}", kind, candidates.first().key))
             else -> CheckResult(id, group, title, Status.WARN, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定 → App 綁定手動選擇。")
+        }
+    }
+
+    /** 導航王是否在通知列提供轉彎文字（決定桌面導航區能不能顯示轉彎提示）。 */
+    private fun navGuidance(context: Context): CheckResult {
+        val s = tw.fitcar.launcher.nav.NavGuidanceRepository.state.value
+        val title = "導航轉彎提示（讀取導航通知）"
+        return when {
+            !MediaRepository.isPermissionGranted(context) -> CheckResult("nav_guidance", "導航", title, Status.TODO,
+                "尚未開啟通知存取。", "開啟後用導航王導航一段路，再回到這裡重新檢測。", Fix("開啟通知存取", FixKind.OPEN_NOTIFICATION_ACCESS))
+            s.guidance != null -> CheckResult("nav_guidance", "導航", title, Status.PASS,
+                "已收到導航通知：「${s.guidance.primary}」" + (s.guidance.distance?.let { "，距離 $it" } ?: "") + "。",
+                "桌面導航區會顯示轉彎、距離與路名；行車中確認更新速度是否跟得上。")
+            s.lastHadText == false -> CheckResult("nav_guidance", "導航", title, Status.WARN,
+                "收到導航 App 的進行中通知，但通知沒有文字（可能使用自訂版面）。",
+                "導航區無法顯示轉彎提示，維持「開始導航／全螢幕」按鈕；可改用分割畫面同時看地圖。")
+            else -> CheckResult("nav_guidance", "導航", title, Status.TODO,
+                "尚未收到綁定導航 App 的導航通知。", "用導航王設定目的地開始導航，回到 FIT 桌面看導航區是否出現轉彎提示，再重新檢測。")
         }
     }
 

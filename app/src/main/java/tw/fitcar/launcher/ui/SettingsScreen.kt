@@ -300,9 +300,9 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
 
 @Composable
 private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
-    Section("通知存取（音樂資訊）") {
+    Section("通知存取（音樂資訊、導航轉彎提示）") {
         StatusLine(data.notificationGranted, "已開啟", "未開啟：無法讀取 KKBOX 播放資訊")
-        Hint("僅用於 Android MediaSession 讀取歌曲與控制播放；不讀取、不保存通知內容。", size = 13)
+        Hint("用於：① Android MediaSession 讀取歌曲與控制播放；② 只讀取你綁定的導航 App 的導航通知文字（轉彎、距離、路名），顯示在桌面導航區。其他 App 的通知不讀取；內容不保存、不上傳。", size = 13)
         SecondaryButton("開啟系統設定", actions.requestNotificationAccess)
     }
     Section("定位（GPS 車速）") {

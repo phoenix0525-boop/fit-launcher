@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import tw.fitcar.launcher.data.AppEntry
 import tw.fitcar.launcher.data.ShortcutSlots
 import tw.fitcar.launcher.media.MediaUiState
+import tw.fitcar.launcher.nav.NavGuidance
 import tw.fitcar.launcher.system.GpsState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -82,6 +83,7 @@ fun HomeScreen(
     nav: AppEntry?,
     navModeLabel: String,
     splitResult: Boolean?,
+    guidance: NavGuidance?,
     music: AppEntry?,
     shield: AppEntry?,
     media: MediaUiState,
@@ -96,7 +98,7 @@ fun HomeScreen(
     ) {
         StatusBar(shield, gps, actions)
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            NavPanel(nav, navModeLabel, splitResult, actions, Modifier.weight(7f).fillMaxHeight())
+            NavPanel(nav, navModeLabel, splitResult, guidance, actions, Modifier.weight(7f).fillMaxHeight())
             Column(Modifier.weight(3f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.22f))
                 ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(0.78f))
@@ -184,7 +186,7 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
 }
 
 @Composable
-private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, actions: HomeActions, modifier: Modifier) {
+private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, guidance: NavGuidance?, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(26.dp)) {
         CardTitle("導航") { Pill(modeLabel) }
@@ -195,6 +197,14 @@ private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, a
                     Text("尚未選擇導航 App", color = p.text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
                     Hint("請從車機實際安裝的 App 中選擇導航王", size = 16)
                     PrimaryButton("選擇導航 App", actions.bindNav)
+                } else if (guidance != null) {
+                    GuidanceBlock(guidance, nav.label)
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        PrimaryButton("回到導航", actions.openNavFullscreen, Modifier.height(64.dp), icon = {
+                            GlyphIcon(Glyph.NAV, size = 24.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
+                        })
+                        SecondaryButton("分割畫面", actions.openNav, Modifier.height(64.dp))
+                    }
                 } else {
                     AppIcon(nav.icon, 112.dp)
                     Text(nav.label, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.Medium)
@@ -217,6 +227,30 @@ private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, a
                 },
             size = 14,
         )
+    }
+}
+
+/** 導航中：顯示導航 App 通知上的轉彎、距離、路名與到達時間。 */
+@Composable
+private fun GuidanceBlock(g: NavGuidance, source: String) {
+    val p = LocalPalette.current
+    Row(
+        Modifier.fillMaxWidth().clip(RadiusLg).background(p.surfaceStrong).border(1.dp, p.line, RadiusLg).padding(horizontal = 28.dp, vertical = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(26.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(g.arrow, color = p.accent, fontSize = 88.sp, lineHeight = 92.sp, fontWeight = FontWeight.Bold)
+            g.distance?.let { Text(it, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold) }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(g.primary, color = p.text, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            g.secondary?.let { Text(it, color = p.textSoft, fontSize = 22.sp, lineHeight = 28.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                g.eta?.let { Pill("預計 $it 抵達", color = p.text) }
+                Hint("來源：$source 通知", size = 13)
+            }
+        }
     }
 }
 
