@@ -33,6 +33,8 @@ def main() -> int:
     workflow = read(".github/workflows/build-apk.yml")
     workflow_backup = read("build-apk.github-workflow.yml")
     gitignore = read(".gitignore")
+    gradle_properties = read("gradle.properties")
+    windows_build = read("scripts/build_local_windows.ps1")
 
     expected = {
         r"\bcompileSdk\s*=\s*36\b": "compileSdk must be 36",
@@ -70,6 +72,19 @@ def main() -> int:
         errors.append("GitHub Actions must resolve sdkmanager from ANDROID_HOME explicitly")
     if workflow_backup != workflow:
         errors.append("Visible workflow backup must exactly match .github/workflows/build-apk.yml")
+
+    require(
+        r"^android\.overridePathCheck=true$",
+        gradle_properties,
+        "Gradle must allow the canonical non-ASCII Windows workspace path",
+        errors,
+    )
+    require(
+        r"\bsubst\b",
+        windows_build,
+        "Windows local build must map non-ASCII workspace paths",
+        errors,
+    )
 
     for ignored in ("*.p12", "*.jks", "*.keystore", "*.base64.txt", "secrets.properties"):
         if ignored not in gitignore:

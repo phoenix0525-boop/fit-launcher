@@ -74,6 +74,7 @@ app/src/main/java/tw/fitcar/launcher/
 app/src/test/            Schedule／捷徑單元測試
 .github/workflows/build-apk.yml  GitHub Actions 測試、APK／AAB 正式簽章流程
 scripts/verify_release_config.py  發行版本、權限、工具鏈與秘密排除檢查
+scripts/build_local_windows.ps1   Windows 中文路徑的本機測試／打包入口
 ```
 
 ## 正式簽章
@@ -92,6 +93,14 @@ scripts/verify_release_config.py  發行版本、權限、工具鏈與秘密排�
 4. Debug 產出：`app/build/outputs/apk/debug/app-debug.apk`；正式產物由 Release 簽章流程產生 APK 與 AAB。
 
 建議先把資料夾複製到本機磁碟（例如 `C:\dev\fit-launcher-android`）再開啟，避免 Google 雲端硬碟同步 build 暫存檔。
+
+目前這台 Windows 電腦已使用 JDK 17 與 Android SDK 36 的使用者層級設定。在本專案根目錄執行：
+
+```powershell
+.\scripts\build_local_windows.ps1
+```
+
+腳本會臨時將中文 Google Drive 路徑映射為英文磁碟代號，完成後自動移除映射；可在後面指定 Gradle 任務，例如 `assembleRelease bundleRelease`。
 
 **B. GitHub Actions（不用裝 Android Studio）**
 GitHub Secrets 設定完成後，Actions 會執行設定檢查、單元測試、Debug APK，以及正式簽章 APK／AAB；Artifacts 名稱為 `fit-launcher-v0.2.0-release`。
