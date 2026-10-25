@@ -39,6 +39,14 @@ data class MediaUiState(
     val hasSession: Boolean get() = packageName != null
     val isPlaying: Boolean get() = playbackState == PlaybackState.STATE_PLAYING
     fun supports(action: Long): Boolean = actions and action != 0L
+    val canPlayPause: Boolean
+        get() = hasSession && if (isPlaying) {
+            supports(PlaybackState.ACTION_PAUSE) || supports(PlaybackState.ACTION_PLAY_PAUSE)
+        } else {
+            supports(PlaybackState.ACTION_PLAY) || supports(PlaybackState.ACTION_PLAY_PAUSE)
+        }
+    val canSkipPrevious: Boolean get() = hasSession && supports(PlaybackState.ACTION_SKIP_TO_PREVIOUS)
+    val canSkipNext: Boolean get() = hasSession && supports(PlaybackState.ACTION_SKIP_TO_NEXT)
     val canSeek: Boolean get() = supports(PlaybackState.ACTION_SEEK_TO) && durationMs > 0
 
     fun livePosition(nowElapsed: Long = SystemClock.elapsedRealtime()): Long {
@@ -173,14 +181,15 @@ object MediaRepository {
     fun playPause() {
         val c = current ?: return
         val s = _state.value
+        if (!s.canPlayPause) return
         if (s.isPlaying) {
-            if (s.supports(PlaybackState.ACTION_PAUSE) || s.supports(PlaybackState.ACTION_PLAY_PAUSE)) c.transportControls.pause()
+            c.transportControls.pause()
         } else {
-            if (s.supports(PlaybackState.ACTION_PLAY) || s.supports(PlaybackState.ACTION_PLAY_PAUSE)) c.transportControls.play()
+            c.transportControls.play()
         }
     }
 
-    fun next() { if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_NEXT)) current?.transportControls?.skipToNext() }
-    fun previous() { if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_PREVIOUS)) current?.transportControls?.skipToPrevious() }
+    fun next() { if (_state.value.canSkipNext) current?.transportControls?.skipToNext() }
+    fun previous() { if (_state.value.canSkipPrevious) current?.transportControls?.skipToPrevious() }
     fun seekTo(ms: Long) { if (_state.value.canSeek) current?.transportControls?.seekTo(ms) }
 }

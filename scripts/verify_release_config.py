@@ -40,8 +40,8 @@ def main() -> int:
         r"\bcompileSdk\s*=\s*36\b": "compileSdk must be 36",
         r"\bminSdk\s*=\s*31\b": "minSdk must be 31 (Android 12)",
         r"\btargetSdk\s*=\s*36\b": "targetSdk must be 36",
-        r"\bversionCode\s*=\s*3\b": "versionCode must be 3",
-        r'\bversionName\s*=\s*"0\.2\.0"': "versionName must be 0.2.0",
+        r"\bversionCode\s*=\s*4\b": "versionCode must be 4",
+        r'\bversionName\s*=\s*"0\.2\.1"': "versionName must be 0.2.1",
     }
     for pattern, message in expected.items():
         require(pattern, app_gradle, message, errors)

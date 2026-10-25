@@ -142,8 +142,12 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
             ) {
                 GlyphIcon(Glyph.SHIELD, size = 22.dp, tint = p.textSoft)
                 Column {
-                    Text(shield?.label ?: "測速 App", color = p.text, fontSize = 15.sp, maxLines = 1)
-                    Text("資料尚未連接（使用官方浮動窗）", color = p.textSoft, fontSize = 12.sp, maxLines = 1)
+                    Text(shield?.let { "${it.label}（已綁定）" } ?: "尚未選擇測速 App", color = p.text, fontSize = 15.sp, maxLines = 1)
+                    Text(
+                        if (shield == null) "點擊選擇神盾"
+                        else "資料尚未連接 · 點擊開啟官方浮動窗",
+                        color = p.textSoft, fontSize = 12.sp, maxLines = 1,
+                    )
                 }
             }
             // GPS 車速：啟動器自行計算，明確標示來源
@@ -260,30 +264,54 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 }
             }
         }
+        Spacer(Modifier.height(10.dp))
         if (media.hasSession) {
-            Spacer(Modifier.height(10.dp))
             Progress(media, actions)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
-                val next = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)
-                ControlButton(Glyph.PREV, prev, actions.previous)
-                Box(
-                    Modifier.size(68.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 30.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
-                }
-                ControlButton(Glyph.NEXT, next, actions.next)
-            }
+        } else {
+            Hint(
+                if (media.permissionGranted) "開啟 KKBOX 並開始播放後，下方控制鍵會自動啟用。"
+                else "開啟通知存取後，下方控制鍵才能連接 KKBOX。",
+                size = 12,
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            ControlButton(Glyph.PREV, "上一首", media.canSkipPrevious, actions.previous)
+            ControlButton(
+                if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY,
+                if (media.isPlaying) "暫停" else "播放",
+                media.canPlayPause,
+                actions.playPause,
+                emphasized = true,
+            )
+            ControlButton(Glyph.NEXT, "下一首", media.canSkipNext, actions.next)
         }
     }
 }
 
 @Composable
-private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
+private fun ControlButton(glyph: Glyph, label: String, enabled: Boolean, onClick: () -> Unit, emphasized: Boolean = false) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(64.dp)) {
-        GlyphIcon(glyph, size = 30.dp, tint = if (enabled) p.text else p.line)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.size(if (emphasized) 68.dp else 60.dp)
+                .clip(CircleShape)
+                .background(if (emphasized && enabled) p.accent else p.surfaceStrong)
+                .border(1.dp, if (enabled) p.line else p.surfaceStrong, CircleShape),
+        ) {
+            GlyphIcon(
+                glyph,
+                size = if (emphasized) 30.dp else 28.dp,
+                tint = when {
+                    !enabled -> p.line
+                    emphasized && p.isNight -> p.bgDeep
+                    emphasized -> androidx.compose.ui.graphics.Color.White
+                    else -> p.text
+                },
+            )
+        }
+        Text(label, color = if (enabled) p.textSoft else p.line, fontSize = 12.sp)
     }
 }
 

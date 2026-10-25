@@ -65,8 +65,8 @@ jobs:
           ACTUAL=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' signature.txt | tr -d ':' | tr '[:lower:]' '[:upper:]')
           test "$ACTUAL" = "$EXPECTED" || { echo "::error::Release certificate does not match FIT launcher identity"; exit 1; }
           jarsigner -verify -strict "$AAB"
-          mv "$APK" "fit-launcher-v0.2.0-release.apk"
-          mv "$AAB" "fit-launcher-v0.2.0-release.aab"
+          mv "$APK" "fit-launcher-v0.2.1-release.apk"
+          mv "$AAB" "fit-launcher-v0.2.1-release.aab"
 
       - name: Remove temporary signing key
         if: always()
@@ -75,9 +75,9 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fit-launcher-v0.2.0-release
+          name: fit-launcher-v0.2.1-release
           path: |
-            fit-launcher-v0.2.0-release.apk
-            fit-launcher-v0.2.0-release.aab
+            fit-launcher-v0.2.1-release.apk
+            fit-launcher-v0.2.1-release.aab
             signature.txt
           if-no-files-found: error

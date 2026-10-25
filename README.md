@@ -1,13 +1,13 @@
 # FIT 桌面（Android 啟動器 APK）
 
 Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、2000×1200）的個人化桌面。
-第三階段 v0.2.0，以既有原生啟動器為主體，開始分階段加入測速、路況與按鍵式語音功能。
+第三階段 v0.2.1，以既有原生啟動器為主體，開始分階段加入測速、路況與按鍵式語音功能。
 
 - 語言／框架：Kotlin 2.0.20、Jetpack Compose（BOM 2024.09.00）、AGP 8.10.1、Gradle 8.11.1
 - minSdk 31（Android 12）、targetSdk／compileSdk 36；套件名稱 `tw.fitcar.launcher`
 - 不刷韌體、不需 root、不假設 FYT 主板；不使用 `QUERY_ALL_PACKAGES`
 
-> 狀態：v0.1.0 Debug 曾由 GitHub Actions 完成測試與編譯；v0.2.0 平台／正式簽章基線正在驗證。
+> 狀態：v0.2.1 已補上常駐 KKBOX 播放控制列，並重寫神盾綁定／官方浮動窗狀態文字；尚待 AKZ ZX09 實機再驗證。
 > 所有版本都**尚未在 AKZ ZX09 車機實測**，不能把 CI 建置成功視為車機相容性證明。
 
 ## 功能
@@ -79,7 +79,7 @@ scripts/build_local_windows.ps1   Windows 中文路徑的本機測試／打包�
 
 ## 正式簽章
 
-- v0.2.0 使用 FIT 桌面專屬 `fitlauncher` 憑證，金鑰不在 Git 儲存庫內。
+- v0.2.1 使用 FIT 桌面專屬 `fitlauncher` 憑證，金鑰不在 Git 儲存庫內。
 - 本機由環境變數或 Gradle property 提供 `FIT_KEYSTORE_PATH`、`FIT_KEYSTORE_PASSWORD`、`FIT_KEY_ALIAS`；金鑰密碼不同時另設 `FIT_KEY_PASSWORD`。
 - GitHub Actions 從 Secrets 暫時還原金鑰，完成 APK／AAB 後立即刪除。
 - 未提供正式金鑰時，Release 不會回退使用 Debug 憑證。
@@ -103,7 +103,7 @@ scripts/build_local_windows.ps1   Windows 中文路徑的本機測試／打包�
 腳本會臨時將中文 Google Drive 路徑映射為英文磁碟代號，完成後自動移除映射；可在後面指定 Gradle 任務，例如 `assembleRelease bundleRelease`。
 
 **B. GitHub Actions（不用裝 Android Studio）**
-GitHub Secrets 設定完成後，Actions 會執行設定檢查、單元測試、Debug APK，以及正式簽章 APK／AAB；Artifacts 名稱為 `fit-launcher-v0.2.0-release`。
+GitHub Secrets 設定完成後，Actions 會執行設定檢查、單元測試、Debug APK，以及正式簽章 APK／AAB；Artifacts 名稱為 `fit-launcher-v0.2.1-release`。
 
 **C. 讓 Claude 直接編譯**
 在 claude.ai 網頁版 Settings → Capabilities 允許：`dl.google.com`、`maven.google.com`、`services.gradle.org`、`plugins.gradle.org`、`repo.maven.apache.org`、`repo1.maven.org`。
