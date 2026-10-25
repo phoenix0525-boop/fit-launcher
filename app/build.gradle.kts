@@ -12,15 +12,33 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
+    }
+
+    // Release signing material is supplied only by local Gradle properties or CI secrets.
+    // Without it, Gradle deliberately produces an unsigned release artifact.
+    fun secret(name: String): String? =
+        System.getenv(name)?.takeIf { it.isNotBlank() }
+            ?: (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
+    val keystorePath = secret("FIT_KEYSTORE_PATH")
+
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storeType = "pkcs12"
+                storePassword = secret("FIT_KEYSTORE_PASSWORD")
+                keyAlias = secret("FIT_KEY_ALIAS") ?: "fitlauncher"
+                keyPassword = secret("FIT_KEY_PASSWORD") ?: secret("FIT_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 個人側載用：release 版暫用 debug 簽章，方便直接安裝；正式散佈前須改為自有金鑰。
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystorePath != null) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {

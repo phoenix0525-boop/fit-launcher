@@ -6,3 +6,15 @@ local.properties
 .DS_Store
 captures/
 .kotlin/
+
+# Release signing material and local secrets must never enter Git.
+*.p12
+*.jks
+*.keystore
+*.pem
+*.key
+*.base64
+*.base64.txt
+keystore.properties
+secrets.properties
+local-secrets.properties
