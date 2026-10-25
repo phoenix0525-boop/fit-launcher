@@ -7,7 +7,7 @@ Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、200
 - minSdk 31（Android 12）、targetSdk／compileSdk 36；套件名稱 `tw.fitcar.launcher`
 - 不刷韌體、不需 root、不假設 FYT 主板；不使用 `QUERY_ALL_PACKAGES`
 
-> 狀態：v0.2.1 已補上常駐 KKBOX 播放控制列，並重寫神盾綁定／官方浮動窗狀態文字；尚待 AKZ ZX09 實機再驗證。
+> 狀態：v0.3.0 已完成本機 28 項單元測試、Debug APK、Lint，以及含 R8／資源縮減的 Release APK／AAB 建置；尚待 AKZ ZX09 實機再驗證。
 > 所有版本都**尚未在 AKZ ZX09 車機實測**，不能把 CI 建置成功視為車機相容性證明。
 
 ## v0.3.0 更新（2026-10-26，參考開車趣與原廠桌面）
@@ -83,7 +83,7 @@ app/src/main/java/tw/fitcar/launcher/
   nav/                   導航開啟策略
   system/                亮度控制與排程、開機接收器、GPS 車速
   ui/                    主題色票、元件、主畫面、App 清單、設定頁
-app/src/test/            Schedule／捷徑單元測試
+app/src/test/            排程、捷徑、原廠 App、導航通知與常用地點單元測試
 .github/workflows/build-apk.yml  GitHub Actions 測試、APK／AAB 正式簽章流程
 scripts/verify_release_config.py  發行版本、權限、工具鏈與秘密排除檢查
 scripts/build_local_windows.ps1   Windows 中文路徑的本機測試／打包入口
@@ -115,7 +115,7 @@ scripts/build_local_windows.ps1   Windows 中文路徑的本機測試／打包�
 腳本會臨時將中文 Google Drive 路徑映射為英文磁碟代號，完成後自動移除映射；可在後面指定 Gradle 任務，例如 `assembleRelease bundleRelease`。
 
 **B. GitHub Actions（不用裝 Android Studio）**
-GitHub Secrets 設定完成後，Actions 會執行設定檢查、單元測試、Debug APK，以及正式簽章 APK／AAB；Artifacts 名稱為 `fit-launcher-v0.2.1-release`。
+Actions 會先執行設定檢查、單元測試並提供 `fit-launcher-debug`。GitHub Secrets 設定完成後，才會另外建立正式簽章 APK／AAB，Artifact 名稱為 `fit-launcher-release`；未設定 Secrets 時不會以 Debug 憑證冒充正式版。
 
 **C. 讓 Claude 直接編譯**
 在 claude.ai 網頁版 Settings → Capabilities 允許：`dl.google.com`、`maven.google.com`、`services.gradle.org`、`plugins.gradle.org`、`repo.maven.apache.org`、`repo1.maven.org`。
