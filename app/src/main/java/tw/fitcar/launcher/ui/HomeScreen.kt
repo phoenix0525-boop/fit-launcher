@@ -202,8 +202,8 @@ private fun formatMs(ms: Long): String {
 internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
-        CardTitle(music?.label ?: "音樂") {
-            if (music != null) SecondaryButton("開啟", actions.openMusicApp)
+        CardTitle(media.playerName ?: music?.label ?: "音樂") {
+            if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
         Spacer(Modifier.height(8.dp))
@@ -225,7 +225,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 !media.hasSession -> {
                     GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)
                     Text("尚未播放", color = p.text, fontSize = 22.sp)
-                    Hint("開啟 KKBOX 並播放後，這裡會顯示歌曲資訊。", size = 14)
+                    Hint("開啟選定播放器播放後，這裡會顯示歌曲資訊。", size = 14)
                 }
                 else -> {
                     val art = media.art
@@ -235,7 +235,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     }
                     Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (spacious) Hint("歌詞資料尚未連接", size = 13)
+                    if (spacious) Hint("歌詞功能尚未提供", size = 13)
                 }
             }
         }

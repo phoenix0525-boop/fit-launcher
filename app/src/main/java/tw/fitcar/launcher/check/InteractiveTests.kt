@@ -59,7 +59,7 @@ object GestureTest {
             CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.PASS, f + "系統層級有處理。",
                 "這個手勢由車機系統或觸控驅動提供，換成 FIT 桌面後仍有效，不需要另外實作。")
         } else {
-            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.WARN, f + "音量沒有變化。",
+            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.FAIL, f + "音量沒有變化。",
                 "若在原廠桌面做同樣手勢會${kind.expect}，表示手勢只存在原廠桌面，FIT 桌面需要自行實作（記入下一版需求）。" +
                     "若原廠桌面也沒反應，代表原車機不是用這個手勢，可忽略。")
         }
@@ -125,7 +125,7 @@ object BrightnessTest {
             screenChanged == false -> CheckResult("brightness_test", "亮度", "背光實測", Status.FAIL, f,
                 "車機背光不是走 Android 系統亮度（可能由 MCU／原廠設定控制），FIT 桌面的亮度排程不會有效果，建議關閉，只保留日夜主題。",
                 Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
-            !kept -> CheckResult("brightness_test", "亮度", "背光實測", Status.WARN, f,
+            !kept -> CheckResult("brightness_test", "亮度", "背光實測", Status.FAIL, f,
                 "寫入後被系統改回，可能是車燈調光或原廠自動亮度在控制。若開大燈時亮度會自己變，建議關閉 FIT 亮度排程以免互搶。",
                 Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
             screenChanged == true -> CheckResult("brightness_test", "亮度", "背光實測", Status.PASS, f, "背光可由 FIT 桌面控制。夜間開大燈時再確認一次不會被車燈調光覆蓋。")
@@ -206,10 +206,10 @@ object GpsTest {
         val f = "首次定位：${s.firstFixMs?.let { "${it / 1000} 秒" } ?: "未定位（已等 $elapsed 秒）"}；衛星 可見 ${s.satellitesInView}／使用 ${s.satellitesUsed}；" +
             "速度欄位：${if (s.hasSpeed) "有" else "無"}${s.accuracy?.let { "；精度 ±%.0f m".format(it) } ?: ""}。"
         return when {
-            s.firstFixMs == null -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.WARN, f,
+            s.firstFixMs == null -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.FAIL, f,
                 "在室內或地下室通常定位不到，請到戶外重測；若戶外 2 分鐘仍無定位，檢查 GPS 天線是否接好。")
-            !s.hasSpeed -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.WARN, f, "定位成功但沒有速度資料，狀態列 GPS 車速會一直顯示「—」，需改用位置差計算（記入下一版）。")
-            s.firstFixMs > 60_000 -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.WARN, f, "定位偏慢，剛發動時車速會延遲出現；屬車機 GPS 特性。")
+            !s.hasSpeed -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.INFO, f, "定位成功但沒有速度資料，狀態列 GPS 車速會一直顯示「—」，需改用位置差計算（記入下一版）。")
+            s.firstFixMs > 60_000 -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.INFO, f, "定位偏慢，剛發動時車速會延遲出現；屬車機 GPS 特性。")
             else -> CheckResult("gps_test", "定位", "GPS 定位實測", Status.PASS, f, "GPS 車速可正常顯示（行駛中再確認數值與儀表接近）。")
         }
     }
@@ -220,9 +220,11 @@ object GpsTest {
 data class ManualItem(val id: String, val group: String, val title: String, val howTo: String, val ifBad: String)
 
 val MANUAL_ITEMS = listOf(
+    ManualItem("m_player_kkbox", "音樂", "KKBOX 播放一致性", "從實際安裝清單選擇 KKBOX，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
+    ManualItem("m_player_yt", "音樂", "官方 YT Music 播放一致性", "從實際安裝清單選擇 官方 YT Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
+    ManualItem("m_player_morphe", "音樂", "Morphe Music 播放一致性", "從實際安裝清單選擇 Morphe Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
     ManualItem("m_reverse", "手動檢查", "倒車影像", "FIT 桌面為預設桌面時打 R 檔。", "倒車畫面被蓋住或延遲：立即改回原廠桌面，回報給 AI 處理（最高優先）。"),
     ManualItem("m_home", "手動檢查", "Home 鍵", "在導航王、KKBOX 中按 Home 鍵或面板 Home。", "沒回到 FIT 桌面：記下按鍵位置，下一版處理。"),
-    ManualItem("m_wake", "手動檢查", "熄火後再發動", "熄火 5 分鐘以上再發動。", "畫面空白、卡住或回到原廠桌面：記錄情況，下一版處理。"),
     ManualItem("m_wheel", "手動檢查", "方向盤按鍵", "在 FIT 桌面與導航中按切歌、音量、語音鍵。", "在 FIT 桌面失效：記下哪個鍵，配合按鍵測試結果處理。"),
     ManualItem("m_shield", "手動檢查", "神盾浮動窗", "開神盾後回到 FIT 桌面，看浮動窗與警示音。", "浮動窗消失：到神盾的「顯示在其他應用程式上層」開啟。"),
     ManualItem("m_headlight", "手動檢查", "車燈調光", "夜間開關大燈，看螢幕亮度是否自行改變。", "會自己變：關閉 FIT 亮度排程，只保留日夜主題。"),
@@ -231,11 +233,12 @@ val MANUAL_ITEMS = listOf(
     ManualItem("m_touch", "手動檢查", "觸控範圍", "停車時點擊捷徑、播放鍵、所有 App。", "常點錯：記下哪個按鈕，放大觸控範圍。"),
 )
 
-fun manualResult(item: ManualItem, ok: Boolean?, note: String = ""): CheckResult = CheckResult(
+fun manualResult(item: ManualItem, ok: Boolean?, note: String = "", scenario: String = ""): CheckResult = CheckResult(
     item.id, item.group, item.title,
     when (ok) { true -> Status.PASS; false -> Status.FAIL; null -> Status.TODO },
     item.howTo + when (ok) { true -> "　結果：正常。"; false -> "　結果：有問題。"; null -> "" } + if (note.isNotBlank()) "　備註：$note" else "",
     if (ok == false) item.ifBad else "",
+    scenario = scenario, notes = note,
 )
 
 /* ---------------- 匯出報告 ---------------- */
@@ -260,8 +263,12 @@ object Report {
         sb.appendLine()
         sb.appendLine("【全部項目】")
         CheckStore.sorted(results).forEach { r ->
-            sb.appendLine("${r.status.mark} [${r.group}] ${r.title}：${r.finding}")
-            if (r.suggestion.isNotBlank() && r.status != Status.WARN && r.status != Status.FAIL) sb.appendLine("   → ${r.suggestion}")
+            sb.appendLine("${r.status.mark} ${r.status.label} [${r.group}] ${r.title}：${r.finding}")
+            if (r.appVersion.isNotBlank() || r.status == Status.HISTORY) {
+                sb.appendLine("   測試時間：${if (r.time > 0) Date(r.time) else "尚未測試"}；App版本：${r.appVersion.ifBlank { "舊版未記錄" }}")
+                sb.appendLine("   測試情境：${r.scenario.ifBlank { "舊版未記錄" }}；備註：${r.notes.ifBlank { "無" }}")
+            }
+            if (r.suggestion.isNotBlank() && r.status != Status.FAIL) sb.appendLine("   → ${r.suggestion}")
         }
         sb.appendLine()
         sb.appendLine("（報告不含序號、IMEI 等裝置識別碼）")

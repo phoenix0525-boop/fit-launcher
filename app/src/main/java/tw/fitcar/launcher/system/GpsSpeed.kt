@@ -23,6 +23,10 @@ data class GpsState(
     val longitude: Double? = null,
     val fixElapsed: Long = 0L,
 ) {
+    fun hasRecentPosition(now: Long = SystemClock.elapsedRealtime()): Boolean =
+        permission && providerEnabled && latitude != null && longitude != null &&
+            fixElapsed > 0 && now - fixElapsed in 0 until 10_000
+
     /** 5 秒內有定位且有速度才算「已定位」。 */
     fun isFresh(now: Long = SystemClock.elapsedRealtime()) = speedKmh != null && now - fixElapsed < 5_000
 }
@@ -42,7 +46,7 @@ object GpsSpeed {
                 longitude = location.longitude,
                 speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
                 accuracyM = if (location.hasAccuracy()) location.accuracy else null,
-                fixElapsed = SystemClock.elapsedRealtime(),
+                fixElapsed = location.elapsedRealtimeNanos / 1_000_000L,
             )
         }
         override fun onProviderEnabled(provider: String) { _state.value = _state.value.copy(providerEnabled = true) }

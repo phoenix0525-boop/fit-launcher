@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class NavOpenMode { SPLIT_FIRST, FULLSCREEN }
+enum class NavOpenMode { FULLSCREEN, SPLIT_FIRST }
+enum class MediaMode { FIXED, FOLLOW_CURRENT }
 
 /** 導航／音樂／測速三個綁定，存的是使用者從實際清單選的 ComponentName 字串。 */
 data class Bindings(
@@ -19,7 +20,8 @@ data class LauncherState(
     val display: DisplaySettings = DisplaySettings(),
     val shortcuts: List<String?> = List(ShortcutSlots.COUNT) { null },
     val bindings: Bindings = Bindings(),
-    val navOpenMode: NavOpenMode = NavOpenMode.SPLIT_FIRST,
+    val navOpenMode: NavOpenMode = NavOpenMode.FULLSCREEN,
+    val mediaMode: MediaMode = MediaMode.FOLLOW_CURRENT,
     /** 最近一次分割畫面測試結果：null = 尚未測試。 */
     val lastSplitResult: Boolean? = null,
     val manualOverride: Boolean = false,
@@ -72,7 +74,8 @@ class Prefs private constructor(context: Context) {
                 music = sp.getString("bind_music", null),
                 shield = sp.getString("bind_shield", null),
             ),
-            navOpenMode = if (sp.getString("nav_open_mode", "split") == "full") NavOpenMode.FULLSCREEN else NavOpenMode.SPLIT_FIRST,
+            navOpenMode = if (sp.getBoolean("experimental_split", false)) NavOpenMode.SPLIT_FIRST else NavOpenMode.FULLSCREEN,
+            mediaMode = if (sp.getString("media_mode", "follow") == "fixed") MediaMode.FIXED else MediaMode.FOLLOW_CURRENT,
             lastSplitResult = split,
             manualOverride = sp.getBoolean("manual_override", false),
         )
@@ -94,7 +97,8 @@ class Prefs private constructor(context: Context) {
             putOrRemove("bind_navigation", s.bindings.navigation)
             putOrRemove("bind_music", s.bindings.music)
             putOrRemove("bind_shield", s.bindings.shield)
-            putString("nav_open_mode", if (s.navOpenMode == NavOpenMode.FULLSCREEN) "full" else "split")
+            putBoolean("experimental_split", s.navOpenMode == NavOpenMode.SPLIT_FIRST)
+            putString("media_mode", if (s.mediaMode == MediaMode.FIXED) "fixed" else "follow")
             if (s.lastSplitResult == null) remove("last_split_result") else putBoolean("last_split_result", s.lastSplitResult)
             putBoolean("manual_override", s.manualOverride)
         }.apply()

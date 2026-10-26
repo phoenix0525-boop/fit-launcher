@@ -79,7 +79,13 @@ class CompanionActivity : ComponentActivity() {
     }
 
     private fun checkSplit() {
-        val inSplit = isInMultiWindowMode
+        val metrics = android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val view = window.decorView
+        val inSplit = isInMultiWindowMode && tw.fitcar.launcher.nav.SplitGeometry.isSideBySide(
+            metrics.widthPixels, metrics.heightPixels, view.width, view.height)
+        // Multi-window alone could mean top/bottom or a floating window; do not call it a left/right success.
         Prefs.get(this).update { it.copy(lastSplitResult = inSplit) }
         if (!inSplit) finishAndRemoveTask()
     }
@@ -111,7 +117,10 @@ class CompanionActivity : ComponentActivity() {
             openAllApps = { goHome() }, openSettings = { goHome() },
             openNav = { NavLauncher.launchAdjacent(this) }, openNavFullscreen = { NavLauncher.open(this, true) },
             bindNav = { goHome() },
-            openMusicApp = { launch(state.bindings.music) }, bindMusic = { goHome() },
+            openMusicApp = {
+                val intent = media.packageName?.let { packageManager.getLaunchIntentForPackage(it) }
+                if (intent != null) runCatching { startActivity(intent) } else launch(state.bindings.music)
+            }, bindMusic = { goHome() },
             grantNotificationAccess = { goHome() },
             playPause = { MediaRepository.playPause() }, next = { MediaRepository.next() },
             previous = { MediaRepository.previous() }, seekTo = { MediaRepository.seekTo(it) },

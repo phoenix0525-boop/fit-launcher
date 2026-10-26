@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
         resumeTick++
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
+        CheckStore.load(this)
     }
 
     override fun onStop() {
@@ -263,7 +264,12 @@ class MainActivity : ComponentActivity() {
                             openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
                             openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
                             bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
-                            openMusicApp = { launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) } },
+                            openMusicApp = {
+                                val active = MediaRepository.state.value.packageName
+                                val intent = active?.let { packageManager.getLaunchIntentForPackage(it) }
+                                if (intent != null) startActivity(intent)
+                                else launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
+                            },
                             bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
                             grantNotificationAccess = { openNotificationAccess() },
                             playPause = { MediaRepository.playPause() },
@@ -366,8 +372,9 @@ class MainActivity : ComponentActivity() {
                                 bind = { t -> screen = Screen.PickForBinding(t, true) },
                                 clearBinding = { t -> setBinding(t, null) },
                                 setNavMode = { m -> prefs.update { st -> st.copy(navOpenMode = m) } },
+                                setMediaMode = { m -> prefs.update { st -> st.copy(mediaMode = m) }; MediaRepository.refresh(this@MainActivity) },
                                 testSplit = {
-                                    prefs.update { st -> st.copy(navOpenMode = tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) }
+                                    prefs.update { st -> st.copy(navOpenMode = tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST, lastSplitResult = null) }
                                     handleNav(NavLauncher.open(this@MainActivity))
                                 },
                                 openOtherHome = { home ->

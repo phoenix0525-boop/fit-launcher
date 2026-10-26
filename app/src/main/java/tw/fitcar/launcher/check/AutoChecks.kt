@@ -51,6 +51,7 @@ object AutoChecks {
         out += shield(context, apps)
         out += brightness(context)
         out += location(context)
+        out += mapChecks()
         out += audio(context)
         out += boot(context)
         return out
@@ -70,7 +71,7 @@ object AutoChecks {
         val f = "可用給系統 %.1f GB（目前剩 %.1f GB）。".format(total, avail)
         return when {
             total >= 6.8 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.PASS, f + "符合 8 GB 等級（系統保留後通常顯示 7.x GB）。")
-            total >= 5.0 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.WARN, f + "低於 8 GB 等級，實體可能是 6 GB。",
+            total >= 5.0 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "低於 8 GB 等級，實體可能是 6 GB。",
                 "FIT 桌面已很輕量，不影響使用；如需確認可再以 CPU-Z 類工具比對。")
             else -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "與標示 8 GB 明顯不符，系統資訊可能被廠商改寫。",
                 "建議記錄並向賣家反映；同時開導航＋音樂時留意是否被系統關閉。")
@@ -84,7 +85,7 @@ object AutoChecks {
         val f = "使用者資料區 %.0f GB（剩 %.0f GB）。".format(total, free)
         return when {
             total >= 200 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.PASS, f + "符合 256 GB 等級（系統分割區另計）。")
-            total >= 100 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.WARN, f + "像是 128 GB 等級。", "實際可用空間足夠導航圖資與音樂快取；可向賣家確認規格。")
+            total >= 100 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.FAIL, f + "像是 128 GB 等級。", "實際可用空間足夠導航圖資與音樂快取；可向賣家確認規格。")
             else -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.FAIL, f + "與標示 256 GB 明顯不符。", "建議記錄並向賣家反映。")
         }
     }
@@ -100,13 +101,13 @@ object AutoChecks {
         val ghz = if (maxKhz > 0) "%.2f GHz".format(maxKhz / 1_000_000.0) else "無法讀取"
         val f = "$cores 核，最高 $ghz" + (hw?.let { "，$it" } ?: "") + "。"
         val ok = cores >= 8 && (maxKhz == 0L || maxKhz >= 2_500_000)
-        return CheckResult("cpu", "車機硬體", "處理器（標示 UIS7870SC 8 核 2.7 GHz）", if (ok) Status.PASS else Status.WARN, f,
+        return CheckResult("cpu", "車機硬體", "處理器（標示 UIS7870SC 8 核 2.7 GHz）", if (ok) Status.PASS else Status.INFO, f,
             if (ok) "" else "核心數或時脈低於標示，記錄下來即可，不影響 FIT 桌面。")
     }
 
     private fun android() = CheckResult(
         "android", "車機硬體", "Android 版本",
-        if (Build.VERSION.SDK_INT >= 33) Status.PASS else Status.WARN,
+        if (Build.VERSION.SDK_INT >= 33) Status.PASS else Status.INFO,
         "Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}），安全性修補 ${if (Build.VERSION.SDK_INT >= 23) Build.VERSION.SECURITY_PATCH else "—"}。",
         if (Build.VERSION.SDK_INT >= 33) "" else "實際版本低於畫面標示的 Android 13，系統資訊可能被改寫；FIT 桌面仍支援 Android 8 以上。",
     )
@@ -121,13 +122,8 @@ object AutoChecks {
         val hDp = (h / dm.density).roundToInt()
         val fontScale = context.resources.configuration.fontScale
         val f = "$w×$h px，${dm.densityDpi} dpi，約 $wDp×$hDp dp，字體縮放 ${"%.2f".format(fontScale)}。"
-        val issues = mutableListOf<String>()
-        if (w != 2000 || h != 1200) issues += "解析度不是規格的 2000×1200，版面比例需實機確認。"
-        if (wDp < 960) issues += "畫面寬度僅 $wDp dp，FIT 桌面版面會偏擠，建議縮小狀態列與捷徑字級。"
-        if (wDp > 1400) issues += "畫面寬度 $wDp dp，文字和按鈕會顯得偏小，建議放大字級。"
-        if (fontScale > 1.15f) issues += "系統字體放大 ${"%.0f".format(fontScale * 100)}%，部分文字可能被截斷。"
-        return CheckResult("screen", "顯示", "螢幕與版面", if (issues.isEmpty()) Status.PASS else Status.WARN, f,
-            if (issues.isEmpty()) "FIT 桌面以約 1000–1333 dp 寬設計，目前尺寸合適。" else issues.joinToString(""))
+        return CheckResult("screen", "顯示", "顯示環境資訊", Status.INFO, f,
+            "字體縮放本身不列為問題；請在手動可讀性測試記錄實際文字溢出或裁字。")
     }
 
     private fun defaultHome(context: Context): CheckResult {
@@ -156,9 +152,9 @@ object AutoChecks {
             bound != null -> CheckResult(id, group, title, Status.PASS, "已綁定：${bound.label}（${bound.component.packageName}）。")
             boundKey != null -> CheckResult(id, group, title, Status.FAIL, "已綁定的 App 找不到，可能已移除或更新後改名。",
                 "請重新選擇$appName。", candidates.firstOrNull()?.let { Fix("綁定 ${it.label}", kind, it.key) })
-            candidates.isNotEmpty() -> CheckResult(id, group, title, Status.WARN, "尚未綁定；偵測到可能的$appName：$names。",
+            candidates.isNotEmpty() -> CheckResult(id, group, title, Status.INFO, "尚未綁定；偵測到可能的$appName：$names。",
                 "綁定後才能從 FIT 桌面直接開啟。", Fix("綁定 ${candidates.first().label}", kind, candidates.first().key))
-            else -> CheckResult(id, group, title, Status.WARN, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定 → App 綁定手動選擇。")
+            else -> CheckResult(id, group, title, Status.INFO, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定 → App 綁定手動選擇。")
         }
     }
 
@@ -192,79 +188,34 @@ object AutoChecks {
         val freeform = context.packageManager.hasSystemFeature(PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT)
         val forceResize = Settings.Global.getInt(context.contentResolver, "force_resizable_activities", 0) == 1
         val last = Prefs.get(context).state.value.lastSplitResult
-        val mode = Prefs.get(context).state.value.navOpenMode
         val f = "系統多視窗：${yn(multi)}，分割畫面：${yn(split)}，自由視窗：${if (freeform) "有" else "無"}，強制可調整大小：${if (forceResize) "開" else "關"}。" +
             "實測：${when (last) { true -> "成功"; false -> "未進入分割"; null -> "尚未測試" }}。"
-        return when {
-            last == true -> CheckResult("split", "導航", "分割畫面", Status.PASS, f,
-                if (mode == NavOpenMode.SPLIT_FIRST) "維持「分割畫面優先」。" else "車機可分割，可改回「分割畫面優先」。",
-                if (mode == NavOpenMode.SPLIT_FIRST) null else Fix("改為分割畫面優先", FixKind.NAV_SPLIT))
-            last == false || multi == false || split == false -> CheckResult("split", "導航", "分割畫面", Status.WARN, f,
-                "車機無法以程式進入分割畫面。建議把導航改為「一律全螢幕」，省去每次約 2 秒的嘗試；可先用系統最近使用畫面試試手動分割。",
-                if (mode == NavOpenMode.FULLSCREEN) null else Fix("改為一律全螢幕", FixKind.NAV_FULLSCREEN))
-            else -> CheckResult("split", "導航", "分割畫面", Status.TODO, f, "系統設定看起來支援，請到「互動測試 → 分割畫面」實測。")
-        }
+        return CheckResult("split", "導航", "分割畫面（實驗功能）", if (last == false || multi == false || split == false) Status.NA else Status.INFO,
+            f, "導航預設全螢幕。分割畫面僅供手動選擇的實驗測試，不影響正常導航驗收。")
     }
 
     private fun yn(b: Boolean?) = when (b) { true -> "支援"; false -> "不支援"; null -> "未知" }
 
     private fun music(context: Context, apps: List<AppEntry>): List<CheckResult> {
         val prefs = Prefs.get(context).state.value
-        val cands = find(apps, "kkbox")
-        val bind = bindingCheck(context, "bind_music", "音樂", "KKBOX", prefs.bindings.music, cands, FixKind.BIND_MUSIC, "KKBOX")
-        if (!MediaRepository.isPermissionGranted(context)) {
-            return listOf(bind, CheckResult("media", "音樂", "KKBOX 播放資訊（MediaSession）", Status.TODO,
-                "尚未開啟 FIT 桌面的通知存取，無法讀取播放資訊。", "開啟後播放 KKBOX，再重新檢測。",
-                Fix("開啟通知存取", FixKind.OPEN_NOTIFICATION_ACCESS)))
+        val selected = AppRepository.resolve(context, prefs.bindings.music)
+        val bind = CheckResult("bind_music", "音樂", "播放器選擇", if (selected == null) Status.INFO else Status.PASS,
+            "模式=${prefs.mediaMode}；指定=${selected?.label ?: "未指定"}（${selected?.component?.packageName ?: "無"}）。固定模式只控制指定 App；跟隨模式優先指定的播放中來源，否則跟隨其他播放中的 App。",
+            "官方 YT Music 與 Morphe Music 使用不同套件，請從實際安裝清單分別選擇。")
+        MediaRepository.refresh(context)
+        val media = MediaRepository.state.value
+        val source = "實際控制=${media.playerName ?: "無"}（${media.packageName ?: "無"}）；歌名=${media.title ?: "未提供"}；狀態=${media.playbackState}；控制 actions=${media.actions}；作用中=" +
+            media.sessions.joinToString { "${it.packageName}:${it.state}" }
+        val check = when {
+            !media.permissionGranted -> CheckResult("media", "音樂", "目前播放器工作階段", Status.TODO,
+                "尚無通知存取權限。${media.error.orEmpty()}", "開啟通知存取後再播放。", Fix("開啟通知存取", FixKind.OPEN_NOTIFICATION_ACCESS))
+            !media.hasSession -> CheckResult("media", "音樂", "目前播放器工作階段", Status.TODO, source, "開啟指定播放器播放歌曲，再重新檢測。")
+            !media.isPlaying -> CheckResult("media", "音樂", "目前播放器工作階段", Status.TODO, source, "指定來源目前未播放；播放後驗證歌名與控制對象。")
+            media.title.isNullOrBlank() -> CheckResult("media", "音樂", "目前播放器工作階段", Status.FAIL, source, "播放器未提供歌名。")
+            else -> CheckResult("media", "音樂", "目前播放器工作階段", Status.PASS, source,
+                "報告、卡片與播放控制共用同一工作階段；未提供的控制按鈕停用。仍需實機確認控制結果。")
         }
-        val controllers: List<MediaController> = try {
-            val m = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-            m.getActiveSessions(MediaRepository.listenerComponent(context))
-        } catch (e: SecurityException) { emptyList() }
-        val musicPkg = AppRepository.resolve(context, prefs.bindings.music)?.component?.packageName ?: cands.firstOrNull()?.component?.packageName
-        val kk = controllers.firstOrNull { it.packageName == musicPkg }
-            ?: controllers.firstOrNull { it.packageName.contains("kkbox", ignoreCase = true) }
-        val others = controllers.joinToString("、") { it.packageName }.ifEmpty { "無" }
-        if (kk == null) {
-            return listOf(bind, CheckResult("media", "音樂", "KKBOX 播放資訊（MediaSession）", Status.TODO,
-                "目前沒有偵測到 KKBOX 的媒體工作階段（作用中：$others）。", "請開 KKBOX 播放一首歌，回到這裡按「重新檢測」。"))
-        }
-        val md = kk.metadata
-        val ps = kk.playbackState
-        val actions = ps?.actions ?: 0L
-        fun has(a: Long) = actions and a != 0L
-        val fields = listOf(
-            "歌名" to (md?.getString(MediaMetadata.METADATA_KEY_TITLE) != null),
-            "歌手" to (md?.getString(MediaMetadata.METADATA_KEY_ARTIST) != null),
-            "專輯" to (md?.getString(MediaMetadata.METADATA_KEY_ALBUM) != null),
-            "封面" to (md?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) != null || md?.getBitmap(MediaMetadata.METADATA_KEY_ART) != null ||
-                md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) != null),
-            "長度" to ((md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L) > 0),
-        )
-        val controls = listOf(
-            "播放" to (has(PlaybackState.ACTION_PLAY) || has(PlaybackState.ACTION_PLAY_PAUSE)),
-            "暫停" to (has(PlaybackState.ACTION_PAUSE) || has(PlaybackState.ACTION_PLAY_PAUSE)),
-            "上一首" to has(PlaybackState.ACTION_SKIP_TO_PREVIOUS),
-            "下一首" to has(PlaybackState.ACTION_SKIP_TO_NEXT),
-            "拖曳進度" to has(PlaybackState.ACTION_SEEK_TO),
-        )
-        fun fmt(l: List<Pair<String, Boolean>>) = l.joinToString("　") { "${if (it.second) "✓" else "✗"}${it.first}" }
-        val missingFields = fields.filter { !it.second }.map { it.first }
-        val missingControls = controls.filter { !it.second }.map { it.first }
-        val sugg = buildList {
-            if ("歌名" in missingFields || "歌手" in missingFields) add("KKBOX 未提供歌名／歌手，音樂卡會顯示「App 未提供」；可試更新 KKBOX。")
-            if ("封面" in missingFields) add("沒有封面圖，音樂卡改為只顯示文字（已自動處理）。")
-            if ("拖曳進度" in missingControls) add("不支援拖曳進度，進度條會是唯讀（已自動處理）。")
-            if ("上一首" in missingControls || "下一首" in missingControls) add("缺少上下首控制，對應按鈕會變灰；方向盤切歌是否有效請在按鍵測試確認。")
-        }
-        val status = when {
-            "歌名" in missingFields -> Status.FAIL
-            sugg.isNotEmpty() -> Status.WARN
-            else -> Status.PASS
-        }
-        return listOf(bind, CheckResult("media", "音樂", "KKBOX 播放資訊（MediaSession）", status,
-            "套件 ${kk.packageName}。欄位：${fmt(fields)}。控制：${fmt(controls)}。",
-            sugg.joinToString("").ifEmpty { "KKBOX 提供完整資訊，音樂卡所有功能可用。歌詞仍無合法來源。" }))
+        return listOf(bind, check, CheckResult("lyrics", "音樂", "歌詞", Status.NA, "歌詞功能尚未提供"))
     }
 
     private fun brightness(context: Context): CheckResult {
@@ -276,9 +227,9 @@ object AutoChecks {
         val schedule = Prefs.get(context).state.value.display.autoSchedule
         val f = "修改系統設定：${if (can) "已允許" else "未允許"}；系統自動亮度：${if (auto) "開" else "關"}；目前亮度約 ${cur ?: "—"}%。"
         return when {
-            !can && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.WARN, f,
+            !can && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.FAIL, f,
                 "亮度排程已開但沒有權限，不會生效。", Fix("前往允許", FixKind.OPEN_WRITE_SETTINGS))
-            auto && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.WARN, f,
+            auto && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.INFO, f,
                 "系統自動亮度開啟中，FIT 桌面排程寫入時會改為手動亮度；若想保留系統自動亮度，請關閉 FIT 桌面的亮度排程。",
                 Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
             else -> CheckResult("brightness_perm", "亮度", "亮度排程權限", if (can || !schedule) Status.PASS else Status.TODO, f,
@@ -290,8 +241,8 @@ object AutoChecks {
         val g = GpsSpeed.state.value
         val perm = GpsSpeed.hasPermission(context)
         return when {
-            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN, "尚未允許定位，狀態列不會顯示 GPS 車速。", "", Fix("允許定位", FixKind.REQUEST_LOCATION))
-            !g.providerEnabled -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN, "已允許，但系統 GPS 關閉。", "請在系統設定開啟定位。")
+            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.TODO, "尚未允許定位，狀態列不會顯示 GPS 車速。", "", Fix("允許定位", FixKind.REQUEST_LOCATION))
+            !g.providerEnabled -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.TODO, "已允許，但系統 GPS 關閉。", "請在系統設定開啟定位。")
             else -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.PASS, "已允許且 GPS 開啟。", "請到「互動測試 → GPS」量測定位時間。")
         }
     }
@@ -305,25 +256,29 @@ object AutoChecks {
     }
 
     /** 比對上次開啟時的開機時間，判斷熄火後是休眠喚醒還是重新開機。 */
+    private fun mapChecks(): List<CheckResult> {
+        val base = tw.fitcar.launcher.system.MapDiagnostics.base.value
+        val address = tw.fitcar.launcher.system.MapDiagnostics.address.value
+        val gps = GpsSpeed.state.value
+        val gpsText = when {
+            !gps.permission -> "定位尚未授權"
+            !gps.providerEnabled -> "GPS 已關閉"
+            gps.latitude == null || gps.longitude == null -> "等待定位"
+            SystemClock.elapsedRealtime() - gps.fixElapsed >= 10_000 -> "GPS 定位資料已過期"
+            else -> "GPS 定位有效"
+        }
+        fun observed(id: String, title: String, value: tw.fitcar.launcher.system.MapObservation) = CheckResult(
+            id, "定位", title, if (value.time == 0L) Status.TODO else if ("失敗" in value.state || "逾時" in value.state) Status.FAIL else Status.INFO,
+            "${value.state}；最近觀察=${if (value.time == 0L) "無" else java.util.Date(value.time).toString()}。這是最近觀察，非目前畫面持續成功的保證。")
+        return listOf(observed("map_base", "免費底圖狀態", base),
+            CheckResult("map_gps", "定位", "地圖 GPS 狀態", if (gpsText == "GPS 定位有效") Status.PASS else Status.TODO, gpsText),
+            observed("map_address", "地址查詢狀態", address))
+    }
+
     private fun boot(context: Context): CheckResult {
-        val sp = context.getSharedPreferences("fit_checks_boot", Context.MODE_PRIVATE)
-        val bootAt = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-        val prev = sp.getLong("boot_at", 0L)
-        val prevSeen = sp.getLong("seen_at", 0L)
-        sp.edit().putLong("boot_at", bootAt).putLong("seen_at", System.currentTimeMillis()).apply()
-        val upMin = SystemClock.elapsedRealtime() / 60_000
-        val sameBoot = prev != 0L && kotlin.math.abs(prev - bootAt) < 60_000
-        val f = "本次開機已 $upMin 分鐘。" + when {
-            prev == 0L -> "第一次檢測，熄火再發動後請重開此頁比對。"
-            sameBoot -> "與上次檢測（${(System.currentTimeMillis() - prevSeen) / 60_000} 分鐘前）是同一次開機 → 熄火後是「休眠喚醒」。"
-            else -> "與上次檢測不同次開機 → 熄火後車機會「重新開機」或曾重開。"
-        }
-        val sugg = when {
-            prev == 0L -> ""
-            sameBoot -> "休眠喚醒時 FIT 桌面會保留狀態；請在手動檢查確認喚醒後畫面、音樂與 GPS 正常。"
-            else -> "若每次熄火都重開機，開機後亮度與主題會自動重算（已處理）；請確認開機後預設桌面仍是 FIT 桌面。"
-        }
-        return CheckResult("boot", "電源", "熄火後的行為", if (prev == 0L) Status.TODO else Status.INFO, f, sugg)
+        return CheckResult("boot", "電源", "熄火測試流程", Status.INFO,
+            "本次開機已 ${SystemClock.elapsedRealtime() / 60_000} 分鐘。",
+            "請在手動檢查按「開始熄火測試」，再發動後按「完成測試」，另外確認畫面、音樂與 GPS。開機時間本身不代表喚醒正常。")
     }
 
     private fun readText(path: String): String? = try { File(path).readText() } catch (e: Exception) { null }

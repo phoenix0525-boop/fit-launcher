@@ -73,6 +73,7 @@ class SettingsActions(
     val bind: (BindingTarget) -> Unit,
     val clearBinding: (BindingTarget) -> Unit,
     val setNavMode: (NavOpenMode) -> Unit,
+    val setMediaMode: (tw.fitcar.launcher.data.MediaMode) -> Unit,
     val testSplit: () -> Unit,
     val openOtherHome: (AppEntry) -> Unit,
     val openHomeSettings: () -> Unit,
@@ -257,17 +258,24 @@ private fun BindingRow(target: BindingTarget, entry: AppEntry?, key: String?, ac
 private fun BindingSection(data: SettingsData, actions: SettingsActions) {
     val b = data.state.bindings
     Section("從車機實際安裝的 App 綁定") {
-        Hint("不預設任何套件名稱，請自行選擇導航王、KKBOX 與神盾。", size = 13)
+        Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 13)
         BindingRow(BindingTarget.NAVIGATION, data.nav, b.navigation, actions, "左側導航區的開啟對象")
-        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "優先顯示此 App 的播放資訊")
+        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式優先此 App 的播放中來源")
         BindingRow(BindingTarget.SHIELD, data.shield, b.shield, actions, "狀態列入口；警示由神盾官方浮動窗顯示")
+        tw.fitcar.launcher.data.MediaMode.entries.forEach { mode ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = data.state.mediaMode == mode, onClick = { actions.setMediaMode(mode) })
+                Text(if (mode == tw.fitcar.launcher.data.MediaMode.FIXED) "固定播放器" else "跟隨目前播放", color = LocalPalette.current.text, fontSize = 17.sp)
+            }
+        }
+        Hint("跟隨模式：指定來源沒有播放時，跟隨其他正在播放的 App；不會選取其他 App 暫停中的舊工作階段。", size = 13)
     }
 }
 
 @Composable
 private fun NavSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
-    Section("開始導航的方式") {
+    Section("導航全螢幕／實驗功能") {
         NavOpenMode.entries.forEach { mode ->
             Row(
                 Modifier.fillMaxWidth().clip(RadiusMd).clickable { actions.setNavMode(mode) }.padding(8.dp),
@@ -275,9 +283,9 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
             ) {
                 RadioButton(selected = data.state.navOpenMode == mode, onClick = { actions.setNavMode(mode) }, colors = RadioButtonDefaults.colors(selectedColor = p.accent))
                 Column {
-                    Text(if (mode == NavOpenMode.SPLIT_FIRST) "分割畫面優先（失敗改全螢幕）" else "一律全螢幕", color = p.text, fontSize = 17.sp)
+                    Text(if (mode == NavOpenMode.SPLIT_FIRST) "實驗功能：嘗試左右視窗" else "一律全螢幕", color = p.text, fontSize = 17.sp)
                     Hint(
-                        if (mode == NavOpenMode.SPLIT_FIRST) "開啟「FIT 側欄」並把導航王放在相鄰視窗；是否成功由車機系統決定。"
+                        if (mode == NavOpenMode.SPLIT_FIRST) "目標為左側導航、右側音樂與捷徑；系統決定視窗位置，可能需在系統分割列交換左右。"
                         else "直接以全螢幕開啟導航王，按 Home 回到本桌面。",
                         size = 13,
                     )
@@ -285,10 +293,10 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
             }
         }
     }
-    Section("分割畫面實測") {
+    Section("實驗功能：左右視窗實測") {
         Text(
             when (data.state.lastSplitResult) {
-                true -> "最近一次：成功進入分割畫面"
+                true -> "最近一次：偵測到左右側欄尺寸，仍需目視確認"
                 false -> "最近一次：未進入分割畫面（已退回全螢幕）"
                 null -> "尚未測試"
             },

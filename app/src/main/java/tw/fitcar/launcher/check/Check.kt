@@ -7,10 +7,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** 檢測結果等級。「可改進的地方」= WARN＋FAIL。 */
+/** 檢測結果等級。「可改進的地方」只列有問題；歷史結果獨立保留。 */
 enum class Status(val mark: String, val label: String, val order: Int) {
     FAIL("✗", "有問題", 0),
-    WARN("⚠", "可改進", 1),
+    NA("—", "不適用", 5),
+    HISTORY("◷", "歷史結果", 6),
     TODO("☐", "待測試", 2),
     PASS("✓", "正常", 3),
     INFO("ℹ", "資訊", 4),
@@ -30,6 +31,10 @@ data class CheckResult(
     val suggestion: String = "",
     val fix: Fix? = null,
     val time: Long = System.currentTimeMillis(),
+    val appVersion: String = "",
+    val scenario: String = "",
+    val notes: String = "",
+    val contextKey: String = "",
 )
 
 /** 群組顯示順序。 */
@@ -39,72 +44,105 @@ val GROUPS = listOf("車機硬體", "顯示", "桌面", "導航", "音樂", "測
 object CheckStore {
     private val _results = MutableStateFlow<Map<String, CheckResult>>(emptyMap())
     val results: StateFlow<Map<String, CheckResult>> = _results.asStateFlow()
-    private var loaded = false
-
+    private var records: MutableList<CheckResult>? = null
+    private var projectedKeys = emptySet<String>()
     private fun sp(context: Context) = context.applicationContext.getSharedPreferences("fit_checks", Context.MODE_PRIVATE)
 
-    fun load(context: Context) {
-        if (loaded) return
-        loaded = true
-        val text = sp(context).getString("saved", null) ?: return
-        val map = LinkedHashMap<String, CheckResult>()
-        try {
-            val arr = JSONArray(text)
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                val fix = o.optJSONObject("fix")?.let { f ->
-                    Fix(f.getString("label"), FixKind.valueOf(f.getString("kind")), f.optString("arg").ifEmpty { null })
-                }
-                val r = CheckResult(
-                    id = o.getString("id"), group = o.getString("group"), title = o.getString("title"),
-                    status = Status.valueOf(o.getString("status")), finding = o.getString("finding"),
-                    suggestion = o.optString("suggestion"), fix = fix, time = o.optLong("time"),
-                )
-                map[r.id] = r
-            }
-        } catch (_: Exception) { }
-        _results.value = _results.value + map
-    }
-
-    /** persist = true 用於互動測試與手動檢查（自動檢測每次重算，不必保存）。 */
-    fun put(context: Context, results: List<CheckResult>, persist: Boolean) {
-        val next = LinkedHashMap(_results.value)
-        results.forEach { next[it.id] = it }
-        _results.value = next
-        if (persist) {
-            val saved = savedIds(context) + results.map { it.id }
-            sp(context).edit()
-                .putStringSet("saved_ids", saved)
-                .putString("saved", toJson(next.values.filter { it.id in saved }).toString())
-                .apply()
+    fun version(context: Context): String {
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        val code = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
         }
+        return "${info.versionName} ($code)"
     }
 
+    fun scenario(context: Context): String {
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+        val home = context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
+        val state = tw.fitcar.launcher.data.Prefs.get(context).state.value
+        val media = tw.fitcar.launcher.media.MediaRepository.state.value
+        return "預設桌面=${home ?: "未指定"}; FIT預設=${home == context.packageName}; 播放器=${state.bindings.music ?: "未指定"}; 模式=${state.mediaMode}; 控制來源=${media.packageName ?: "無"}; 導航=${state.bindings.navigation ?: "未指定"}; 導航模式=${state.navOpenMode}; 字體=${context.resources.configuration.fontScale}"
+    }
+
+    fun load(context: Context) {
+        if (records == null) {
+            val list = mutableListOf<CheckResult>()
+            runCatching {
+                val arr = JSONArray(sp(context).getString("saved", "[]"))
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    runCatching {
+                        list += CheckResult(o.getString("id"), o.getString("group"), o.getString("title"),
+                            if (o.getString("status") == "WARN") Status.INFO else Status.valueOf(o.getString("status")),
+                            o.getString("finding"), o.optString("suggestion"), time = o.optLong("time"),
+                            appVersion = o.optString("appVersion"), scenario = o.optString("scenario"),
+                            notes = o.optString("notes"), contextKey = o.optString("contextKey"))
+                    }
+                }
+            }
+            records = list
+        }
+        project(context)
+    }
+
+    internal fun reload(context: Context) { records = null; load(context) }
+
+    private fun project(context: Context) {
+        val next = LinkedHashMap(_results.value.filterKeys { it !in projectedKeys })
+        val keys = mutableSetOf<String>()
+        records.orEmpty().groupBy { it.id }.forEach { (id, history) ->
+            val latest = history.lastOrNull { ResultValidity.matches(it.appVersion, it.contextKey, version(context), scenario(context)) &&
+                (id != "m_reverse" || "FIT預設=true" in it.contextKey) }
+            history.forEachIndexed { index, result ->
+                if (result !== latest) {
+                    val key = "history:$id:$index"
+                    next[key] = result.copy(id = key, status = Status.HISTORY, fix = null,
+                        finding = "原結果：${result.status.label}。${result.finding}")
+                    keys += key
+                }
+            }
+            next[id] = latest ?: history.last().copy(status = Status.TODO, fix = null,
+                finding = "本情境待測試：既有結果版本或測試情境不符。", suggestion = "舊結果保留於歷史結果。",
+                appVersion = version(context), scenario = scenario(context), notes = "", time = 0L)
+            keys += id
+        }
+        projectedKeys = keys
+        _results.value = next
+    }
+
+    fun put(context: Context, results: List<CheckResult>, persist: Boolean) {
+        load(context)
+        if (persist) {
+            val scenario = scenario(context)
+            records!!.addAll(results.map { it.copy(appVersion = it.appVersion.ifBlank { version(context) },
+                scenario = it.scenario.ifBlank { scenario }, contextKey = it.contextKey.ifBlank { scenario },
+                status = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) Status.TODO else it.status,
+                finding = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) "本情境待測試：測試時 FIT 並非預設桌面。${it.finding}" else it.finding) })
+            save(context)
+            project(context)
+        } else _results.value = _results.value + results.associateBy { it.id }
+    }
     fun put(context: Context, result: CheckResult, persist: Boolean = true) = put(context, listOf(result), persist)
 
-    private fun savedIds(context: Context): Set<String> = sp(context).getStringSet("saved_ids", emptySet()) ?: emptySet()
-
+    private fun save(context: Context) {
+        val arr = JSONArray()
+        records.orEmpty().forEach { r -> arr.put(JSONObject().apply {
+            put("id", r.id); put("group", r.group); put("title", r.title); put("status", r.status.name)
+            put("finding", r.finding); put("suggestion", r.suggestion); put("time", r.time)
+            put("appVersion", r.appVersion); put("scenario", r.scenario); put("notes", r.notes); put("contextKey", r.contextKey)
+        }) }
+        sp(context).edit().putString("saved", arr.toString()).apply()
+    }
     fun clearSaved(context: Context) {
-        val ids = savedIds(context)
+        records = mutableListOf()
         sp(context).edit().clear().apply()
-        _results.value = _results.value.filterKeys { it !in ids }
+        _results.value = _results.value.filterKeys { it !in projectedKeys }
+        projectedKeys = emptySet()
     }
-
-    private fun toJson(list: Collection<CheckResult>): JSONArray = JSONArray().apply {
-        list.forEach { r ->
-            put(JSONObject().apply {
-                put("id", r.id); put("group", r.group); put("title", r.title)
-                put("status", r.status.name); put("finding", r.finding); put("suggestion", r.suggestion)
-                put("time", r.time)
-                r.fix?.let { f -> put("fix", JSONObject().apply { put("label", f.label); put("kind", f.kind.name); put("arg", f.arg ?: "") }) }
-            })
-        }
-    }
-
-    fun sorted(map: Map<String, CheckResult>): List<CheckResult> =
-        map.values.sortedWith(compareBy({ GROUPS.indexOf(it.group).let { i -> if (i < 0) 99 else i } }, { it.title }))
-
+    fun sorted(map: Map<String, CheckResult>): List<CheckResult> = map.values.sortedWith(
+        compareBy({ it.status == Status.HISTORY }, { GROUPS.indexOf(it.group).let { i -> if (i < 0) 99 else i } }, { it.title }))
     fun improvements(map: Map<String, CheckResult>): List<CheckResult> =
-        map.values.filter { it.status == Status.FAIL || it.status == Status.WARN }
-            .sortedWith(compareBy({ it.status.order }, { GROUPS.indexOf(it.group) }))
+        map.values.filter { it.status == Status.FAIL }.sortedBy { GROUPS.indexOf(it.group) }
 }
