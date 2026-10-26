@@ -67,10 +67,11 @@ class LargeFontLayoutTest {
             "${layout.size} paragraph=${layout.multiParagraph.width} lines=${(0 until layout.lineCount).map { layout.getLineLeft(it) to layout.getLineRight(it) }}"
         }}", clipped)
     }
-    private fun screenshot(name: String) {
+    private fun screenshot(name: String, dialog: Boolean = false) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.getExternalFilesDir(null), "$name.png")
-        file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val capture = if (dialog) compose.onNode(isDialog()) else compose.onRoot()
+        file.outputStream().use { capture.captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         // Gradle removes test APKs and their app-specific files before the shell pull.
         val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
         shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
@@ -80,7 +81,7 @@ class LargeFontLayoutTest {
         show(MediaUiState())
         compose.onNodeWithText("分割／多工").performClick()
         listOf("啟用系統快捷入口", "前往設定", "稍後").forEach(::fullLabel)
-        screenshot("home-split-permission-125")
+        screenshot("home-split-permission-125", dialog = true)
     }
     @Test fun volumeDialogAndIconOnlyShortcutAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
@@ -89,7 +90,7 @@ class LargeFontLayoutTest {
         compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
         compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
         listOf("降低", "提高", "關閉").forEach(::fullLabel)
-        screenshot("home-volume-125")
+        screenshot("home-volume-125", dialog = true)
     }
     @Test fun permissionCardButtonAt125Percent() {
         show(MediaUiState())
