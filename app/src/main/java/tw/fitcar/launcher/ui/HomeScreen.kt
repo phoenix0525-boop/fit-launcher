@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -186,6 +187,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
                     },
                     color = p.text, fontSize = 28.sp, fontWeight = FontWeight.Medium,
                 )
+                CompassBadge(gps, fresh)
                 Column {
                     Text("GPS 車速 km/h", color = p.text, fontSize = 13.sp)
                     Text(
@@ -229,6 +231,22 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("更換", actions.bindNav)
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
+    }
+}
+
+/** 指南針：GPS 行進方向箭頭＋方位；停車或低速時顯示「—」。 */
+@Composable
+private fun CompassBadge(gps: GpsState, fresh: Boolean) {
+    val p = LocalPalette.current
+    val heading = if (fresh) tw.fitcar.launcher.system.Compass.heading(gps.bearing, gps.speedKmh) else null
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "▲",
+            Modifier.rotate(heading ?: 0f),
+            color = if (heading != null) p.accent else p.line,
+            fontSize = 20.sp, lineHeight = 22.sp,
+        )
+        Text(heading?.let { tw.fitcar.launcher.system.Compass.cardinal(it) } ?: "—", color = p.textSoft, fontSize = 12.sp, maxLines = 1)
     }
 }
 

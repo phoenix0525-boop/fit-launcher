@@ -22,6 +22,8 @@ data class GpsState(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val fixElapsed: Long = 0L,
+    /** GPS 行進方向（度，0＝北）；只在移動中可信，顯示前用 Compass.heading 過濾。 */
+    val bearing: Float? = null,
 ) {
     fun hasRecentPosition(now: Long = SystemClock.elapsedRealtime()): Boolean =
         permission && providerEnabled && latitude != null && longitude != null &&
@@ -46,6 +48,7 @@ object GpsSpeed {
                 longitude = location.longitude,
                 speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
                 accuracyM = if (location.hasAccuracy()) location.accuracy else null,
+                bearing = if (location.hasBearing()) location.bearing else null,
                 fixElapsed = location.elapsedRealtimeNanos / 1_000_000L,
             )
         }
