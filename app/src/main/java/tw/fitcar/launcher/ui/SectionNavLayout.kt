@@ -39,10 +39,11 @@ fun SectionNavLayout(
     val p = LocalPalette.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 900.dp && maxWidth > maxHeight * 0.95f
+        val sidebarWidth = if (maxWidth < 1200.dp) 200.dp else 250.dp
         if (wide) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(
-                    Modifier.width(if (maxWidth < 1200.dp) 200.dp else 250.dp).fillMaxHeight().clip(RadiusLg)
+                    Modifier.width(sidebarWidth).fillMaxHeight().clip(RadiusLg)
                         .background(p.surface).border(1.dp, p.line, RadiusLg).verticalScroll(rememberScrollState()).padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
