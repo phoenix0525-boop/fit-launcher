@@ -170,7 +170,11 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp),
     ) {
-        Clock(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(240.dp))
+        // 時鐘下方放狀態小標籤，不另外佔用狀態列寬度
+        Column(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(240.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Clock()
+            StatusIndicatorRow()
+        }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             if (spec.showLocationCard) CurrentLocationCard(gps, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
             // GPS 車速：啟動器自行計算，明確標示來源
@@ -203,7 +207,6 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
             }
         }
         WeatherChip()
-        StatusIndicatorRow()
         actions.voice?.let { SecondaryButton("語音", it) }
         SecondaryButton("所有 App", actions.openAllApps, icon = { GlyphIcon(Glyph.GRID, size = 22.dp) })
         SecondaryButton("設定", actions.openSettings, icon = { GlyphIcon(Glyph.GEAR, size = 22.dp) })
@@ -319,20 +322,16 @@ private fun StatusIndicatorRow() {
     val status by tw.fitcar.launcher.system.SystemStatusMonitor.state.collectAsState()
     val items = remember(status) { tw.fitcar.launcher.system.StatusIndicators.build(status) }
     val compact = LocalLayoutSpec.current.compactChrome
-    // 精簡版只留網路與藍牙，避免擠掉主要按鈕
-    val shown = if (compact) items.filter { it.kind == tw.fitcar.launcher.system.IndicatorKind.NETWORK || it.kind == tw.fitcar.launcher.system.IndicatorKind.BLUETOOTH } else items
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.End) {
-        shown.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                row.forEach { item ->
-                    Text(
-                        item.label,
-                        Modifier.clip(RadiusSm).background(if (item.active) p.accentSoft else p.surfaceMuted).padding(horizontal = 8.dp, vertical = 3.dp),
-                        color = when { item.warning -> p.danger; item.active -> p.accentStrong; else -> p.textSoft },
-                        fontSize = 12.sp, maxLines = 1,
-                    )
-                }
-            }
+    // 放在時鐘下方一列：完整版最多 3 個，精簡版只留網路與藍牙
+    val shown = if (compact) items.filter { it.kind == tw.fitcar.launcher.system.IndicatorKind.NETWORK || it.kind == tw.fitcar.launcher.system.IndicatorKind.BLUETOOTH }.take(2) else items.take(3)
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        shown.forEach { item ->
+            Text(
+                item.label,
+                Modifier.clip(RadiusSm).background(if (item.active) p.accentSoft else p.surfaceMuted).padding(horizontal = 6.dp, vertical = 2.dp),
+                color = when { item.warning -> p.danger; item.active -> p.accentStrong; else -> p.textSoft },
+                fontSize = 11.sp, maxLines = 1,
+            )
         }
     }
 }
