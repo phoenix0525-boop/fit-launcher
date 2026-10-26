@@ -202,6 +202,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
                 }
             }
         }
+        WeatherChip()
         StatusIndicatorRow()
         actions.voice?.let { SecondaryButton("語音", it) }
         SecondaryButton("所有 App", actions.openAllApps, icon = { GlyphIcon(Glyph.GRID, size = 22.dp) })
@@ -231,6 +232,67 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("更換", actions.bindNav)
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
+    }
+}
+
+/** 天氣（中央氣象署最近測站），點擊看 5 天紀錄；未啟用時不顯示。 */
+@Composable
+private fun WeatherChip() {
+    val p = LocalPalette.current
+    val w by tw.fitcar.launcher.weather.WeatherRepository.state.collectAsState()
+    if (!w.enabled) return
+    var open by remember { mutableStateOf(false) }
+    val cur = w.current?.station
+    val compact = LocalLayoutSpec.current.compactChrome
+    Column(
+        Modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
+            .combinedClickableCompat(onClick = { open = true }).padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            cur?.tempC?.let { "%.0f°".format(it) } ?: "—°",
+            color = if (w.error != null && cur == null) p.danger else p.text, fontSize = 24.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+        )
+        Text(
+            when {
+                cur == null && w.error != null -> "天氣未更新"
+                cur == null -> "讀取中…"
+                compact -> cur.weather ?: cur.name
+                else -> listOfNotNull(cur.weather, cur.name).joinToString(" · ")
+            },
+            color = p.textSoft, fontSize = 12.sp, maxLines = 1,
+        )
+    }
+    if (open) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            containerColor = p.surface,
+            title = { Text("天氣（中央氣象署）", color = p.text, fontSize = 22.sp) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (cur != null) {
+                        Text(
+                            "${cur.name} 測站" + (w.current?.distanceKm?.let { "（距離約 %.0f 公里）".format(it) } ?: "（未定位，使用桃園測站）"),
+                            color = p.text, fontSize = 16.sp,
+                        )
+                        Hint("觀測時間 ${cur.obsTime.replace('T', ' ').take(16)}", size = 13)
+                    }
+                    w.error?.let { Text(it, color = p.danger, fontSize = 14.sp) }
+                    Text("近 5 天紀錄", color = p.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    if (w.history.isEmpty()) Hint("尚無紀錄", size = 14)
+                    w.history.forEach { d ->
+                        Text(
+                            "${d.date.drop(5)}　" +
+                                listOfNotNull(d.lowC?.let { "%.0f".format(it) }, d.highC?.let { "%.0f°".format(it) }).joinToString("～") +
+                                (d.weather?.let { "　$it" } ?: "") + "　${d.station}",
+                            color = p.text, fontSize = 15.sp,
+                        )
+                    }
+                    Hint("資料來源：中央氣象署開放資料平臺", size = 12)
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { open = false }) { Text("關閉", color = p.accent, fontSize = 17.sp) } },
+        )
     }
 }
 

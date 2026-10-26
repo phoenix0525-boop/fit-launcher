@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
         SystemStatusMonitor.start(this)
+        tw.fitcar.launcher.weather.WeatherRepository.refresh(this)
         CheckStore.load(this)
         MediaListenerService.rescanNavigation()
     }
@@ -336,6 +337,8 @@ class MainActivity : ComponentActivity() {
             resumeTick++
             if (screen == Screen.Checker) runChecks()
         }
+        // 天氣：前景時每 5 分鐘檢查一次是否超過 30 分鐘需要更新
+        LaunchedEffect(Unit) { while (true) { delay(5 * 60_000L); tw.fitcar.launcher.weather.WeatherRepository.refresh(this@MainActivity) } }
         val bluetoothPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             SystemStatusMonitor.start(this)
             resumeTick++

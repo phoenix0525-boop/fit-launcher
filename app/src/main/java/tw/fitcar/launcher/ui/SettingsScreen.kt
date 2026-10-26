@@ -26,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -136,6 +137,32 @@ private fun StatusLine(ok: Boolean, okText: String, badText: String) {
     Text(if (ok) "● $okText" else "● $badText", color = if (ok) p.success else p.danger, fontSize = 15.sp)
 }
 
+@Composable
+private fun WeatherSettings() {
+    val p = LocalPalette.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val w by tw.fitcar.launcher.weather.WeatherRepository.state.collectAsState()
+    var key by remember { mutableStateOf("") }
+    Section("天氣（中央氣象署開放資料）") {
+        ToggleRow("狀態列顯示天氣", "依 GPS 選最近的氣象署測站，30 分鐘更新一次，保留 5 天紀錄", w.enabled) { v ->
+            tw.fitcar.launcher.weather.WeatherRepository.setEnabled(ctx, v)
+        }
+        Hint("需要自己到 opendata.cwa.gov.tw 註冊會員，在「取得授權碼」複製後貼在下方（免費）。授權碼只存在車機，不寫入任何專案檔案；只向氣象署下載測站資料，不上傳位置。", size = 13)
+        StatusLine(w.hasKey, "已填寫授權碼", "尚未填寫授權碼")
+        androidx.compose.material3.OutlinedTextField(
+            key, { key = it }, Modifier.fillMaxWidth(),
+            label = { Text(if (w.hasKey) "更換授權碼" else "授權碼") }, singleLine = true,
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PrimaryButton("儲存授權碼", { tw.fitcar.launcher.weather.WeatherRepository.setKey(ctx, key); key = "" }, enabled = key.isNotBlank())
+            SecondaryButton("立即更新", { tw.fitcar.launcher.weather.WeatherRepository.refresh(ctx, force = true) }, enabled = w.enabled && w.hasKey && !w.loading)
+        }
+        w.error?.let { Text(it, color = p.danger, fontSize = 14.sp) }
+        w.current?.station?.let { s -> Hint("目前：${s.name} ${s.tempC?.let { "%.1f°C".format(it) } ?: ""} ${s.weather ?: ""}", size = 14, color = p.text) }
+    }
+}
+
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
@@ -167,6 +194,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
             }
         }
     }
+    WeatherSettings()
     Section("自動排程") {
         ToggleRow("亮度自動排程", "依下列時段調整系統背光", d.autoSchedule) { v -> actions.updateDisplay { it.copy(autoSchedule = v) } }
         ToggleRow("日夜主題自動切換", "夜間時段使用夜間配色", d.autoTheme) { v -> actions.updateDisplay { it.copy(autoTheme = v) } }
