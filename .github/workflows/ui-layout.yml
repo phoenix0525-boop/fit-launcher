@@ -1,7 +1,7 @@
 name: UI font layout
 on:
   push:
-    branches: [codex/google-map-location, codex/player-checks-v030, codex/voice-google-navigation, claude/adaptive-smooth, claude/agama-features]
+    branches: [codex/vehicle-ui-v045, codex/google-map-location, codex/player-checks-v030, codex/voice-google-navigation, claude/adaptive-smooth, claude/agama-features]
   workflow_dispatch:
 permissions:
   contents: read

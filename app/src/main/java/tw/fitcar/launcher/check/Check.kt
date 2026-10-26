@@ -17,7 +17,7 @@ enum class Status(val mark: String, val label: String, val order: Int) {
     INFO("ℹ", "資訊", 4),
 }
 
-/** 可在 FIT 桌面內一鍵套用的建議。 */
+/** 可在 車機桌面內一鍵套用的建議。 */
 enum class FixKind { NAV_FULLSCREEN, NAV_SPLIT, DISABLE_BRIGHTNESS_SCHEDULE, BIND_NAV, BIND_MUSIC, BIND_SHIELD, OPEN_NOTIFICATION_ACCESS, OPEN_WRITE_SETTINGS, REQUEST_LOCATION, OPEN_OVERLAY_SETTINGS }
 
 data class Fix(val label: String, val kind: FixKind, val arg: String? = null)
@@ -119,7 +119,7 @@ object CheckStore {
             records!!.addAll(results.map { it.copy(appVersion = it.appVersion.ifBlank { version(context) },
                 scenario = it.scenario.ifBlank { scenario }, contextKey = it.contextKey.ifBlank { scenario },
                 status = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) Status.TODO else it.status,
-                finding = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) "本情境待測試：測試時 FIT 並非預設桌面。${it.finding}" else it.finding) })
+                finding = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) "本情境待測試：測試時本程式並非預設桌面。${it.finding}" else it.finding) })
             save(context)
             project(context)
         } else _results.value = _results.value + results.associateBy { it.id }

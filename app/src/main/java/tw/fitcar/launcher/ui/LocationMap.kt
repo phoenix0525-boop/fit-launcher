@@ -2,7 +2,6 @@ package tw.fitcar.launcher.ui
 
 import android.content.Context
 import android.content.Intent
-import android.location.Geocoder
 import android.location.Location
 import android.net.Uri
 import android.os.SystemClock
@@ -29,71 +28,69 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import tw.fitcar.launcher.system.GpsState
 import tw.fitcar.launcher.system.MapDiagnostics
-import java.util.Locale
 
-/** Address lookup is independent of map billing. Never display a stale address as the current one. */
+/** Keep useful Chinese text during lookups; label cached text instead of claiming an old road is current. */
 @Composable
 internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val latest by rememberUpdatedState(gps)
     var address by remember { mutableStateOf<String?>(null) }
     var resolvedPosition by remember { mutableStateOf<LatLng?>(null) }
-    var lookupPosition by remember { mutableStateOf<LatLng?>(null) }
+    var resolvedAt by remember { mutableLongStateOf(0L) }
+    var querying by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    // This clock must continue even while the geocoder is waiting for a network response.
+    LaunchedEffect(Unit) { while (true) { now = SystemClock.elapsedRealtime(); delay(1_000) } }
     LaunchedEffect(context) {
         var requestedAt = 0L
+        var lookupPosition: LatLng? = null
+        var lastFailed = false
         while (true) {
-            now = SystemClock.elapsedRealtime()
             val fix = latest
-            if (fix.hasRecentPosition()) {
+            val elapsed = SystemClock.elapsedRealtime()
+            if (fix.hasRecentPosition(elapsed)) {
                 val point = LatLng(fix.latitude!!, fix.longitude!!)
                 val old = lookupPosition
-                val distances = FloatArray(1)
-                if (old != null) Location.distanceBetween(old.latitude, old.longitude, point.latitude, point.longitude, distances)
-                if (old == null || now - requestedAt >= 30_000 && (distances[0] >= 100 || address == null)) {
-                    requestedAt = now
+                val moved = FloatArray(1)
+                if (old != null) Location.distanceBetween(old.latitude, old.longitude, point.latitude, point.longitude, moved)
+                val interval = if (lastFailed) 30_000L else 15_000L
+                if (old == null || elapsed - requestedAt >= interval && (moved[0] >= 100 || lastFailed)) {
+                    requestedAt = elapsed
                     lookupPosition = point
-                    address = null
-                    resolvedPosition = null
-                    MapDiagnostics.address("查詢中")
-                    val result = withContext(Dispatchers.IO) {
-                        try {
-                            @Suppress("DEPRECATION")
-                            val entry = if (Geocoder.isPresent()) Geocoder(context.applicationContext, Locale.TAIWAN)
-                                .getFromLocation(point.latitude, point.longitude, 1)?.firstOrNull() else null
-                            entry?.let {
-                                listOfNotNull(it.adminArea, it.subAdminArea, it.locality, it.subLocality, it.thoroughfare)
-                                    .filter(String::isNotBlank).distinct().joinToString(" ").ifBlank { null }
-                            }
-                        } catch (_: Exception) { null }
+                    querying = true
+                    MapDiagnostics.address("查詢中（保留上次中文位置）")
+                    val result = tw.fitcar.launcher.system.RoadGeocoder.lookup(context, point.latitude, point.longitude)
+                    querying = false
+                    lastFailed = result == null
+                    if (result != null) {
+                        address = result
+                        resolvedPosition = point
+                        resolvedAt = SystemClock.elapsedRealtime()
                     }
-                    MapDiagnostics.address(if (result == null) "地址查詢暫不可用" else "地址查詢成功")
-                    address = result
-                    if (result != null) resolvedPosition = point
+                    MapDiagnostics.address(if (result == null) "地址查詢暫不可用，保留上次位置供參考" else "地址查詢成功（道路名稱不等於導航道路比對）")
                 }
             }
-            if (!fix.hasRecentPosition()) MapDiagnostics.address("等待有效 GPS 定位")
             delay(2_000)
         }
     }
     val p = LocalPalette.current
-    val current = gps.hasRecentPosition() && now - gps.fixElapsed < 10_000
-    val distance = FloatArray(1)
+    val moved = FloatArray(1)
     resolvedPosition?.let { old ->
         if (gps.latitude != null && gps.longitude != null)
-            Location.distanceBetween(old.latitude, old.longitude, gps.latitude, gps.longitude, distance)
+            Location.distanceBetween(old.latitude, old.longitude, gps.latitude, gps.longitude, moved)
     }
+    val observedNow = maxOf(now, SystemClock.elapsedRealtime())
+    val freshAddress = gps.hasRecentPosition(observedNow) && observedNow - resolvedAt in 0 until 120_000 && moved[0] < 300
     val label = when {
         !gps.permission -> "尚未授權定位"
         !gps.providerEnabled -> "GPS 已關閉"
-        !current -> "定位中…"
-        address != null && distance[0] < 100 -> address!!
-        else -> String.format(Locale.US, "%.5f, %.5f（地址暫不可用）", gps.latitude, gps.longitude)
+        address != null && freshAddress -> address!!
+        address != null -> "上次位置：$address"
+        gps.hasRecentPosition(observedNow) -> if (querying) "正在查詢中文位置…" else "中文路段暫不可用"
+        else -> "等待 GPS 定位…"
     }
     Column(modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
         .padding(horizontal = 14.dp, vertical = 8.dp)) {
@@ -126,9 +123,16 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     var slow by remember(view) { mutableStateOf(false) }
     var failed by remember(view) { mutableStateOf(false) }
     var retry by remember(view) { mutableIntStateOf(0) }
+    var autoZoom by remember(view) { mutableStateOf(true) }
+    var zoom by remember(view) { mutableStateOf(16.0) }
+    var centered by remember(view) { mutableStateOf(false) }
+    var recenter by remember(view) { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(view) { while (true) { now = SystemClock.elapsedRealtime(); delay(2_000) } }
-    val hasPosition = gps.hasRecentPosition(now)
+    // A GPS callback can be newer than the last UI timer tick. Never compare it to that older tick.
+    val observedNow = maxOf(now, SystemClock.elapsedRealtime())
+    val hasPosition = gps.hasRecentPosition(observedNow)
+    val canHold = tw.fitcar.launcher.system.MapFollowPolicy.canHold(gps, observedNow)
     DisposableEffect(view, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -172,13 +176,20 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
-    LaunchedEffect(map, loaded, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following, hasPosition) {
+    LaunchedEffect(map, loaded, gps.fixElapsed, gps.providerEnabled, gps.permission, following, hasPosition, canHold, autoZoom, recenter) {
         val ready = map
-        if (ready != null && loaded && hasPosition) {
+        if (ready != null && loaded && canHold) {
             val point = LatLng(gps.latitude!!, gps.longitude!!)
             if (marker == null) marker = ready.addMarker(MarkerOptions().position(point).title("目前位置"))
             else marker?.position = point
-            if (following) ready.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 16.0))
+            marker?.title = if (hasPosition) "目前位置" else "上次定位（訊號較弱）"
+            if (following && hasPosition) {
+                val target = if (autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.zoom(gps.speedKmh.takeIf { gps.isFresh() }) else ready.cameraPosition.zoom
+                zoom = if (centered && autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.smoothZoom(zoom, target) else target
+                val update = CameraUpdateFactory.newLatLngZoom(point, zoom)
+                if (!centered) { ready.moveCamera(update); centered = true }
+                else ready.animateCamera(update, 750, null)
+            }
         } else {
             marker?.let { old -> ready?.removeMarker(old) }
             marker = null
@@ -186,8 +197,9 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     }
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition) "定位中…" else if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
-            SecondaryButton("回到目前位置", { following = true })
+            Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
+            SecondaryButton(if (autoZoom) "自動縮放" else "手動縮放", { autoZoom = !autoZoom; if (autoZoom) following = true })
+            SecondaryButton("回到目前位置", { centered = false; following = true; recenter++ })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
         if (failed || slow && !loaded) {

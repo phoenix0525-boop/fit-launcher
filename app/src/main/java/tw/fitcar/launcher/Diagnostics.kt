@@ -61,7 +61,7 @@ object Diagnostics {
             "螢幕" to "${dm.widthPixels}×${dm.heightPixels} px，${dm.densityDpi} dpi，約 ${(dm.widthPixels / dm.density).toInt()}×${(dm.heightPixels / dm.density).toInt()} dp",
             "預設桌面" to when (defaultHome) {
                 null -> "無法判斷"
-                context.packageName -> "本 App（FIT 桌面）"
+                context.packageName -> "本 App（車機桌面）"
                 "android" -> "尚未選擇（每次詢問）"
                 else -> defaultHome
             },

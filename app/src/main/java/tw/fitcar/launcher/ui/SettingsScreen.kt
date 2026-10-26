@@ -395,7 +395,7 @@ private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
     }
     Section("語音控制") {
         Hint("主畫面點「語音」後，使用車機的 Android 語音辨識。支援開啟導航／音樂／神盾、播放／暫停、切歌及亮度調整。", size = 13)
-        Hint("Google 地圖可用「導航到某地」，辨識後先確認目的地。語音服務可能需要網路與麥克風權限；FIT 不會持續監聽或保存辨識內容。", size = 13)
+        Hint("Google 地圖可用「導航到某地」，辨識後先確認目的地。語音服務可能需要網路與麥克風權限；本程式不會持續監聽或保存辨識內容。", size = 13)
     }
     Section("定位（GPS 車速）") {
         StatusLine(data.locationGranted, "已允許", "未允許：狀態列不顯示車速")
@@ -450,8 +450,14 @@ private fun DiagnosticsSection(data: SettingsData) {
 @Composable
 private fun AboutSection(data: SettingsData) {
     Section("關於") {
-        Hint("FIT 桌面 ${data.versionName}", size = 16, color = LocalPalette.current.text)
-        Hint("Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13）個人化啟動器。", size = 14)
-        Hint("不刷韌體、不需 root、不假設 FYT 主板。", size = 14)
+        Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
+        Hint("版本 ${data.versionName}", size = 16)
+        Hint("改版內容", size = 18, color = LocalPalette.current.text)
+        Hint("• 捷徑改用 App 圖示，保留點擊啟動與長按更換。", size = 14)
+        Hint("• 播放欄增加媒體音量控制與實際音量顯示。", size = 14)
+        Hint("• 地圖平滑跟隨、車速自動縮放，訊號短暫中斷保留上次位置。", size = 14)
+        Hint("• 中文地址更新時保留舊文字；過期位置明確標示，無資料時不再顯示座標。", size = 14)
+        Hint("• 修正車燈調光與方向盤按鍵的檢測說明。", size = 14)
+        Hint("• 增加可選的系統分割／多工快捷入口。", size = 14)
     }
 }

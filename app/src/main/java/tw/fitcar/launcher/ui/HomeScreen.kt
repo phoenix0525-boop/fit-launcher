@@ -46,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -232,6 +234,7 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             SecondaryButton("更換", actions.bindNav)
+            SystemSplitShortcut()
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
     }
@@ -372,7 +375,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 !media.permissionGranted -> {
                     GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)
                     Text("尚未授權讀取播放資訊", color = p.text, fontSize = 20.sp, textAlign = TextAlign.Center)
-                    Hint("請開啟 FIT 桌面的「通知存取」，以顯示歌曲與播放控制。", size = 14)
+                    Hint("請開啟 車機桌面的「通知存取」，以顯示歌曲與播放控制。", size = 14)
                     PrimaryButton("前往授權", actions.grantNotificationAccess)
                 }
                 !media.hasSession -> {
@@ -407,8 +410,9 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 30.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
                 }
                 ControlButton(Glyph.NEXT, next, actions.next)
+                VolumeControl()
             }
-        }
+        } else VolumeControl()
     }
 }
 
@@ -494,9 +498,10 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
 private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
     BoxWithConstraints(modifier) {
-    val compact = maxHeight < 110.dp
+    val iconSize = (maxHeight - 12.dp).coerceIn(24.dp, 52.dp)
     Column(
         Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
+            .semantics { contentDescription = when { slot.isEmpty -> "新增捷徑"; slot.isMissing -> "App 已移除，點擊重新選擇"; else -> slot.entry?.label.orEmpty() } }
             .combinedClickableCompat(
                 onClick = {
                     when {
@@ -512,17 +517,13 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
     ) {
         when {
             slot.isEmpty -> {
-                GlyphIcon(Glyph.PLUS, size = 34.dp, tint = p.textSoft)
-                Hint("新增", size = 13)
+                GlyphIcon(Glyph.PLUS, size = iconSize, tint = p.textSoft)
             }
             slot.isMissing -> {
-                Text("App 已移除", color = p.danger, fontSize = 14.sp)
-                Hint("點擊重新選擇", size = 12)
+                GlyphIcon(Glyph.PLUS, size = iconSize, tint = p.danger)
             }
             else -> {
-                AppIcon(slot.entry?.icon, if (compact) 32.dp else 48.dp)
-                Spacer(Modifier.height(4.dp))
-                Text(slot.entry?.label ?: "", color = p.text, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                AppIcon(slot.entry?.icon, iconSize)
             }
         }
     }
