@@ -32,6 +32,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -81,6 +82,8 @@ class HomeActions(
     val launchSlot: (Int) -> Unit,
     val pickSlot: (Int) -> Unit,
     val editSlot: (Int) -> Unit,
+    val voice: (() -> Unit)? = null,
+    val openGoogleNav: (() -> Unit)? = null,
 )
 
 @Composable
@@ -170,6 +173,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
                 }
             }
         }
+        actions.voice?.let { SecondaryButton("語音", it) }
         SecondaryButton("所有 App", actions.openAllApps, icon = { GlyphIcon(Glyph.GRID, size = 22.dp) })
         SecondaryButton("設定", actions.openSettings, icon = { GlyphIcon(Glyph.GEAR, size = 22.dp) })
     }
@@ -181,11 +185,18 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
     val context = androidx.compose.ui.platform.LocalContext.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("即時地圖") { Pill("OpenFreeMap") }
+        if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
+            val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
+            val mediaState by tw.fitcar.launcher.media.MediaRepository.state.collectAsState()
+            var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+            LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
+            GoogleGuidanceCard(guidance, mediaState.permissionGranted, now, actions.grantNotificationAccess)
+        }
         Spacer(Modifier.height(10.dp))
         mapContent(gps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton("Google 導航", { openGoogleNavigation(context) })
+            SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             SecondaryButton("更換", actions.bindNav)
         }

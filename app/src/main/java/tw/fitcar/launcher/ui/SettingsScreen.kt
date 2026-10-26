@@ -311,8 +311,12 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
 private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
     Section("通知存取（音樂資訊）") {
         StatusLine(data.notificationGranted, "已開啟", "未開啟：無法讀取 KKBOX 播放資訊")
-        Hint("僅用於 Android MediaSession 讀取歌曲與控制播放；不讀取、不保存通知內容。", size = 13)
+        Hint("僅用於 Android MediaSession 讀取歌曲與控制播放；選定 Google 地圖時也會讀取導航通知文字，只留在記憶體，不保存或上傳。", size = 13)
         SecondaryButton("開啟系統設定", actions.requestNotificationAccess)
+    }
+    Section("語音控制") {
+        Hint("主畫面點「語音」後，使用車機的 Android 語音辨識。支援開啟導航／音樂／神盾、播放／暫停、切歌及亮度調整。", size = 13)
+        Hint("Google 地圖可用「導航到某地」，辨識後先確認目的地。語音服務可能需要網路與麥克風權限；FIT 不會持續監聽或保存辨識內容。", size = 13)
     }
     Section("定位（GPS 車速）") {
         StatusLine(data.locationGranted, "已允許", "未允許：狀態列不顯示車速")
