@@ -26,7 +26,7 @@ class GoogleNotificationTest {
     private fun notification(pkg: String = GoogleNavigation.PACKAGE, age: Long = 0L): StatusBarNotification {
         val n = Notification.Builder(context, "navigation-test").setContentTitle("300 公尺後右轉")
             .setContentText("進入中山路").setCategory(Notification.CATEGORY_NAVIGATION).setOngoing(true).build()
-        return StatusBarNotification(pkg, pkg, 1, null, Process.myUid(), Process.myPid(), n, Process.myUserHandle(), null, System.currentTimeMillis() - age)
+        return StatusBarNotification(pkg, pkg, 1, null, Process.myUid(), Process.myPid(), 0, n, Process.myUserHandle(), System.currentTimeMillis() - age)
     }
     @Test fun selectedGoogleNotificationProvidesFreshHint() {
         GoogleGuidanceRepository.posted(context, notification())
