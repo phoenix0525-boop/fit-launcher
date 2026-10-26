@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "0.4.3"
+        versionCode = 11
+        versionName = "0.4.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -34,7 +34,17 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Production vehicle head unit is arm64. Debug keeps x86/x86_64 for emulator tests.
+            ndk {
+                abiFilters += listOf("arm64-v8a")
+            }
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (hasFitSigning) signingConfig = signingConfigs.getByName("fitRelease")
         }
     }

@@ -24,6 +24,7 @@ jobs:
         run: |
           python scripts/check_signing_policy.py
           python scripts/check_version_progression.py
+          python scripts/check_release_configuration.py
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
       - name: Build debug APK
@@ -32,6 +33,21 @@ jobs:
         with:
           name: fit-launcher-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - name: Build clean unsigned release APK and AAB for policy audit
+        run: ./gradlew --no-daemon assembleRelease bundleRelease --stacktrace
+      - name: Audit release manifest, ABI, debug residue and size
+        shell: bash
+        run: |
+          RELEASE_APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          RELEASE_AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$RELEASE_APK" && test -n "$RELEASE_AAB"
+          python scripts/check_release_artifact.py --apk "$RELEASE_APK" --aab "$RELEASE_AAB" --report release-artifact-report.json
+      - name: Upload release audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-launcher-release-audit
+          path: release-artifact-report.json
           if-no-files-found: error
       - name: Build and verify signed release
         if: env.FIT_SIGNING_AVAILABLE == 'true'
@@ -50,8 +66,10 @@ jobs:
           path.write_bytes(base64.b64decode(os.environ['FIT_KEYSTORE_BASE64'], validate=True))
           path.chmod(0o600)
           PYKEY
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease bundleRelease
+          python scripts/check_release_artifact.py --apk app/build/outputs/apk/release/app-release.apk --aab app/build/outputs/bundle/release/app-release.aab --report signed-release-artifact-report.json
           python scripts/verify_release_certificate.py app/build/outputs/apk/release/app-release.apk
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
       - name: Upload verified signed release
         if: env.FIT_SIGNING_AVAILABLE == 'true'
         uses: actions/upload-artifact@v4
@@ -60,6 +78,8 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/app-release.certificate.txt
+            app/build/outputs/bundle/release/app-release.aab
+            signed-release-artifact-report.json
           if-no-files-found: error
       - name: Release signing not configured
         if: env.FIT_SIGNING_AVAILABLE != 'true'

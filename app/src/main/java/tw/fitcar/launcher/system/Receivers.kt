@@ -20,10 +20,20 @@ class BrightnessReceiver : BroadcastReceiver() {
 /** 開機、系統時間或時區改變、App 更新後重新計算。 */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action !in ALLOWED_ACTIONS) return
         val pending = goAsync()
         BrightnessController.applyScheduled(context) {
             BrightnessController.scheduleNext(context)
             pending.finish()
         }
+    }
+
+    companion object {
+        internal val ALLOWED_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+        )
     }
 }
