@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- 系統亮度：須由使用者在「修改系統設定」頁面手動允許 -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <!-- GPS 車速：只在使用者於設定頁按下授權後才要求 -->
@@ -27,6 +30,8 @@
         android:label="@string/app_name"
         android:supportsRtl="false"
         android:theme="@style/Theme.FitLauncher">
+
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"

@@ -96,7 +96,7 @@ fun HomeScreen(
     ) {
         StatusBar(shield, gps, actions)
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            NavPanel(nav, navModeLabel, splitResult, actions, Modifier.weight(7f).fillMaxHeight())
+            NavPanel(nav, gps, actions, Modifier.weight(7f).fillMaxHeight())
             Column(Modifier.weight(3f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.22f))
                 ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(0.78f))
@@ -134,18 +134,7 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
     ) {
         Clock(Modifier.width(220.dp))
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-            // 神盾：沒有官方資料介面，只提供開啟入口，狀態維持「尚未連接」
-            Row(
-                Modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
-                    .combinedClickableCompat(onClick = actions.openShield).padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                GlyphIcon(Glyph.SHIELD, size = 22.dp, tint = p.textSoft)
-                Column {
-                    Text(shield?.label ?: "測速 App", color = p.text, fontSize = 15.sp, maxLines = 1)
-                    Text("資料尚未連接（使用官方浮動窗）", color = p.textSoft, fontSize = 12.sp, maxLines = 1)
-                }
-            }
+            CurrentLocationCard(gps, Modifier.weight(1f))
             // GPS 車速：啟動器自行計算，明確標示來源
             val fresh = remember(tick, gps) { gps.isFresh() }
             Row(
@@ -180,39 +169,19 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
 }
 
 @Composable
-private fun NavPanel(nav: AppEntry?, modeLabel: String, splitResult: Boolean?, actions: HomeActions, modifier: Modifier) {
-    val p = LocalPalette.current
-    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(26.dp)) {
-        CardTitle("導航") { Pill(modeLabel) }
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                if (nav == null) {
-                    GlyphIcon(Glyph.NAV, size = 72.dp, tint = p.accent)
-                    Text("尚未選擇導航 App", color = p.text, fontSize = 26.sp, fontWeight = FontWeight.Medium)
-                    Hint("請從車機實際安裝的 App 中選擇導航王", size = 16)
-                    PrimaryButton("選擇導航 App", actions.bindNav)
-                } else {
-                    AppIcon(nav.icon, 112.dp)
-                    Text(nav.label, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.Medium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        PrimaryButton("開始導航", actions.openNav, Modifier.height(72.dp).width(260.dp), icon = {
-                            GlyphIcon(Glyph.NAV, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
-                        })
-                        SecondaryButton("全螢幕開啟", actions.openNavFullscreen, Modifier.height(72.dp), icon = { GlyphIcon(Glyph.EXPAND, size = 24.dp) })
-                    }
-                }
-            }
+private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, modifier: Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+        CardTitle("即時地圖") { Pill("Google 地圖") }
+        Spacer(Modifier.height(10.dp))
+        GoogleMapPanel(gps = gps, modifier = Modifier.weight(1f).fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            SecondaryButton("Google 導航", { openGoogleNavigation(context) })
+            PrimaryButton(nav?.label ?: "選擇導航 App", if (nav == null) actions.bindNav else actions.openNavFullscreen)
+            SecondaryButton("更換", actions.bindNav)
         }
-        Hint(
-            "導航王地圖無法嵌入桌面（Android 不允許嵌入其他 App 畫面）。" +
-                "「開始導航」會先嘗試分割畫面，車機不支援時自動改為全螢幕；分割比例請拖曳中間分隔線。" +
-                when (splitResult) {
-                    true -> "　最近一次：分割畫面成功。"
-                    false -> "　最近一次：車機未進入分割畫面，已改全螢幕。"
-                    null -> "　尚未實測分割畫面。"
-                },
-            size = 14,
-        )
+        Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
     }
 }
 
