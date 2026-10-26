@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import tw.fitcar.launcher.data.Prefs
+import tw.fitcar.launcher.data.MediaMode
 
 data class SessionInfo(val packageName: String, val state: Int, val actions: Long, val hasMetadata: Boolean)
 
@@ -22,6 +23,7 @@ data class MediaUiState(
     /** 使用者是否已開啟本 App 的通知存取。 */
     val permissionGranted: Boolean = false,
     val packageName: String? = null,
+    val playerName: String? = null,
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,
@@ -66,9 +68,12 @@ object MediaRepository {
         appContext?.let { select(it, controllers.orEmpty()) }
     }
 
+    private var controllers: List<MediaController> = emptyList()
+    private val observers = mutableMapOf<android.media.session.MediaSession.Token, Pair<MediaController, MediaController.Callback>>()
+
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
-        override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
+        override fun onPlaybackStateChanged(state: PlaybackState?) { appContext?.let { select(it, controllers) } }
         override fun onSessionDestroyed() {
             appContext?.let { refresh(it) }
         }
@@ -96,12 +101,16 @@ object MediaRepository {
             }
             select(ctx, m.getActiveSessions(listenerComponent(ctx)))
         } catch (e: SecurityException) {
+            unregister()
             detach()
             _state.value = MediaUiState(permissionGranted = false, error = "系統拒絕讀取媒體工作階段：${e.message}")
         }
     }
 
     private fun unregister() {
+        observers.values.forEach { (controller, observer) -> controller.unregisterCallback(observer) }
+        observers.clear()
+        controllers = emptyList()
         if (listenerRegistered) {
             try { manager?.removeOnActiveSessionsChangedListener(sessionsListener) } catch (_: Exception) {}
             listenerRegistered = false
@@ -109,11 +118,32 @@ object MediaRepository {
     }
 
     private fun select(ctx: Context, controllers: List<MediaController>) {
-        val preferredPackage = Prefs.get(ctx).state.value.bindings.music
-            ?.let { ComponentName.unflattenFromString(it)?.packageName }
-        val chosen = controllers.firstOrNull { it.packageName == preferredPackage }
-            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: controllers.firstOrNull()
+        this.controllers = controllers
+        val tokens = controllers.map { it.sessionToken }.toSet()
+        observers.keys.filter { it !in tokens }.forEach { token ->
+            observers.remove(token)?.let { (controller, observer) -> controller.unregisterCallback(observer) }
+        }
+        controllers.forEach { controller ->
+            if (controller.sessionToken !in observers) {
+                val observer = object : MediaController.Callback() {
+                    override fun onPlaybackStateChanged(state: PlaybackState?) {
+                        appContext?.let { select(it, this@MediaRepository.controllers) }
+                    }
+                    override fun onSessionDestroyed() {
+                        select(ctx, this@MediaRepository.controllers.filter { it.sessionToken != controller.sessionToken })
+                    }
+                }
+                controller.registerCallback(observer, main)
+                observers[controller.sessionToken] = controller to observer
+            }
+        }
+        val prefs = Prefs.get(ctx).state.value
+        val preferredPackage = prefs.bindings.music?.let { ComponentName.unflattenFromString(it)?.packageName }
+        val chosen = SessionSelection.choose(
+            controllers.map { SessionCandidate(it.packageName, it.playbackState?.state == PlaybackState.STATE_PLAYING) },
+            preferredPackage, prefs.mediaMode == MediaMode.FOLLOW_CURRENT,
+            controllers.indexOfFirst { it.sessionToken == current?.sessionToken }.takeIf { it >= 0 },
+        )?.let { controllers[it] }
 
         if (chosen?.sessionToken != current?.sessionToken) {
             detach()
@@ -151,6 +181,7 @@ object MediaRepository {
         _state.value = MediaUiState(
             permissionGranted = true,
             packageName = c.packageName,
+            playerName = appContext?.let { ctx -> runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(c.packageName, 0)).toString() }.getOrDefault(c.packageName) },
             title = md?.getString(MediaMetadata.METADATA_KEY_TITLE)
                 ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE),
             artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)

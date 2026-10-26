@@ -33,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import tw.fitcar.launcher.system.GpsState
+import tw.fitcar.launcher.system.MapDiagnostics
 import java.util.Locale
 
 private fun GpsState.hasRecentPosition() = permission && providerEnabled &&
@@ -62,6 +63,7 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
                     lookupPosition = point
                     address = null
                     resolvedPosition = null
+                    MapDiagnostics.address("查詢中")
                     val result = withContext(Dispatchers.IO) {
                         try {
                             @Suppress("DEPRECATION")
@@ -73,10 +75,12 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
                             }
                         } catch (_: Exception) { null }
                     }
+                    MapDiagnostics.address(if (result == null) "地址查詢暫不可用" else "地址查詢成功")
                     address = result
                     if (result != null) resolvedPosition = point
                 }
             }
+            if (!fix.hasRecentPosition()) MapDiagnostics.address("等待有效 GPS 定位")
             delay(2_000)
         }
     }
@@ -137,7 +141,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         }
         lifecycle.addObserver(observer)
         var disposed = false
-        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) failed = true }
+        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) { failed = true; MapDiagnostics.base("底圖載入失敗") } }
         view.addOnDidFailLoadingMapListener(failureListener)
         view.getMapAsync { ready ->
             if (!disposed) {
@@ -163,9 +167,10 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         loaded = false
         failed = false
         slow = false
-        map?.setStyle("https://tiles.openfreemap.org/styles/liberty") { loaded = true }
+        MapDiagnostics.base("底圖載入中")
+        map?.setStyle("https://tiles.openfreemap.org/styles/liberty") { loaded = true; failed = false; MapDiagnostics.base("底圖樣式已載入（圖磚顯示仍需目視確認）") }
         delay(20_000)
-        if (!loaded) slow = true
+        if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
     LaunchedEffect(map, loaded, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following) {
         val ready = map

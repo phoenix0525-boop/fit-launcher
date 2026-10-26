@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -133,7 +134,7 @@ private fun statusColor(s: Status): Color {
     val p = LocalPalette.current
     return when (s) {
         Status.FAIL -> p.danger
-        Status.WARN -> Color(0xFFB08A3E)
+        Status.NA, Status.HISTORY -> p.textSoft
         Status.PASS -> p.success
         Status.TODO -> p.accent
         Status.INFO -> p.textSoft
@@ -153,6 +154,10 @@ fun ResultCard(r: CheckResult, onFix: ((Fix) -> Unit)?) {
             Text(r.title, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         }
         Hint(r.finding, size = 14, color = p.text)
+        if (r.appVersion.isNotBlank() || r.status == Status.HISTORY) {
+            Hint("版本：${r.appVersion.ifBlank { "舊版未記錄" }}；時間：${if (r.time > 0) java.util.Date(r.time).toString() else "尚未測試"}", size = 12)
+            Hint("情境：${r.scenario.ifBlank { "未記錄" }}；備註：${r.notes.ifBlank { "無" }}", size = 12)
+        }
         if (r.suggestion.isNotBlank()) Hint("建議：${r.suggestion}", size = 14)
         val fix = r.fix
         if (fix != null && onFix != null) SecondaryButton(fix.label, { onFix(fix) })
@@ -344,7 +349,7 @@ private fun SplitTab(auto: CheckResult?, actions: CheckerActions) {
                     "程式自動分割若失敗，可改「一律全螢幕」，需要時再手動分割。"))
             })
             SecondaryButton("手動也不行", {
-                CheckStore.put(ctx, CheckResult("split_manual", "導航", "手動分割畫面", Status.WARN, "使用者確認系統沒有分割畫面功能。",
+                CheckStore.put(ctx, CheckResult("split_manual", "導航", "手動分割畫面", Status.INFO, "使用者確認系統沒有分割畫面功能。",
                     "建議導航改「一律全螢幕」；音樂與捷徑改在導航王上方用浮動控制，列入下一版評估。",
                     Fix("改為一律全螢幕", tw.fitcar.launcher.check.FixKind.NAV_FULLSCREEN)))
             })
@@ -384,7 +389,10 @@ private fun ManualTab(results: Map<String, CheckResult>) {
     Section("手動檢查") {
         Hint("需要人眼判斷的項目。倒車影像請務必最先確認。", size = 14)
     }
+    IgnitionPanel()
     MANUAL_ITEMS.forEach { item ->
+        var note by rememberSaveable(item.id) { mutableStateOf("") }
+        var scenario by rememberSaveable(item.id) { mutableStateOf("") }
         val r = results[item.id]
         Column(
             Modifier.fillMaxWidth().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
@@ -396,11 +404,50 @@ private fun ManualTab(results: Map<String, CheckResult>) {
             }
             Hint("做法：${item.howTo}", size = 14)
             Hint("有問題時：${item.ifBad}", size = 13)
+            Hint(CheckStore.scenario(ctx), size = 12)
+            OutlinedTextField(value = scenario, onValueChange = { scenario = it }, label = { Text("測試情境（例如使用中的 App、白天／夜間）") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("備註（問題位置、裁字等）") }, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true)) })
-                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false)) })
-                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null)) })
+                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true, note, CheckStore.scenario(ctx) + "; " + scenario)) })
+                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false, note, CheckStore.scenario(ctx) + "; " + scenario)) })
+                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null, note, CheckStore.scenario(ctx) + "; " + scenario)) })
             }
+        }
+    }
+}
+
+@Composable
+private fun IgnitionPanel() {
+    val ctx = LocalContext.current
+    var revision by remember { mutableIntStateOf(0) }
+    val test = remember(revision) { tw.fitcar.launcher.check.IgnitionTest.read(ctx) }
+    var screen by rememberSaveable(test.startedAt) { mutableStateOf<Boolean?>(null) }
+    var music by rememberSaveable(test.startedAt) { mutableStateOf<Boolean?>(null) }
+    var gps by rememberSaveable(test.startedAt) { mutableStateOf<Boolean?>(null) }
+    var note by rememberSaveable(test.startedAt) { mutableStateOf("") }
+    Section("熄火後再發動") {
+        Hint("停車時開始測試，熄火後再發動，再完成測試。相同開機只是一項觀察，不能代表休眠喚醒正常。", size = 14)
+        Hint(test.description, size = 14)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SecondaryButton("開始熄火測試", { tw.fitcar.launcher.check.IgnitionTest.start(ctx); revision++ })
+            SecondaryButton("完成測試", {
+                tw.fitcar.launcher.check.IgnitionTest.complete(ctx)
+                revision++
+            }, enabled = test.startedAt > 0 && test.completedAt == 0L)
+        }
+        if (test.completedAt > 0) {
+            listOf("畫面恢復" to screen, "音樂恢復" to music, "GPS 恢復" to gps).forEachIndexed { index, (label, value) ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Hint("$label：${when (value) { true -> "正常"; false -> "有問題"; null -> "待確認" }}", size = 14)
+                    fun set(ok: Boolean) { when(index) { 0 -> screen = ok; 1 -> music = ok; else -> gps = ok } }
+                    SecondaryButton("正常", { set(true) })
+                    SecondaryButton("有問題", { set(false) })
+                }
+            }
+            OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("熄火時間、恢復情況與備註") }, modifier = Modifier.fillMaxWidth())
+            SecondaryButton("保存恢復確認", {
+                tw.fitcar.launcher.check.IgnitionTest.confirm(ctx, screen, music, gps, note)
+            })
         }
     }
 }

@@ -16,7 +16,7 @@ sealed interface LaunchResult {
 }
 
 /**
- * 導航策略（2026-10-25 使用者確認）：分割畫面優先，失敗改全螢幕。
+ * 導航預設全螢幕；分割畫面僅為使用者主動啟用的實驗功能。
  *
  * 桌面（HOME）類型的 Activity 在 Android 上不能進入分割畫面，所以分割模式是：
  * 先開本 App 的一般 Activity「FIT 側欄」，再由側欄以 FLAG_ACTIVITY_LAUNCH_ADJACENT 開導航王。
@@ -31,7 +31,7 @@ object NavLauncher {
         val entry = AppRepository.resolve(context, key)
             ?: return LaunchResult.Failed("已綁定的導航 App 找不到，可能已移除，請重新選擇。")
 
-        val split = !forceFullscreen && state.navOpenMode == NavOpenMode.SPLIT_FIRST
+        val split = !forceFullscreen && state.navOpenMode == NavOpenMode.SPLIT_FIRST && state.lastSplitResult != false
         return try {
             if (split) {
                 val intent = Intent(context, CompanionActivity::class.java)

@@ -82,6 +82,7 @@ fun FullScreenAppList(
                     ) {
                         AppIcon(app.icon, 72.dp)
                         Spacer(Modifier.height(10.dp))
+                        Hint(app.component.packageName, size = 11)
                         Text(app.label, color = p.text, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 20.sp, modifier = Modifier.fillMaxWidth())
                     }
                 }
