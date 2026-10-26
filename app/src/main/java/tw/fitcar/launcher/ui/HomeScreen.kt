@@ -201,18 +201,18 @@ private fun formatMs(ms: Long): String {
 @Composable
 internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
-    FitCard(modifier) {
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle(music?.label ?: "音樂") {
             if (music != null) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         // 主要區：原本規劃為歌詞；目前沒有合法歌詞來源，依決策改顯示曲目並註明
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp
         Column(
-            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
@@ -233,7 +233,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         val img = remember(art) { art.asImageBitmap() }
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
-                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
+                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (spacious) Hint("歌詞資料尚未連接", size = 13)
                 }
@@ -241,14 +241,14 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         }
         }
         if (media.hasSession) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Progress(media, actions)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
                 val next = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)
                 ControlButton(Glyph.PREV, prev, actions.previous)
                 Box(
-                    Modifier.size(68.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause),
+                    Modifier.size(56.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause),
                     contentAlignment = Alignment.Center,
                 ) {
                     GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 30.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
@@ -262,7 +262,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 @Composable
 private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(64.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(56.dp)) {
         GlyphIcon(glyph, size = 30.dp, tint = if (enabled) p.text else p.line)
     }
 }
