@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import tw.fitcar.launcher.data.Prefs
+import tw.fitcar.launcher.data.BrightnessSchedulePolicy
 import tw.fitcar.launcher.data.Schedule
 import java.util.Calendar
 
@@ -21,6 +22,7 @@ object BrightnessController {
 
     private val main = Handler(Looper.getMainLooper())
     private var animation: Runnable? = null
+    private var animationDone: (() -> Unit)? = null
 
     fun canWrite(context: Context): Boolean = Settings.System.canWrite(context)
 
@@ -54,14 +56,22 @@ object BrightnessController {
         val ctx = context.applicationContext
         if (!canWrite(ctx)) { onDone?.invoke(); return false }
         val resolver = ctx.contentResolver
-        Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+        val modeChanged = try {
+            Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+        } catch (_: SecurityException) {
+            false
+        }
+        if (!modeChanged) { onDone?.invoke(); return false }
         val target = Schedule.percentToSystem(percent)
         animation?.let { main.removeCallbacks(it) }
+        animation = null
+        animationDone?.also { animationDone = null }?.invoke()
         val start = try { Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS) } catch (e: Exception) { target }
         if (!smooth || start == target) {
-            Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, target)
+            val written = try { Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, target) }
+            catch (_: SecurityException) { false }
             onDone?.invoke()
-            return true
+            return written
         }
         val steps = 20
         var i = 0
@@ -69,11 +79,21 @@ object BrightnessController {
             override fun run() {
                 i++
                 val v = start + (target - start) * i / steps
-                Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, v)
-                if (i < steps) main.postDelayed(this, 75) else { animation = null; onDone?.invoke() }
+                val written = try { Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, v) }
+                catch (_: SecurityException) { false }
+                if (!written) {
+                    animation = null
+                    animationDone?.also { animationDone = null }?.invoke()
+                } else if (i < steps) {
+                    main.postDelayed(this, 75)
+                } else if (animation === this) {
+                    animation = null
+                    animationDone?.also { animationDone = null }?.invoke()
+                }
             }
         }
         animation = r
+        animationDone = onDone
         main.post(r)
         return true
     }
@@ -89,7 +109,7 @@ object BrightnessController {
         val ctx = context.applicationContext
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = PendingIntent.getBroadcast(
-            ctx, 1001, Intent(ctx, BrightnessReceiver::class.java),
+            ctx, 1001, Intent(ctx, BrightnessReceiver::class.java).setAction(ReceiverActions.ACTION_BRIGHTNESS_BOUNDARY),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         am.cancel(pi)
@@ -101,6 +121,6 @@ object BrightnessController {
             set(Calendar.MILLISECOND, 0)
             add(Calendar.MINUTE, minutes)
         }
-        am.setWindow(AlarmManager.RTC, cal.timeInMillis, 60_000L, pi)
+        am.setWindow(AlarmManager.RTC, cal.timeInMillis, BrightnessSchedulePolicy.WINDOW_MILLIS, pi)
     }
 }

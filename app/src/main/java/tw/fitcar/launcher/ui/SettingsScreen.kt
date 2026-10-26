@@ -55,6 +55,7 @@ class SettingsData(
     val currentBrightness: Int?,
     val notificationGranted: Boolean,
     val locationGranted: Boolean,
+    val approximateLocationGranted: Boolean,
     val otherHomes: List<AppEntry>,
     val diagnostics: List<Pair<String, String>>,
     val versionName: String,
@@ -70,6 +71,7 @@ class SettingsActions(
     val requestWriteSettings: () -> Unit,
     val requestNotificationAccess: () -> Unit,
     val requestLocation: () -> Unit,
+    val openLocationSettings: () -> Unit,
     val bind: (BindingTarget) -> Unit,
     val clearBinding: (BindingTarget) -> Unit,
     val setNavMode: (NavOpenMode) -> Unit,
@@ -179,7 +181,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     }
     Section("時段") {
         d.periods.forEachIndexed { index, period -> PeriodRow(index, period, actions) }
-        Hint("時段可跨日（例如 18:30 → 07:00）。區間邊界、開機與系統時間變更時會重新計算。", size = 13)
+        Hint("時段可跨日（例如 18:30 → 07:00）；調整邊界會同步相鄰時段，避免重疊或空檔。區間切換採 Android 非精確排程，Android 12 以上最多可能延後約 10 分鐘。", size = 13)
     }
     Section("手動亮度") {
         val active = Schedule.activePeriod(d, tw.fitcar.launcher.system.BrightnessController.nowMinutes())
@@ -316,9 +318,18 @@ private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
         SecondaryButton("開啟系統設定", actions.requestNotificationAccess)
     }
     Section("定位（GPS 車速）") {
-        StatusLine(data.locationGranted, "已允許", "未允許：狀態列不顯示車速")
-        Hint("車速由本桌面以 GPS 計算並標示「GPS 車速」，不是神盾的資料。", size = 13)
-        if (!data.locationGranted) SecondaryButton("允許定位", actions.requestLocation)
+        when {
+            data.locationGranted -> StatusLine(true, "已允許精確定位", "")
+            data.approximateLocationGranted -> {
+                StatusLine(false, "", "目前只有約略定位：無法可靠顯示 GPS 車速")
+                SecondaryButton("開啟權限設定", actions.openLocationSettings)
+            }
+            else -> {
+                StatusLine(false, "", "未允許：狀態列不顯示車速")
+                SecondaryButton("允許精確定位", actions.requestLocation)
+            }
+        }
+        Hint("車速由本桌面以前景 GPS 計算並標示「GPS 車速」，不是神盾資料；離開桌面後停止定位，不要求背景定位。", size = 13)
     }
     Section("修改系統設定（背光）") {
         StatusLine(data.canWriteBrightness, "已允許", "未允許：亮度排程不會生效")

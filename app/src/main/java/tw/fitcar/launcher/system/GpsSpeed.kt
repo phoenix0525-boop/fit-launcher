@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
@@ -27,19 +28,27 @@ data class GpsState(
 
 /** 啟動器自己用 GPS 算的車速，畫面上一律標示「GPS 車速」，不冒充神盾資料。 */
 object GpsSpeed {
+    private const val FRESH_MILLIS = 5_000L
     private val _state = MutableStateFlow(GpsState())
     val state: StateFlow<GpsState> = _state.asStateFlow()
     private var manager: LocationManager? = null
     private var running = false
+    private val main = Handler(Looper.getMainLooper())
+    private var staleRunnable: Runnable? = null
 
     private val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            val fixAt = SystemClock.elapsedRealtime()
             _state.value = _state.value.copy(
                 providerEnabled = true,
                 speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
                 accuracyM = if (location.hasAccuracy()) location.accuracy else null,
-                fixElapsed = SystemClock.elapsedRealtime(),
+                fixElapsed = fixAt,
             )
+            staleRunnable?.let(main::removeCallbacks)
+            staleRunnable = Runnable {
+                if (_state.value.fixElapsed == fixAt) _state.value = _state.value.copy(speedKmh = null)
+            }.also { main.postDelayed(it, FRESH_MILLIS) }
         }
         override fun onProviderEnabled(provider: String) { _state.value = _state.value.copy(providerEnabled = true) }
         override fun onProviderDisabled(provider: String) { _state.value = _state.value.copy(providerEnabled = false, speedKmh = null) }
@@ -50,6 +59,9 @@ object GpsSpeed {
 
     fun hasPermission(context: Context) =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    fun hasApproximatePermission(context: Context) =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("MissingPermission")
     fun start(context: Context) {
@@ -68,9 +80,12 @@ object GpsSpeed {
     }
 
     fun stop() {
+        staleRunnable?.let(main::removeCallbacks)
+        staleRunnable = null
         if (running) {
             manager?.removeUpdates(listener)
             running = false
         }
+        _state.value = _state.value.copy(speedKmh = null, accuracyM = null, fixElapsed = 0L)
     }
 }

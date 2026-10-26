@@ -27,13 +27,14 @@ object FactoryApps {
     val PLATFORM_MARKERS = listOf("com.syu.ms", "com.android.launcher30") + (ACTIVITY_CANDIDATES.map { it.substringBefore('/') } + PACKAGE_CANDIDATES).distinct()
 
     /**
-     * 合併一般 App 與原廠入口：同一套件已有一般圖示時沿用一般入口，不重複列出。
+     * 合併一般 App 與原廠入口。只排除完全相同的元件；同一套件可能有「藍牙電話」與
+     * 「藍牙音樂」等不同可啟動 Activity，不能只按套件名稱去重。
      * key 格式為 ComponentName.flattenToString()（套件/類別）。
      */
     fun mergeKeys(standard: List<String>, factory: List<String>): List<String> {
         val valid = { k: String -> k.contains('/') && k.substringBefore('/').isNotBlank() && k.substringAfter('/').isNotBlank() }
-        val standardPackages = standard.map { it.substringBefore('/') }.toSet()
-        val extra = factory.filter(valid).filter { it.substringBefore('/') !in standardPackages }.distinct()
+        val standardKeys = standard.toSet()
+        val extra = factory.filter(valid).filter { it !in standardKeys }.distinct()
         return (standard + extra).distinct()
     }
 

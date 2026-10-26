@@ -15,12 +15,27 @@ class FactoryAppsTest {
         assertEquals(listOf("com.kkbox/.Main", "com.syu.radio/com.syu.radio.Launch"), merged)
     }
 
-    @Test fun skipsFactoryEntryWhenPackageAlreadyHasLauncherIcon() {
+    @Test fun keepsDistinctFactoryActivitiesFromSamePackage() {
         val merged = FactoryApps.mergeKeys(
             standard = listOf("com.syu.bt/com.syu.bt.Main"),
             factory = listOf("com.syu.bt/com.syu.bt.BtAct", "com.syu.bt/com.syu.bt.act.ActBtAvStart"),
         )
-        assertEquals(listOf("com.syu.bt/com.syu.bt.Main"), merged)
+        assertEquals(
+            listOf(
+                "com.syu.bt/com.syu.bt.Main",
+                "com.syu.bt/com.syu.bt.BtAct",
+                "com.syu.bt/com.syu.bt.act.ActBtAvStart",
+            ),
+            merged,
+        )
+    }
+
+    @Test fun skipsOnlyTheExactSameComponent() {
+        val merged = FactoryApps.mergeKeys(
+            standard = listOf("com.syu.radio/com.syu.radio.Launch"),
+            factory = listOf("com.syu.radio/com.syu.radio.Launch"),
+        )
+        assertEquals(listOf("com.syu.radio/com.syu.radio.Launch"), merged)
     }
 
     @Test fun removesDuplicatesAndBlankKeys() {

@@ -18,6 +18,15 @@ import tw.fitcar.launcher.data.Prefs
 
 data class SessionInfo(val packageName: String, val state: Int, val actions: Long, val hasMetadata: Boolean)
 
+/** 純選擇規則：已綁定音樂 App 時，絕不拿其他 App 的歌曲冒充。 */
+object MediaSelectionPolicy {
+    fun choosePackage(preferredPackage: String?, sessions: List<SessionInfo>): String? {
+        if (preferredPackage != null) return sessions.firstOrNull { it.packageName == preferredPackage }?.packageName
+        return sessions.firstOrNull { it.state == PlaybackState.STATE_PLAYING }?.packageName
+            ?: sessions.firstOrNull()?.packageName
+    }
+}
+
 data class MediaUiState(
     /** 使用者是否已開啟本 App 的通知存取。 */
     val permissionGranted: Boolean = false,
@@ -119,9 +128,16 @@ object MediaRepository {
     private fun select(ctx: Context, controllers: List<MediaController>) {
         val preferredPackage = Prefs.get(ctx).state.value.bindings.music
             ?.let { ComponentName.unflattenFromString(it)?.packageName }
-        val chosen = controllers.firstOrNull { it.packageName == preferredPackage }
-            ?: controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: controllers.firstOrNull()
+        val infos = controllers.map {
+            SessionInfo(
+                packageName = it.packageName,
+                state = it.playbackState?.state ?: PlaybackState.STATE_NONE,
+                actions = it.playbackState?.actions ?: 0L,
+                hasMetadata = it.metadata != null,
+            )
+        }
+        val chosenPackage = MediaSelectionPolicy.choosePackage(preferredPackage, infos)
+        val chosen = chosenPackage?.let { pkg -> controllers.firstOrNull { it.packageName == pkg } }
 
         if (chosen?.sessionToken != current?.sessionToken) {
             detach()

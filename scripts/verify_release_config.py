@@ -41,8 +41,8 @@ def main() -> int:
         r"\bcompileSdk\s*=\s*36\b": "compileSdk must be 36",
         r"\bminSdk\s*=\s*31\b": "minSdk must be 31 (Android 12)",
         r"\btargetSdk\s*=\s*36\b": "targetSdk must be 36",
-        r"\bversionCode\s*=\s*6\b": "versionCode must be 6",
-        r'\bversionName\s*=\s*"0\.3\.1"': "versionName must be 0.3.1",
+        r"\bversionCode\s*=\s*7\b": "versionCode must be 7",
+        r'\bversionName\s*=\s*"0\.3\.2"': "versionName must be 0.3.2",
         r"\bisMinifyEnabled\s*=\s*true\b": "Release must enable R8 minification (reference APK is 2.4 MB)",
         r"\bisShrinkResources\s*=\s*true\b": "Release must shrink unused resources",
     }
@@ -60,6 +60,10 @@ def main() -> int:
     for forbidden in (
         "android.permission.QUERY_ALL_PACKAGES",
         "android.permission.REQUEST_INSTALL_PACKAGES",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.POST_NOTIFICATIONS",
     ):
         if forbidden in manifest:
             errors.append(f"Manifest must not request {forbidden}")

@@ -1,5 +1,6 @@
 package tw.fitcar.launcher.media
 
+import android.content.ComponentName
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import tw.fitcar.launcher.nav.NavGuidanceRepository
@@ -20,6 +21,7 @@ class MediaListenerService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         MediaRepository.refresh(applicationContext)
+        requestRebind(ComponentName(this, MediaListenerService::class.java))
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {

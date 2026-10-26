@@ -67,6 +67,15 @@ object NavLauncher {
                 LaunchResult.Ok
             } catch (e2: ActivityNotFoundException) {
                 LaunchResult.Failed("車機上沒有可以用地址導航的 App。")
+            } catch (e2: SecurityException) {
+                LaunchResult.Failed("系統不允許開啟地址導航：${e2.message}")
+            }
+        } catch (e: SecurityException) {
+            try {
+                context.startActivity(Intent.createChooser(base, "用哪個 App 導航？").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                LaunchResult.Ok
+            } catch (e2: Exception) {
+                LaunchResult.Failed("系統不允許開啟地址導航：${e.message}")
             }
         }
     }

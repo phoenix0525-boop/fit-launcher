@@ -78,8 +78,8 @@ object AutoChecks {
         val play = CheckResult(
             "google_play", "車機硬體", "Google Play 商店", if (hasPlay) Status.PASS else Status.INFO,
             if (hasPlay) "車機有 Google Play 商店。" else "車機沒有 Google Play 商店。",
-            if (hasPlay) "若車機是 Google 認證裝置，2027 年起側載 App 需登記開發者；可考慮登記 Google「有限發布」（免費、上限 20 台）。"
-            else "沒有 Play 商店的車機通常不是 Google 認證裝置，不受開發者驗證限制，維持側載即可。",
+            if (hasPlay) "偵測到商店套件不等於已確認 Google 認證；是否受安裝與開發者驗證規則限制，仍須以車機 Play Protect 認證頁及實際安裝結果確認。"
+            else "未偵測到 Play 商店；僅憑套件不存在無法判定 Google 認證狀態，也不能保證側載不受限制。",
         )
         return listOf(platform, play)
     }
@@ -329,8 +329,12 @@ object AutoChecks {
     private fun location(context: Context): CheckResult {
         val g = GpsSpeed.state.value
         val perm = GpsSpeed.hasPermission(context)
+        val approximate = GpsSpeed.hasApproximatePermission(context)
         return when {
-            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN, "尚未允許定位，狀態列不會顯示 GPS 車速。", "", Fix("允許定位", FixKind.REQUEST_LOCATION))
+            !perm && approximate -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN,
+                "目前只允許約略定位，無法可靠顯示 GPS 車速。", "請到 FIT 桌面設定 → 權限 → 定位，開啟精確位置。",
+                Fix("重新要求精確定位", FixKind.REQUEST_LOCATION))
+            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN, "尚未允許精確定位，狀態列不會顯示 GPS 車速。", "", Fix("允許精確定位", FixKind.REQUEST_LOCATION))
             !g.providerEnabled -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.WARN, "已允許，但系統 GPS 關閉。", "請在系統設定開啟定位。")
             else -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.PASS, "已允許且 GPS 開啟。", "請到「互動測試 → GPS」量測定位時間。")
         }

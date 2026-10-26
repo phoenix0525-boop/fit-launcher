@@ -74,6 +74,8 @@ object AppRepository {
                 true
             } catch (e: PackageManager.NameNotFoundException) {
                 false
+            } catch (e: SecurityException) {
+                false
             }
         }.toSet()
     }
@@ -92,19 +94,7 @@ object AppRepository {
 
     fun resolve(context: Context, key: String?): AppEntry? {
         if (key.isNullOrBlank()) return null
-        val component = ComponentName.unflattenFromString(key) ?: return null
-        val pm = context.packageManager
-        return try {
-            val info = if (Build.VERSION.SDK_INT >= 33) {
-                pm.getActivityInfo(component, PackageManager.ComponentInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                pm.getActivityInfo(component, 0)
-            }
-            AppEntry(info.loadLabel(pm).toString(), component, info.loadIcon(pm))
-        } catch (e: PackageManager.NameNotFoundException) {
-            null
-        }
+        return resolveLaunchable(context, key)
     }
 
     fun launchIntent(component: ComponentName): Intent =

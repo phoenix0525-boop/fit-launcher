@@ -80,6 +80,28 @@ object Schedule {
         val match = Regex("^([01]?\\d|2[0-3]):([0-5]\\d)$").matchEntire(text.trim()) ?: return null
         return match.groupValues[1].toInt() * 60 + match.groupValues[2].toInt()
     }
+
+    /** 調整一個邊界時同步相鄰時段，避免亮度排程出現重疊或無人負責的空檔。 */
+    fun updateBoundary(periods: List<Period>, index: Int, isStart: Boolean, value: Int): List<Period> {
+        if (periods.isEmpty() || index !in periods.indices) return periods
+        val minute = ((value % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY
+        val previous = (index - 1 + periods.size) % periods.size
+        val next = (index + 1) % periods.size
+        return periods.mapIndexed { i, period ->
+            when {
+                i == index && isStart -> period.copy(startMinutes = minute)
+                i == previous && isStart -> period.copy(endMinutes = minute)
+                i == index -> period.copy(endMinutes = minute)
+                i == next -> period.copy(startMinutes = minute)
+                else -> period
+            }
+        }
+    }
+}
+
+object BrightnessSchedulePolicy {
+    /** Android 12+ 會把小於 10 分鐘的非精確 setWindow 視窗擴大；直接誠實採用下限。 */
+    const val WINDOW_MILLIS = 10 * 60_000L
 }
 
 /** 捷徑：固定 8 格（2 頁 × 2×2），null 代表空格。 */

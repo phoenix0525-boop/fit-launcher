@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 31
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.3.1"
+        versionCode = 7
+        versionName = "0.3.2"
     }
 
     // Release signing material is supplied only by local Gradle properties or CI secrets.

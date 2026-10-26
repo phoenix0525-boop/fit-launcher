@@ -187,9 +187,7 @@ class MainActivity : ComponentActivity() {
         TimePickerDialog(this, { _, h, m ->
             val v = h * 60 + m
             prefs.update { s ->
-                s.copy(display = s.display.copy(periods = s.display.periods.mapIndexed { i, p ->
-                    if (i != periodIndex) p else if (isStart) p.copy(startMinutes = v) else p.copy(endMinutes = v)
-                }))
+                s.copy(display = s.display.copy(periods = Schedule.updateBoundary(s.display.periods, periodIndex, isStart, v)))
             }
             afterDisplayChange()
         }, current / 60, current % 60, true).show()
@@ -235,7 +233,10 @@ class MainActivity : ComponentActivity() {
         val slots = remember(tick, state.shortcuts) { state.shortcuts.map { SlotView(it, AppRepository.resolve(this, it)) } }
         var editing by remember { mutableStateOf<Int?>(null) }
 
-        val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val precise = result[Manifest.permission.ACCESS_FINE_LOCATION] == true || GpsSpeed.hasPermission(this)
+            val approximate = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true || GpsSpeed.hasApproximatePermission(this)
+            if (!precise && approximate) toast("目前只允許約略位置；GPS 車速需要在權限設定開啟精確位置")
             GpsSpeed.start(this)
             resumeTick++
             if (screen == Screen.Checker) runChecks()
@@ -344,6 +345,7 @@ class MainActivity : ComponentActivity() {
                                 currentBrightness = BrightnessController.currentPercent(this@MainActivity),
                                 notificationGranted = MediaRepository.isPermissionGranted(this@MainActivity),
                                 locationGranted = GpsSpeed.hasPermission(this@MainActivity),
+                                approximateLocationGranted = GpsSpeed.hasApproximatePermission(this@MainActivity),
                                 otherHomes = AppRepository.otherHomeApps(this@MainActivity),
                                 diagnostics = Diagnostics.collect(this@MainActivity, state, media, gps),
                                 versionName = BuildInfo.versionName(this@MainActivity),
@@ -356,7 +358,7 @@ class MainActivity : ComponentActivity() {
                                 updateDisplay = { f -> prefs.update { st -> st.copy(display = f(st.display)) }; afterDisplayChange() },
                                 setManualBrightness = { v ->
                                     prefs.update { st -> st.copy(display = st.display.copy(manualBrightness = v), manualOverride = true) }
-                                    BrightnessController.apply(this@MainActivity, v, smooth = false)
+                                    BrightnessController.apply(this@MainActivity, v, smooth = state.display.smoothTransition)
                                     BrightnessController.scheduleNext(this@MainActivity)
                                 },
                                 restoreAuto = {
@@ -369,6 +371,12 @@ class MainActivity : ComponentActivity() {
                                 requestNotificationAccess = { openNotificationAccess() },
                                 requestLocation = {
                                     locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                },
+                                openLocationSettings = {
+                                    safeStart(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
+                                        "車機沒有提供 App 權限設定頁",
+                                    )
                                 },
                                 bind = { t -> screen = Screen.PickForBinding(t, true) },
                                 clearBinding = { t -> setBinding(t, null) },

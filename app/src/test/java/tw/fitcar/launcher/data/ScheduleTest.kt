@@ -63,6 +63,20 @@ class ScheduleTest {
         assertNull(Schedule.parseTime("24:00"))
     }
 
+    @Test fun alarmWindowMeetsAndroid12MinimumWindow() {
+        assertTrue(BrightnessSchedulePolicy.WINDOW_MILLIS >= 10 * 60_000L)
+    }
+
+    @Test fun changingBoundaryKeepsAdjacentPeriodsContinuous() {
+        val endChanged = Schedule.updateBoundary(defaults.periods, 0, isStart = false, value = t(16, 30))
+        assertEquals(t(16, 30), endChanged[0].endMinutes)
+        assertEquals(t(16, 30), endChanged[1].startMinutes)
+
+        val nightEndChanged = Schedule.updateBoundary(defaults.periods, 2, isStart = false, value = t(6, 30))
+        assertEquals(t(6, 30), nightEndChanged[2].endMinutes)
+        assertEquals(t(6, 30), nightEndChanged[0].startMinutes)
+    }
+
     @Test fun shortcutsMoveAndReplace() {
         val base = ShortcutSlots.normalize(listOf("a", "b", null, "d"))
         assertEquals(8, base.size)
