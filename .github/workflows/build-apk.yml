@@ -21,7 +21,9 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - name: Signing policy check
-        run: python scripts/check_signing_policy.py
+        run: |
+          python scripts/check_signing_policy.py
+          python scripts/check_version_progression.py
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
       - name: Build debug APK
