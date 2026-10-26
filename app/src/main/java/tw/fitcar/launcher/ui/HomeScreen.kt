@@ -172,9 +172,9 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
 private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
-        CardTitle("即時地圖") { Pill("Google 地圖") }
+        CardTitle("即時地圖") { Pill("OpenFreeMap") }
         Spacer(Modifier.height(10.dp))
-        GoogleMapPanel(gps = gps, modifier = Modifier.weight(1f).fillMaxWidth())
+        FreeMapPanel(gps = gps, modifier = Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             SecondaryButton("Google 導航", { openGoogleNavigation(context) })

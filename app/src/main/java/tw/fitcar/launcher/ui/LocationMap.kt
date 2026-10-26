@@ -2,7 +2,6 @@ package tw.fitcar.launcher.ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
 import android.net.Uri
@@ -23,14 +22,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.MapView
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.annotations.Marker
+import org.maplibre.android.annotations.MarkerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -113,32 +111,20 @@ internal fun openGoogleNavigation(context: Context) {
 }
 
 @Composable
-internal fun GoogleMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
+internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val key = remember(context) {
-        @Suppress("DEPRECATION")
-        context.packageManager.getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
-            .metaData?.getString("com.google.android.geo.API_KEY").orEmpty()
+    val view = remember(context) {
+        MapLibre.getInstance(context.applicationContext)
+        MapView(context).apply { onCreate(null) }
     }
-    var retry by remember { mutableIntStateOf(0) }
-    val available = remember(context, retry) {
-        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
-    }
-    if (key.isBlank() || !available) {
-        Column(modifier, verticalArrangement = Arrangement.Center) {
-            Hint(if (key.isBlank()) "Google 地圖尚未設定 API 金鑰" else "Google Play 服務尚未就緒")
-            Hint("目前位置仍由 GPS 提供；可使用下方按鈕開啟導航。", size = 13)
-            SecondaryButton("重新檢查", { retry++ })
-        }
-        return
-    }
-    val view = remember(context) { MapView(context).apply { onCreate(null) } }
-    var map by remember(view) { mutableStateOf<GoogleMap?>(null) }
+    var map by remember(view) { mutableStateOf<MapLibreMap?>(null) }
     var marker by remember(view) { mutableStateOf<Marker?>(null) }
     var following by remember(view) { mutableStateOf(true) }
     var loaded by remember(view) { mutableStateOf(false) }
     var slow by remember(view) { mutableStateOf(false) }
+    var failed by remember(view) { mutableStateOf(false) }
+    var retry by remember(view) { mutableIntStateOf(0) }
     DisposableEffect(view, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -151,30 +137,39 @@ internal fun GoogleMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         }
         lifecycle.addObserver(observer)
         var disposed = false
+        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) failed = true }
+        view.addOnDidFailLoadingMapListener(failureListener)
         view.getMapAsync { ready ->
             if (!disposed) {
                 map = ready
-                ready.uiSettings.isZoomControlsEnabled = true
-                ready.uiSettings.isMapToolbarEnabled = false
+                ready.uiSettings.isAttributionEnabled = true
                 ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(23.7, 121.0), 7f))
-                ready.setOnCameraMoveStartedListener { reason ->
-                    if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) following = false
+                ready.addOnCameraMoveStartedListener { reason ->
+                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) following = false
                 }
-                ready.setOnMapLoadedCallback { loaded = true }
+
             }
         }
         onDispose {
             disposed = true
+            view.removeOnDidFailLoadingMapListener(failureListener)
             lifecycle.removeObserver(observer)
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) view.onPause()
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) view.onStop()
             view.onDestroy()
         }
     }
-    LaunchedEffect(view) { delay(20_000); if (!loaded) slow = true }
-    LaunchedEffect(map, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following) {
+    LaunchedEffect(map, retry) {
+        loaded = false
+        failed = false
+        slow = false
+        map?.setStyle("https://tiles.openfreemap.org/styles/liberty") { loaded = true }
+        delay(20_000)
+        if (!loaded) slow = true
+    }
+    LaunchedEffect(map, loaded, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following) {
         val ready = map
-        if (ready != null && gps.hasRecentPosition()) {
+        if (ready != null && loaded && gps.hasRecentPosition()) {
             val point = LatLng(gps.latitude!!, gps.longitude!!)
             if (marker == null) marker = ready.addMarker(MarkerOptions().position(point).title("目前位置"))
             else marker?.position = point
@@ -187,6 +182,10 @@ internal fun GoogleMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             SecondaryButton("回到目前位置", { following = true })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
-        if (slow && !loaded) Hint("地圖載入較久，請檢查網路、金鑰授權及計費設定。", size = 13)
+                if (failed || slow && !loaded) {
+            Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 13)
+            SecondaryButton("重試載入", { marker = null; retry++ })
+        }
+        Hint("© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors", size = 11)
     }
 }
