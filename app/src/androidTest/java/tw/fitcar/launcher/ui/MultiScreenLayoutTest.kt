@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -95,7 +96,11 @@ class MultiScreenLayoutTest {
         listOf("所有 App", "設定", "語音", "開啟導航", "Google 導航", "KKBOX", "晴天").forEach(::assertNotClipped)
     }
 
-    @Test fun zx09Landscape() = check(1333, 800)
+    @Test fun zx09Landscape() {
+        check(1333, 800)
+        compose.onNodeWithText("目前位置").assertIsDisplayed()
+        compose.onNodeWithText("即時地圖").assertDoesNotExist()
+    }
     @Test fun common1024x600() = check(1024, 600)
     @Test fun hd720At240dpi() = check(853, 480)
     @Test fun ultraWide1920x720() = check(1280, 480)

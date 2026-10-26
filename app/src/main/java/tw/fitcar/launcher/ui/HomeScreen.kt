@@ -218,7 +218,6 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
 private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
-        CardTitle("即時地圖") { Pill("OpenFreeMap") }
         if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
             val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
             val mediaState by tw.fitcar.launcher.media.MediaRepository.state.collectAsState()
