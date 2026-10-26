@@ -1,0 +1,27 @@
+"""Verify a produced release; outputs public certificate digest only, never signing inputs."""
+import glob
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+EXPECTED = '52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6'
+
+def certificate_matches(output: str) -> bool:
+    digests = re.findall(r'Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F:]+)', output)
+    return len(digests) == 1 and digests[0].replace(':', '').upper() == EXPECTED
+
+if __name__ == '__main__':
+    apk = sys.argv[1]
+    sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+    candidates = glob.glob(str(Path(sdk or '') / 'build-tools' / '*' / 'apksigner'))
+    if not candidates:
+        raise SystemExit('apksigner unavailable')
+    signer = max(candidates, key=lambda p: tuple(int(v) for v in re.findall(r'\d+', Path(p).parent.name)))
+    result = subprocess.run([signer, 'verify', '--verbose', '--print-certs', apk], capture_output=True, text=True)
+    if result.returncode or not certificate_matches(result.stdout):
+        raise SystemExit('Release signature verification failed or certificate fingerprint did not match FIT')
+    fingerprint = ':'.join(EXPECTED[i:i+2] for i in range(0, 64, 2))
+    print('Verified FIT release certificate SHA-256: ' + fingerprint)
+    Path(apk).with_suffix('.certificate.txt').write_text('SHA-256: ' + fingerprint + '\n')

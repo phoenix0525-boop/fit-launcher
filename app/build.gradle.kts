@@ -18,11 +18,24 @@ android {
 
     }
 
+    // Signing material is injected only into the CI release step. No debug fallback.
+    val fitStorePath = System.getenv("FIT_KEYSTORE_PATH")
+    val fitPassword = System.getenv("FIT_KEYSTORE_PASSWORD")
+    val fitAlias = System.getenv("FIT_KEY_ALIAS")
+    val hasFitSigning = !fitStorePath.isNullOrBlank() && !fitPassword.isNullOrBlank() && !fitAlias.isNullOrBlank()
+    signingConfigs {
+        if (hasFitSigning) create("fitRelease") {
+            storeFile = file(fitStorePath!!)
+            storePassword = fitPassword
+            keyAlias = fitAlias
+            keyPassword = fitPassword
+            storeType = "PKCS12"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 個人側載用：release 版暫用 debug 簽章，方便直接安裝；正式散佈前須改為自有金鑰。
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasFitSigning) signingConfig = signingConfigs.getByName("fitRelease")
         }
     }
     compileOptions {
