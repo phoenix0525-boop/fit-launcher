@@ -3,4 +3,6 @@
     <string name="app_name">車機桌面</string>
     <string name="companion_name">車機側欄</string>
     <string name="media_listener_name">車機桌面音樂資訊</string>
+    <string name="system_shortcut_name">車機桌面系統快捷</string>
+    <string name="system_shortcut_description">只在你點擊快捷鍵時呼叫系統分割或最近使用畫面；不讀取畫面內容。可隨時停用。</string>
 </resources>

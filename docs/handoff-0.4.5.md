@@ -18,5 +18,5 @@ Based on claude/agama-features 27151b6132d0371eee35cf7556bcca8db30cb89f (0.4.4).
 4. Icon-only shortcuts launch/long-press correctly at font scale125%; About and app/system label are 車機桌面.
 5. Record which steering key fails and received key codes; compare brightness with schedule disabled and factory launcher. No vendor broadcast names guessed.
 
-## Next requested capability
-User asks system split-screen shortcut because manual Android13/factory split works. Candidate: optional AccessibilityService GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN only if exposed in getSystemActions, otherwise RECENTS and manual choice. Requires explicit on-device service enablement. Not implemented in this change; cannot promise direct split or hardware-key mapping. Keep external navigation fullscreen by default.
+## System split shortcut
+Implemented optional user-enabled AccessibilityService. Calls GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN only if exposed in getSystemActions; if unavailable or rejected calls RECENTS. Does not claim the screen actually split from an accepted request. No window-content retrieval, event listening or key filtering. User sees purpose and limitations before opening system accessibility settings. No automatic service enablement, app pairing, vendor broadcasts or global floating overlay. Test on the vehicle after manually enabling; hardware-key binding still requires actual received key codes.

@@ -234,6 +234,7 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             SecondaryButton("更換", actions.bindNav)
+            SystemSplitShortcut()
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
     }

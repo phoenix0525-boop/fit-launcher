@@ -81,6 +81,17 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".system.SystemShortcutService"
+            android:exported="true"
+            android:label="@string/system_shortcut_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/system_shortcuts" />
+        </service>
+
         <receiver
             android:name=".system.BrightnessReceiver"
             android:exported="false" />

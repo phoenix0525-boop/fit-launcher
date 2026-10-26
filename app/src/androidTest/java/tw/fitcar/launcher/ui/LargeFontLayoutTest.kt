@@ -76,6 +76,12 @@ class LargeFontLayoutTest {
         shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
+    @Test fun splitShortcutExplainsOptionalPermissionAt125Percent() {
+        show(MediaUiState())
+        compose.onNodeWithText("分割／多工").performClick()
+        listOf("啟用系統快捷入口", "前往設定", "稍後").forEach(::fullLabel)
+        screenshot("home-split-permission-125")
+    }
     @Test fun volumeDialogAndIconOnlyShortcutAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertIsDisplayed()

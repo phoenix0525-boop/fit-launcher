@@ -458,5 +458,6 @@ private fun AboutSection(data: SettingsData) {
         Hint("• 地圖平滑跟隨、車速自動縮放，訊號短暫中斷保留上次位置。", size = 14)
         Hint("• 中文地址更新時保留舊文字；過期位置明確標示，無資料時不再顯示座標。", size = 14)
         Hint("• 修正車燈調光與方向盤按鍵的檢測說明。", size = 14)
+        Hint("• 增加可選的系統分割／多工快捷入口。", size = 14)
     }
 }
