@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -51,7 +52,7 @@ fun FullScreenAppList(
                 Text(title, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 Hint(subtitle, size = 15)
             }
-            PrimaryButton(backLabel, onBack, Modifier.height(72.dp), icon = {
+            PrimaryButton(backLabel, onBack, Modifier.heightIn(min = 72.dp), icon = {
                 GlyphIcon(Glyph.HOME, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
             })
         }

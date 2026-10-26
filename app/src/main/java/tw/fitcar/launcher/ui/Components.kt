@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,9 +84,9 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 56.dp),
         shape = RadiusMd,
-        contentPadding = PaddingValues(horizontal = 22.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = p.accent,
             contentColor = if (p.isNight) p.bgDeep else Color.White,
@@ -94,7 +95,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         ),
     ) {
         if (icon != null) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -104,14 +105,14 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 56.dp),
         shape = RadiusMd,
         border = BorderStroke(1.dp, p.line),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = p.surfaceStrong, contentColor = p.text, disabledContentColor = p.textSoft),
     ) {
         if (icon != null) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 

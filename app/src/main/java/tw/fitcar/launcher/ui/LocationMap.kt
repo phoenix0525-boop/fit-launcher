@@ -177,8 +177,8 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         }
     }
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Hint(if (following) "跟隨目前位置" else "自由瀏覽", size = 13)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Hint(if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
             SecondaryButton("回到目前位置", { following = true })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())

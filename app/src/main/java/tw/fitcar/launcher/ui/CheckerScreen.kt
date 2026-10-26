@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -83,7 +84,7 @@ fun CheckerScreen(actions: CheckerActions) {
                 Hint(Status.entries.joinToString("　") { s -> "${s.mark}${s.label} ${results.values.count { it.status == s }}" }, size = 15)
             }
             SecondaryButton("重新檢測", actions.rerun)
-            PrimaryButton("返回", actions.back, Modifier.height(72.dp), icon = { GlyphIcon(Glyph.BACK, size = 26.dp, tint = if (p.isNight) p.bgDeep else Color.White) })
+            PrimaryButton("返回", actions.back, Modifier.heightIn(min = 72.dp), icon = { GlyphIcon(Glyph.BACK, size = 26.dp, tint = if (p.isNight) p.bgDeep else Color.White) })
         }
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {

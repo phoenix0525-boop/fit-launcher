@@ -1,5 +1,10 @@
 package tw.fitcar.launcher.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -88,6 +94,7 @@ fun HomeScreen(
     gps: GpsState,
     slots: List<SlotView>,
     actions: HomeActions,
+    mapContent: @Composable (GpsState, Modifier) -> Unit = { fix, modifier -> FreeMapPanel(fix, modifier) },
 ) {
     val p = LocalPalette.current
     Column(
@@ -96,10 +103,10 @@ fun HomeScreen(
     ) {
         StatusBar(shield, gps, actions)
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            NavPanel(nav, gps, actions, Modifier.weight(7f).fillMaxHeight())
-            Column(Modifier.weight(3f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.22f))
-                ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(0.78f))
+            NavPanel(nav, gps, actions, mapContent, Modifier.weight(6.5f).fillMaxHeight())
+            Column(Modifier.weight(3.5f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.5f))
+                ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
             }
         }
     }
@@ -123,16 +130,16 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
 }
 
 @Composable
-private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
+internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
     val p = LocalPalette.current
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
     Row(
-        Modifier.fillMaxWidth().height(84.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(horizontal = 22.dp),
+        Modifier.fillMaxWidth().heightIn(min = 104.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Clock(Modifier.width(220.dp))
+        Clock(Modifier.width(240.dp))
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             CurrentLocationCard(gps, Modifier.weight(1f))
             // GPS 車速：啟動器自行計算，明確標示來源
@@ -168,17 +175,18 @@ private fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, modifier: Modifier) {
+private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("即時地圖") { Pill("OpenFreeMap") }
         Spacer(Modifier.height(10.dp))
-        FreeMapPanel(gps = gps, modifier = Modifier.weight(1f).fillMaxWidth())
+        mapContent(gps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Google 導航", { openGoogleNavigation(context) })
-            PrimaryButton(nav?.label ?: "選擇導航 App", if (nav == null) actions.bindNav else actions.openNavFullscreen)
+            PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             SecondaryButton("更換", actions.bindNav)
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
@@ -200,34 +208,37 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         }
         Spacer(Modifier.height(10.dp))
         // 主要區：原本規劃為歌詞；目前沒有合法歌詞來源，依決策改顯示曲目並註明
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+        val spacious = maxHeight >= 240.dp
         Column(
-            Modifier.weight(1f).fillMaxWidth().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
                 !media.permissionGranted -> {
-                    GlyphIcon(Glyph.MUSIC, size = 44.dp, tint = p.textSoft)
+                    GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)
                     Text("尚未授權讀取播放資訊", color = p.text, fontSize = 20.sp, textAlign = TextAlign.Center)
-                    Hint("需在系統開啟本 App 的「通知存取」，才能透過 Android MediaSession 讀取 KKBOX 播放中的歌曲。", size = 14)
+                    Hint("請開啟 FIT 桌面的「通知存取」，以顯示歌曲與播放控制。", size = 14)
                     PrimaryButton("前往授權", actions.grantNotificationAccess)
                 }
                 !media.hasSession -> {
-                    GlyphIcon(Glyph.MUSIC, size = 44.dp, tint = p.textSoft)
+                    GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)
                     Text("尚未播放", color = p.text, fontSize = 22.sp)
                     Hint("開啟 KKBOX 並播放後，這裡會顯示歌曲資訊。", size = 14)
                 }
                 else -> {
                     val art = media.art
-                    if (art != null) {
+                    if (art != null && spacious) {
                         val img = remember(art) { art.asImageBitmap() }
-                        Image(img, null, Modifier.weight(1f, fill = false).size(150.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
+                        Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
-                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 32.sp)
-                    Text(listOfNotNull(media.artist, media.album).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Hint("歌詞資料尚未連接", size = 13)
+                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp)
+                    Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (spacious) Hint("歌詞資料尚未連接", size = 13)
                 }
             }
+        }
         }
         if (media.hasSession) {
             Spacer(Modifier.height(10.dp))
@@ -325,8 +336,10 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
 @Composable
 private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
+    BoxWithConstraints(modifier) {
+    val compact = maxHeight < 110.dp
     Column(
-        modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
+        Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
             .combinedClickableCompat(
                 onClick = {
                     when {
@@ -336,7 +349,7 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
                 },
                 onLongClick = { if (!slot.isEmpty) actions.editSlot(index) },
             )
-            .padding(8.dp),
+            .padding(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -350,12 +363,13 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
                 Hint("點擊重新選擇", size = 12)
             }
             else -> {
-                AppIcon(slot.entry?.icon, 52.dp)
-                Spacer(Modifier.height(6.dp))
-                Text(slot.entry?.label ?: "", color = p.text, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                AppIcon(slot.entry?.icon, if (compact) 32.dp else 48.dp)
+                Spacer(Modifier.height(4.dp))
+                Text(slot.entry?.label ?: "", color = p.text, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             }
         }
     }
+}
 }
 
 /** 統一的點擊／長按修飾子。 */
