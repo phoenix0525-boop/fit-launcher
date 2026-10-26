@@ -13,6 +13,7 @@ checks = {
     'release resource shrinking': 'isShrinkResources = true' in build,
     'optimized default ProGuard rules': 'proguard-android-optimize.txt' in build,
     'release arm64-only ABI': 'abiFilters += listOf("arm64-v8a")' in build,
+    'debug probes resource excluded': 'excludes += "DebugProbesKt.bin"' in build,
     'R8 full mode': 'android.enableR8.fullMode=true' in props,
     'RTL supported': 'android:supportsRtl="true"' in manifest,
     'boot receiver not exported': 'android:name=".system.BootReceiver"\n            android:exported="false"' in manifest,

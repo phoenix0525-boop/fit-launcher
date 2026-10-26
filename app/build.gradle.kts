@@ -55,6 +55,12 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    packaging {
+        resources {
+            // kotlinx-coroutines debug probe metadata is not needed in production or this launcher.
+            excludes += "DebugProbesKt.bin"
+        }
+    }
     buildFeatures {
         compose = true
     }
