@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -87,14 +88,14 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
     Column(Modifier.fillMaxSize().background(p.bg).padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("設定", color = p.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            PrimaryButton("返回桌面", actions.back, Modifier.height(72.dp), icon = {
+            PrimaryButton("返回桌面", actions.back, Modifier.heightIn(min = 72.dp), icon = {
                 GlyphIcon(Glyph.HOME, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
             })
         }
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(
-                Modifier.width(260.dp).fillMaxHeight().clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(10.dp),
+                Modifier.width(260.dp).fillMaxHeight().clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(10.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 SECTIONS.forEachIndexed { i, name ->
@@ -189,7 +190,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
         )
         var temp by remember(d.manualBrightness) { mutableFloatStateOf(d.manualBrightness.toFloat()) }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("${temp.toInt()}%", color = p.text, fontSize = 18.sp, modifier = Modifier.width(60.dp))
+            Text("${temp.toInt()}%", color = p.text, fontSize = 18.sp, modifier = Modifier.width(80.dp))
             Slider(
                 value = temp, onValueChange = { temp = it }, valueRange = 1f..100f,
                 onValueChangeFinished = { actions.setManualBrightness(temp.toInt()) },
@@ -210,11 +211,11 @@ private fun PeriodRow(index: Int, period: Period, actions: SettingsActions) {
         Modifier.fillMaxWidth().clip(RadiusMd).background(p.surface).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(period.label, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(56.dp))
+        Text(period.label, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(80.dp))
         SecondaryButton(Schedule.formatMinutes(period.startMinutes), { actions.pickTime(index, true) })
         Text("→", color = p.textSoft, fontSize = 18.sp)
         SecondaryButton(Schedule.formatMinutes(period.endMinutes), { actions.pickTime(index, false) })
-        Text("${temp.toInt()}%", color = p.text, fontSize = 17.sp, modifier = Modifier.width(56.dp))
+        Text("${temp.toInt()}%", color = p.text, fontSize = 17.sp, modifier = Modifier.width(80.dp))
         Slider(
             value = temp, onValueChange = { temp = it }, valueRange = 1f..100f,
             onValueChangeFinished = {

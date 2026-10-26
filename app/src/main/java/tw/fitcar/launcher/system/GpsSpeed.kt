@@ -19,6 +19,8 @@ data class GpsState(
     val providerEnabled: Boolean = false,
     val speedKmh: Float? = null,
     val accuracyM: Float? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val fixElapsed: Long = 0L,
 ) {
     /** 5 秒內有定位且有速度才算「已定位」。 */
@@ -36,6 +38,8 @@ object GpsSpeed {
         override fun onLocationChanged(location: Location) {
             _state.value = _state.value.copy(
                 providerEnabled = true,
+                latitude = location.latitude,
+                longitude = location.longitude,
                 speedKmh = if (location.hasSpeed()) location.speed * 3.6f else null,
                 accuracyM = if (location.hasAccuracy()) location.accuracy else null,
                 fixElapsed = SystemClock.elapsedRealtime(),
