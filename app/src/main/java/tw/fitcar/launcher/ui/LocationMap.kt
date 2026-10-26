@@ -143,7 +143,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             if (!disposed) {
                 map = ready
                 ready.uiSettings.isAttributionEnabled = true
-                ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(23.7, 121.0), 7f))
+                ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(23.7, 121.0), 7.0))
                 ready.addOnCameraMoveStartedListener { reason ->
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) following = false
                 }
@@ -173,7 +173,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             val point = LatLng(gps.latitude!!, gps.longitude!!)
             if (marker == null) marker = ready.addMarker(MarkerOptions().position(point).title("目前位置"))
             else marker?.position = point
-            if (following) ready.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 16f))
+            if (following) ready.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 16.0))
         }
     }
     Column(modifier) {
@@ -182,7 +182,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             SecondaryButton("回到目前位置", { following = true })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
-                if (failed || slow && !loaded) {
+        if (failed || slow && !loaded) {
             Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 13)
             SecondaryButton("重試載入", { marker = null; retry++ })
         }
