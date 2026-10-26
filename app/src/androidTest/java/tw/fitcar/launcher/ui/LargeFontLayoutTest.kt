@@ -53,7 +53,17 @@ class LargeFontLayoutTest {
         node.assertIsDisplayed()
         val layouts = mutableListOf<TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertFalse("文字裁切：$text layouts=${layouts.map { "${it.size} overflowW=${it.didOverflowWidth} overflowH=${it.didOverflowHeight} lines=${it.lineCount}" }}", layouts.isEmpty() || layouts.any { it.hasVisualOverflow })
+        // Check painted lines, ellipsis and vertical overflow. Paragraph width can include
+        // fractional rounding/unused alignment space beyond the integer Text node width.
+        val clipped = layouts.isEmpty() || layouts.any { layout ->
+            layout.didOverflowHeight || (0 until layout.lineCount).any { line ->
+                layout.isLineEllipsized(line) || layout.getLineLeft(line) < -1f ||
+                    layout.getLineRight(line) > layout.size.width + 1f
+            }
+        }
+        assertFalse("文字裁切：$text layouts=${layouts.map { layout ->
+            "${layout.size} paragraph=${layout.multiParagraph.width} lines=${(0 until layout.lineCount).map { layout.getLineLeft(it) to layout.getLineRight(it) }}"
+        }}", clipped)
     }
     private fun screenshot(name: String) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
