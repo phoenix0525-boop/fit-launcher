@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
         resumeTick++
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
+        CheckStore.load(this)
     }
 
     override fun onStop() {

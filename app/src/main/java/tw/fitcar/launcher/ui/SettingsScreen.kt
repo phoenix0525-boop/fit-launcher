@@ -283,9 +283,9 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
             ) {
                 RadioButton(selected = data.state.navOpenMode == mode, onClick = { actions.setNavMode(mode) }, colors = RadioButtonDefaults.colors(selectedColor = p.accent))
                 Column {
-                    Text(if (mode == NavOpenMode.SPLIT_FIRST) "實驗功能：嘗試分割畫面" else "一律全螢幕", color = p.text, fontSize = 17.sp)
+                    Text(if (mode == NavOpenMode.SPLIT_FIRST) "實驗功能：嘗試左右視窗" else "一律全螢幕", color = p.text, fontSize = 17.sp)
                     Hint(
-                        if (mode == NavOpenMode.SPLIT_FIRST) "開啟「FIT 側欄」並把導航王放在相鄰視窗；是否成功由車機系統決定。"
+                        if (mode == NavOpenMode.SPLIT_FIRST) "目標為左側導航、右側音樂與捷徑；系統決定視窗位置，可能需在系統分割列交換左右。"
                         else "直接以全螢幕開啟導航王，按 Home 回到本桌面。",
                         size = 13,
                     )
@@ -293,7 +293,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
             }
         }
     }
-    Section("實驗功能：分割畫面實測") {
+    Section("實驗功能：左右視窗實測") {
         Text(
             when (data.state.lastSplitResult) {
                 true -> "最近一次：成功進入分割畫面"

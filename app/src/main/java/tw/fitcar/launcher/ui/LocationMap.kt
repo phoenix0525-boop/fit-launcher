@@ -36,9 +36,6 @@ import tw.fitcar.launcher.system.GpsState
 import tw.fitcar.launcher.system.MapDiagnostics
 import java.util.Locale
 
-private fun GpsState.hasRecentPosition() = permission && providerEnabled &&
-    latitude != null && longitude != null && SystemClock.elapsedRealtime() - fixElapsed < 10_000
-
 /** Address lookup is independent of map billing. Never display a stale address as the current one. */
 @Composable
 internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
@@ -129,6 +126,9 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     var slow by remember(view) { mutableStateOf(false) }
     var failed by remember(view) { mutableStateOf(false) }
     var retry by remember(view) { mutableIntStateOf(0) }
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(view) { while (true) { now = SystemClock.elapsedRealtime(); delay(2_000) } }
+    val hasPosition = gps.hasRecentPosition(now)
     DisposableEffect(view, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -172,18 +172,21 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
-    LaunchedEffect(map, loaded, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following) {
+    LaunchedEffect(map, loaded, gps.latitude, gps.longitude, gps.providerEnabled, gps.permission, following, hasPosition) {
         val ready = map
-        if (ready != null && loaded && gps.hasRecentPosition()) {
+        if (ready != null && loaded && hasPosition) {
             val point = LatLng(gps.latitude!!, gps.longitude!!)
             if (marker == null) marker = ready.addMarker(MarkerOptions().position(point).title("目前位置"))
             else marker?.position = point
             if (following) ready.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 16.0))
+        } else {
+            marker?.let { old -> ready?.removeMarker(old) }
+            marker = null
         }
     }
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Hint(if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
+            Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition) "定位中…" else if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
             SecondaryButton("回到目前位置", { following = true })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())

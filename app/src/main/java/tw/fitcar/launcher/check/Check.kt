@@ -51,7 +51,11 @@ object CheckStore {
     fun version(context: Context): String {
         @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
-        return "${info.versionName} (${info.longVersionCode})"
+        val code = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
+        return "${info.versionName} ($code)"
     }
 
     fun scenario(context: Context): String {
@@ -83,11 +87,14 @@ object CheckStore {
         project(context)
     }
 
+    internal fun reload(context: Context) { records = null; load(context) }
+
     private fun project(context: Context) {
         val next = LinkedHashMap(_results.value.filterKeys { it !in projectedKeys })
         val keys = mutableSetOf<String>()
         records.orEmpty().groupBy { it.id }.forEach { (id, history) ->
-            val latest = history.lastOrNull { ResultValidity.matches(it.appVersion, it.contextKey, version(context), scenario(context)) }
+            val latest = history.lastOrNull { ResultValidity.matches(it.appVersion, it.contextKey, version(context), scenario(context)) &&
+                (id != "m_reverse" || "FIT預設=true" in it.contextKey) }
             history.forEachIndexed { index, result ->
                 if (result !== latest) {
                     val key = "history:$id:$index"

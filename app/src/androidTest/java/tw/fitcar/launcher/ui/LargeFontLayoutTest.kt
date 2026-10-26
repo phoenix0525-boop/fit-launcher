@@ -84,11 +84,11 @@ class LargeFontLayoutTest {
         screenshot("home-permission-125")
     }
     @Test fun playingCardAt125Percent() {
-        show(MediaUiState(permissionGranted = true, packageName = "test.music", title = "晴天", artist = "周杰倫",
+        show(MediaUiState(permissionGranted = true, packageName = "app.morphe.android.apps.youtube.music", playerName = "Morphe Music", title = "晴天", artist = "周杰倫",
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS))
         screenshot("home-playing-125")
-        listOf("晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定").forEach(::fullLabel)
+        listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
 }

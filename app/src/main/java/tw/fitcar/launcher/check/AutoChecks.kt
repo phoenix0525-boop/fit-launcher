@@ -188,7 +188,6 @@ object AutoChecks {
         val freeform = context.packageManager.hasSystemFeature(PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT)
         val forceResize = Settings.Global.getInt(context.contentResolver, "force_resizable_activities", 0) == 1
         val last = Prefs.get(context).state.value.lastSplitResult
-        val mode = Prefs.get(context).state.value.navOpenMode
         val f = "系統多視窗：${yn(multi)}，分割畫面：${yn(split)}，自由視窗：${if (freeform) "有" else "無"}，強制可調整大小：${if (forceResize) "開" else "關"}。" +
             "實測：${when (last) { true -> "成功"; false -> "未進入分割"; null -> "尚未測試" }}。"
         return CheckResult("split", "導航", "分割畫面（實驗功能）", if (last == false || multi == false || split == false) Status.NA else Status.INFO,
@@ -269,7 +268,7 @@ object AutoChecks {
             else -> "GPS 定位有效"
         }
         fun observed(id: String, title: String, value: tw.fitcar.launcher.system.MapObservation) = CheckResult(
-            id, "定位", title, if (value.time == 0L) Status.TODO else Status.INFO,
+            id, "定位", title, if (value.time == 0L) Status.TODO else if ("失敗" in value.state || "逾時" in value.state) Status.FAIL else Status.INFO,
             "${value.state}；最近觀察=${if (value.time == 0L) "無" else java.util.Date(value.time).toString()}。這是最近觀察，非目前畫面持續成功的保證。")
         return listOf(observed("map_base", "免費底圖狀態", base),
             CheckResult("map_gps", "定位", "地圖 GPS 狀態", if (gpsText == "GPS 定位有效") Status.PASS else Status.TODO, gpsText),
