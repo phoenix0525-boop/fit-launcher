@@ -14,7 +14,6 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.ForcedSize
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -26,6 +25,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import tw.fitcar.launcher.data.AppEntry
@@ -99,7 +99,7 @@ class MultiScreenLayoutTest {
     @Test fun zx09Landscape() {
         check(1333, 800)
         compose.onNodeWithText("目前位置").assertIsDisplayed()
-        compose.onNodeWithText("即時地圖").assertDoesNotExist()
+        assertTrue("不應再顯示即時地圖標題", compose.onAllNodesWithText("即時地圖").fetchSemanticsNodes().isEmpty())
     }
     @Test fun common1024x600() = check(1024, 600)
     @Test fun hd720At240dpi() = check(853, 480)
