@@ -326,7 +326,9 @@ class MainActivity : ComponentActivity() {
         val nav = remember(tick, apps, state.bindings.navigation) { AppCatalog.resolve(this, state.bindings.navigation) }
         val music = remember(tick, apps, state.bindings.music) { AppCatalog.resolve(this, state.bindings.music) }
         val shield = remember(tick, apps, state.bindings.shield) { AppCatalog.resolve(this, state.bindings.shield) }
-        val slots = remember(tick, apps, state.shortcuts) { state.shortcuts.map { SlotView(it, AppCatalog.resolve(this, it)) } }
+        val slots = remember(tick, apps, state.shortcuts, state.shortcutPages) {
+            ShortcutSlots.visible(state.shortcuts, state.shortcutPages).map { SlotView(it, AppCatalog.resolve(this, it)) }
+        }
         var editing by remember { mutableStateOf<Int?>(null) }
 
         val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -471,6 +473,7 @@ class MainActivity : ComponentActivity() {
                             data,
                             SettingsActions(
                                 back = { screen = Screen.Home },
+                                setShortcutPages = { n -> prefs.update { st -> st.copy(shortcutPages = ShortcutSlots.clampPages(n)) } },
                                 requestBluetooth = if (android.os.Build.VERSION.SDK_INT >= 31) {
                                     { bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) }
                                 } else null,
@@ -521,7 +524,7 @@ class MainActivity : ComponentActivity() {
                     ShortcutEditDialog(
                         label = slot?.entry?.label ?: "App 已移除",
                         canMoveBack = index > 0,
-                        canMoveForward = index < ShortcutSlots.COUNT - 1,
+                        canMoveForward = index < ShortcutSlots.visibleCount(state.shortcutPages) - 1,
                         onReplace = { editing = null; screen = Screen.PickForSlot(index) },
                         onRemove = {
                             prefs.update { st -> st.copy(shortcuts = ShortcutSlots.replace(st.shortcuts, index, null)) }

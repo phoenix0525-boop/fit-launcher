@@ -65,6 +65,7 @@ class SettingsData(
 class SettingsActions(
     val back: () -> Unit,
     val requestBluetooth: (() -> Unit)? = null,
+    val setShortcutPages: ((Int) -> Unit)? = null,
     val updateDisplay: ((DisplaySettings) -> DisplaySettings) -> Unit,
     val setManualBrightness: (Int) -> Unit,
     val restoreAuto: () -> Unit,
@@ -265,6 +266,17 @@ private fun BindingSection(data: SettingsData, actions: SettingsActions) {
             }
         }
         Hint("跟隨模式：指定來源沒有播放時，跟隨其他正在播放的 App；不會選取其他 App 暫停中的舊工作階段。", size = 13)
+    }
+    actions.setShortcutPages?.let { setPages ->
+        val pages = data.state.shortcutPages
+        Section("主畫面捷徑") {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SecondaryButton("－", { setPages(pages - 1) }, enabled = pages > tw.fitcar.launcher.data.ShortcutSlots.MIN_PAGES)
+                Text("$pages 頁（${pages * tw.fitcar.launcher.data.ShortcutSlots.PER_PAGE} 格）", color = LocalPalette.current.text, fontSize = 18.sp)
+                SecondaryButton("＋", { setPages(pages + 1) }, enabled = pages < tw.fitcar.launcher.data.ShortcutSlots.MAX_PAGES)
+            }
+            Hint("最多 6 頁 24 格，在主畫面左右滑動換頁。減少頁數時，後面的捷徑只是隱藏，不會刪除。", size = 13)
+        }
     }
 }
 

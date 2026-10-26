@@ -65,9 +65,24 @@ class ScheduleTest {
 
     @Test fun shortcutsMoveAndReplace() {
         val base = ShortcutSlots.normalize(listOf("a", "b", null, "d"))
-        assertEquals(8, base.size)
-        assertEquals(listOf("b", "a", null, "d", null, null, null, null), ShortcutSlots.move(base, 0, 1))
+        assertEquals(24, base.size)
+        assertEquals(listOf("b", "a", null, "d") + List(20) { null }, ShortcutSlots.move(base, 0, 1))
         assertEquals(null, ShortcutSlots.replace(base, 1, null)[1])
-        assertEquals(base, ShortcutSlots.move(base, 0, 9))
+        assertEquals(base, ShortcutSlots.move(base, 0, 24))
+        assertEquals("a", ShortcutSlots.move(base, 0, 23)[23])
+    }
+
+    @Test fun shortcutPagesAreClampedToOneToSix() {
+        assertEquals(1, ShortcutSlots.clampPages(0))
+        assertEquals(6, ShortcutSlots.clampPages(9))
+        assertEquals(2, ShortcutSlots.DEFAULT_PAGES)
+        assertEquals(12, ShortcutSlots.visibleCount(3))
+        assertEquals(24, ShortcutSlots.visibleCount(6))
+    }
+
+    @Test fun hiddenShortcutsAreKeptWhenPagesShrink() {
+        val full = ShortcutSlots.replace(ShortcutSlots.normalize(emptyList()), 20, "x")
+        assertEquals(4, ShortcutSlots.visible(full, 1).size)
+        assertEquals("x", ShortcutSlots.normalize(full)[20])
     }
 }

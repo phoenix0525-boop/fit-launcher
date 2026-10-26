@@ -392,7 +392,7 @@ private fun Progress(media: MediaUiState, actions: HomeActions) {
 @Composable
 internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
-    val pages = ShortcutSlots.COUNT / ShortcutSlots.PER_PAGE
+    val pages = (slots.size / ShortcutSlots.PER_PAGE).coerceIn(1, ShortcutSlots.MAX_PAGES)
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {

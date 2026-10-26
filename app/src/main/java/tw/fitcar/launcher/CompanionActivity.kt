@@ -106,7 +106,9 @@ class CompanionActivity : ComponentActivity() {
         LaunchedEffect(Unit) { while (true) { minute = BrightnessController.nowMinutes(); delay(30_000) } }
         val palette = paletteFor(Schedule.themeFor(state.display, minute))
         val music = remember(state.bindings.music) { AppRepository.resolve(this, state.bindings.music) }
-        val slots = remember(state.shortcuts) { state.shortcuts.map { SlotView(it, AppRepository.resolve(this, it)) } }
+        val slots = remember(state.shortcuts, state.shortcutPages) {
+            tw.fitcar.launcher.data.ShortcutSlots.visible(state.shortcuts, state.shortcutPages).map { SlotView(it, AppRepository.resolve(this, it)) }
+        }
 
         fun launch(key: String?) {
             val e = AppRepository.resolve(this, key) ?: return

@@ -82,10 +82,20 @@ object Schedule {
     }
 }
 
-/** 捷徑：固定 8 格（2 頁 × 2×2），null 代表空格。 */
+/**
+ * 捷徑：最多 24 格（6 頁 × 2×2，參考 AGAMA 的 24 個自訂按鈕），顯示頁數可在設定調整。
+ * 減少頁數時，後面的捷徑只是隱藏，資料保留。null 代表空格。
+ */
 object ShortcutSlots {
-    const val COUNT = 8
+    const val COUNT = 24
     const val PER_PAGE = 4
+    const val MIN_PAGES = 1
+    const val MAX_PAGES = COUNT / PER_PAGE
+    const val DEFAULT_PAGES = 2
+
+    fun clampPages(pages: Int): Int = pages.coerceIn(MIN_PAGES, MAX_PAGES)
+    fun visibleCount(pages: Int): Int = clampPages(pages) * PER_PAGE
+    fun visible(list: List<String?>, pages: Int): List<String?> = normalize(list).take(visibleCount(pages))
 
     fun normalize(list: List<String?>): List<String?> =
         List(COUNT) { index -> list.getOrNull(index)?.takeIf { it.isNotBlank() } }
