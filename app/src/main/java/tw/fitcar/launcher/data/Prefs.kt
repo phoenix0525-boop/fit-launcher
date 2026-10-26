@@ -29,6 +29,7 @@ data class LauncherState(
     val shortcutPages: Int = ShortcutSlots.DEFAULT_PAGES,
     /** 主題強調色 id（見 ui.AccentTheme）。 */
     val accentTheme: String = "mist",
+    val visualStyle: String = "original",
 )
 
 /**
@@ -84,6 +85,7 @@ class Prefs private constructor(context: Context) {
             manualOverride = sp.getBoolean("manual_override", false),
             shortcutPages = ShortcutSlots.clampPages(sp.getInt("shortcut_pages", ShortcutSlots.DEFAULT_PAGES)),
             accentTheme = sp.getString("accent_theme", "mist") ?: "mist",
+            visualStyle = sp.getString("visual_style", "original") ?: "original",
         )
     }
 
@@ -109,6 +111,7 @@ class Prefs private constructor(context: Context) {
             putBoolean("manual_override", s.manualOverride)
             putInt("shortcut_pages", ShortcutSlots.clampPages(s.shortcutPages))
             putString("accent_theme", s.accentTheme)
+            putString("visual_style", s.visualStyle)
         }.apply()
     }
 

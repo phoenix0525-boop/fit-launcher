@@ -312,7 +312,7 @@ class MainActivity : ComponentActivity() {
         // 每 30 秒重新計算日／夜主題（跨日與系統時間變更都會反映）
         var minute by remember { mutableIntStateOf(BrightnessController.nowMinutes()) }
         LaunchedEffect(Unit) { while (true) { minute = BrightnessController.nowMinutes(); delay(30_000) } }
-        val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme))
+        val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme), tw.fitcar.launcher.ui.VisualStyle.fromId(state.visualStyle))
         LaunchedEffect(palette) {
             window.statusBarColor = palette.bg.toArgb()
             window.navigationBarColor = palette.bg.toArgb()
@@ -477,6 +477,7 @@ class MainActivity : ComponentActivity() {
                             SettingsActions(
                                 back = { screen = Screen.Home },
                                 setAccent = { t -> prefs.update { st -> st.copy(accentTheme = t.id) } },
+                                setStyle = { t -> prefs.update { st -> st.copy(visualStyle = t.id) } },
                                 setShortcutPages = { n -> prefs.update { st -> st.copy(shortcutPages = ShortcutSlots.clampPages(n)) } },
                                 requestBluetooth = if (android.os.Build.VERSION.SDK_INT >= 31) {
                                     { bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) }

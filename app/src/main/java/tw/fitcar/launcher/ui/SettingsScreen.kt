@@ -69,6 +69,7 @@ class SettingsActions(
     val requestBluetooth: (() -> Unit)? = null,
     val setShortcutPages: ((Int) -> Unit)? = null,
     val setAccent: ((AccentTheme) -> Unit)? = null,
+    val setStyle: ((VisualStyle) -> Unit)? = null,
     val updateDisplay: ((DisplaySettings) -> DisplaySettings) -> Unit,
     val setManualBrightness: (Int) -> Unit,
     val restoreAuto: () -> Unit,
@@ -173,6 +174,25 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
         Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請在實機診斷記錄。", size = 13)
         if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
         data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
+    }
+    actions.setStyle?.let { setStyle ->
+        Section("畫面風格") {
+            Hint("風格與強調色可分別搭配。白色風格在夜間仍切換深色，沿用原有日夜排程。", size = 13)
+            val current = VisualStyle.fromId(data.state.visualStyle)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                VisualStyle.entries.forEach { style ->
+                    val preview = styledBase(p.isNight, style)
+                    Column(
+                        Modifier.clip(RadiusMd).background(preview.surface)
+                            .border(if (style == current) 2.dp else 1.dp, if (style == current) p.accent else p.line, RadiusMd)
+                            .clickable { setStyle(style) }.padding(16.dp),
+                    ) {
+                        Text((if (style == current) "✓ " else "") + style.label, color = preview.text, fontSize = 18.sp)
+                        Text(style.description, color = preview.textSoft, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
     }
     actions.setAccent?.let { setAccent ->
         Section("主題強調色") {

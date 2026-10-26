@@ -63,10 +63,50 @@ val NightPalette = Palette(
     danger = Color(0xFFD18B83),
 )
 
+/** 畫面風格與日夜／強調色分開保存，切換風格不改亮度排程。 */
+enum class VisualStyle(val id: String, val label: String, val description: String) {
+    ORIGINAL("original", "原有", "暖灰底色，保留目前配色"),
+    JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
+    WHITE("white", "白色", "清爽白底、灰白分層與深灰文字");
+
+    companion object {
+        fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
+    }
+}
+
+fun styledBase(night: Boolean, style: VisualStyle): Palette {
+    val base = if (night) NightPalette else DayPalette
+    return when (style) {
+        VisualStyle.ORIGINAL -> base
+        VisualStyle.JAPANESE -> if (night) base.copy(
+            bg = Color(0xFF24221F), bgDeep = Color(0xFF191815),
+            surface = Color(0xFF302D28), surfaceStrong = Color(0xFF3B3731),
+            surfaceMuted = Color(0xFF292621), text = Color(0xFFF3EEE4),
+            textSoft = Color(0xFFC0B7A8), line = Color(0xFF524C42),
+        ) else base.copy(
+            bg = Color(0xFFEDE8DE), bgDeep = Color(0xFFE1DACD),
+            surface = Color(0xFFF7F3EA), surfaceStrong = Color(0xFFFFFCF5),
+            surfaceMuted = Color(0xFFE7E0D3), text = Color(0xFF38342E),
+            textSoft = Color(0xFF665D52), line = Color(0xFFC9C0B1),
+        )
+        VisualStyle.WHITE -> if (night) base.copy(
+            bg = Color(0xFF1C1E21), bgDeep = Color(0xFF121416),
+            surface = Color(0xFF272A2E), surfaceStrong = Color(0xFF33373C),
+            surfaceMuted = Color(0xFF222529), text = Color(0xFFF4F5F6),
+            textSoft = Color(0xFFBAC0C7), line = Color(0xFF494F57),
+        ) else base.copy(
+            bg = Color(0xFFF4F5F7), bgDeep = Color(0xFFE7E9ED),
+            surface = Color(0xFFFFFFFF), surfaceStrong = Color(0xFFFFFFFF),
+            surfaceMuted = Color(0xFFEDEFF2), text = Color(0xFF252A31),
+            textSoft = Color(0xFF59616B), line = Color(0xFFCCD1D8),
+        )
+    }
+}
+
 val LocalPalette = staticCompositionLocalOf { DayPalette }
 
-fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE): Palette {
-    val base = if (theme == ThemeChoice.NIGHT) NightPalette else DayPalette
+fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE, style: VisualStyle = VisualStyle.ORIGINAL): Palette {
+    val base = styledBase(theme == ThemeChoice.NIGHT, style)
     val c = if (theme == ThemeChoice.NIGHT) accent.night else accent.day
     return base.copy(accent = Color(c.accent), accentStrong = Color(c.accentStrong), accentSoft = Color(c.accentSoft))
 }
