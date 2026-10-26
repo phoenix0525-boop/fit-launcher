@@ -104,7 +104,7 @@ class CompanionActivity : ComponentActivity() {
         val media by MediaRepository.state.collectAsState()
         var minute by remember { mutableIntStateOf(BrightnessController.nowMinutes()) }
         LaunchedEffect(Unit) { while (true) { minute = BrightnessController.nowMinutes(); delay(30_000) } }
-        val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme))
+        val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme), tw.fitcar.launcher.ui.VisualStyle.fromId(state.visualStyle))
         val music = remember(state.bindings.music) { AppRepository.resolve(this, state.bindings.music) }
         val slots = remember(state.shortcuts, state.shortcutPages) {
             tw.fitcar.launcher.data.ShortcutSlots.visible(state.shortcuts, state.shortcutPages).map { SlotView(it, AppRepository.resolve(this, it)) }
