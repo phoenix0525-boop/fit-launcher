@@ -74,9 +74,6 @@ object MediaRepository {
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
         override fun onPlaybackStateChanged(state: PlaybackState?) { appContext?.let { select(it, controllers) } }
-        override fun onSessionDestroyed() {
-            appContext?.let { refresh(it) }
-        }
     }
 
     fun isPermissionGranted(context: Context): Boolean =

@@ -25,8 +25,12 @@ class SessionSelectionTest {
         assertEquals(0, SessionSelection.choose(listOf(SessionCandidate(kk, false), SessionCandidate(yt, true)), kk, false, 1))
         assertNull(SessionSelection.choose(listOf(SessionCandidate(yt, true)), kk, false, null))
     }
-    @Test fun unrelatedPausedSessionsAreNeverSelected() {
-        assertNull(SessionSelection.choose(listOf(SessionCandidate(yt, false)), kk, true, 0))
+    @Test fun unrelatedPausedSessionsAreNeverSelectedOnColdStart() {
+        assertNull(SessionSelection.choose(listOf(SessionCandidate(yt, false)), kk, true, null))
+    }
+    @Test fun pausedFollowingSourceCanResumeUntilAnotherPlayerStarts() {
+        assertEquals(1, SessionSelection.choose(listOf(SessionCandidate(kk, false), SessionCandidate(yt, false)), kk, true, 1))
+        assertEquals(0, SessionSelection.choose(listOf(SessionCandidate(kk, true), SessionCandidate(yt, false)), kk, true, 1))
     }
     @Test fun playingTokenWinsOverPausedTokenOfSamePackage() {
         assertEquals(1, SessionSelection.choose(listOf(SessionCandidate(kk, false), SessionCandidate(kk, true)), kk, false, null))
