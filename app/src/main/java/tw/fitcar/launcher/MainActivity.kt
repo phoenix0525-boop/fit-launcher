@@ -59,6 +59,7 @@ import tw.fitcar.launcher.nav.LaunchResult
 import tw.fitcar.launcher.nav.NavLauncher
 import tw.fitcar.launcher.system.BrightnessController
 import tw.fitcar.launcher.system.GpsSpeed
+import tw.fitcar.launcher.system.SystemStatusMonitor
 import tw.fitcar.launcher.ui.BindingTarget
 import tw.fitcar.launcher.ui.CheckerActions
 import tw.fitcar.launcher.ui.CheckerScreen
@@ -178,6 +179,7 @@ class MainActivity : ComponentActivity() {
         AppCatalog.start(this)
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
+        SystemStatusMonitor.start(this)
         CheckStore.load(this)
         MediaListenerService.rescanNavigation()
     }
@@ -185,6 +187,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         GpsSpeed.stop()
+        SystemStatusMonitor.stop()
     }
 
     /** 已在桌面時再按 Home：關閉所有覆蓋畫面回到主畫面。 */
@@ -331,6 +334,10 @@ class MainActivity : ComponentActivity() {
             resumeTick++
             if (screen == Screen.Checker) runChecks()
         }
+        val bluetoothPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            SystemStatusMonitor.start(this)
+            resumeTick++
+        }
         locationRequest = {
             locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
@@ -454,6 +461,7 @@ class MainActivity : ComponentActivity() {
                                 currentBrightness = BrightnessController.currentPercent(this@MainActivity),
                                 notificationGranted = MediaRepository.isPermissionGranted(this@MainActivity),
                                 locationGranted = GpsSpeed.hasPermission(this@MainActivity),
+                                bluetoothGranted = SystemStatusMonitor.canReadBluetoothConnection(this@MainActivity),
                                 otherHomes = AppRepository.otherHomeApps(this@MainActivity),
                                 diagnostics = Diagnostics.collect(this@MainActivity, state, media, gps),
                                 versionName = BuildInfo.versionName(this@MainActivity),
@@ -463,6 +471,9 @@ class MainActivity : ComponentActivity() {
                             data,
                             SettingsActions(
                                 back = { screen = Screen.Home },
+                                requestBluetooth = if (android.os.Build.VERSION.SDK_INT >= 31) {
+                                    { bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) }
+                                } else null,
                                 updateDisplay = { f -> prefs.update { st -> st.copy(display = f(st.display)) }; afterDisplayChange() },
                                 setManualBrightness = { v ->
                                     prefs.update { st -> st.copy(display = st.display.copy(manualBrightness = v), manualOverride = true) }

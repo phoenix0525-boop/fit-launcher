@@ -200,6 +200,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
                 }
             }
         }
+        StatusIndicatorRow()
         actions.voice?.let { SecondaryButton("語音", it) }
         SecondaryButton("所有 App", actions.openAllApps, icon = { GlyphIcon(Glyph.GRID, size = 22.dp) })
         SecondaryButton("設定", actions.openSettings, icon = { GlyphIcon(Glyph.GEAR, size = 22.dp) })
@@ -228,6 +229,31 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("更換", actions.bindNav)
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
+    }
+}
+
+/** Wi-Fi／行動網路／藍牙／USB／電池（有電池時）小標籤，參考 AGAMA 狀態列。 */
+@Composable
+private fun StatusIndicatorRow() {
+    val p = LocalPalette.current
+    val status by tw.fitcar.launcher.system.SystemStatusMonitor.state.collectAsState()
+    val items = remember(status) { tw.fitcar.launcher.system.StatusIndicators.build(status) }
+    val compact = LocalLayoutSpec.current.compactChrome
+    // 精簡版只留網路與藍牙，避免擠掉主要按鈕
+    val shown = if (compact) items.filter { it.kind == tw.fitcar.launcher.system.IndicatorKind.NETWORK || it.kind == tw.fitcar.launcher.system.IndicatorKind.BLUETOOTH } else items
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.End) {
+        shown.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                row.forEach { item ->
+                    Text(
+                        item.label,
+                        Modifier.clip(RadiusSm).background(if (item.active) p.accentSoft else p.surfaceMuted).padding(horizontal = 8.dp, vertical = 3.dp),
+                        color = when { item.warning -> p.danger; item.active -> p.accentStrong; else -> p.textSoft },
+                        fontSize = 12.sp, maxLines = 1,
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -56,6 +56,7 @@ class SettingsData(
     val currentBrightness: Int?,
     val notificationGranted: Boolean,
     val locationGranted: Boolean,
+    val bluetoothGranted: Boolean = true,
     val otherHomes: List<AppEntry>,
     val diagnostics: List<Pair<String, String>>,
     val versionName: String,
@@ -63,6 +64,7 @@ class SettingsData(
 
 class SettingsActions(
     val back: () -> Unit,
+    val requestBluetooth: (() -> Unit)? = null,
     val updateDisplay: ((DisplaySettings) -> DisplaySettings) -> Unit,
     val setManualBrightness: (Int) -> Unit,
     val restoreAuto: () -> Unit,
@@ -316,6 +318,11 @@ private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
         StatusLine(data.locationGranted, "已允許", "未允許：狀態列不顯示車速")
         Hint("車速由本桌面以 GPS 計算並標示「GPS 車速」，不是神盾的資料。", size = 13)
         if (!data.locationGranted) SecondaryButton("允許定位", actions.requestLocation)
+    }
+    Section("附近裝置（藍牙連線狀態）") {
+        StatusLine(data.bluetoothGranted, "已允許", "未允許：狀態列只顯示藍牙開關")
+        Hint("只用來判斷手機是否已用藍牙連上車機，顯示在狀態列；不掃描、不連線其他裝置。", size = 13)
+        if (!data.bluetoothGranted) actions.requestBluetooth?.let { SecondaryButton("允許", it) }
     }
     Section("修改系統設定（背光）") {
         StatusLine(data.canWriteBrightness, "已允許", "未允許：亮度排程不會生效")
