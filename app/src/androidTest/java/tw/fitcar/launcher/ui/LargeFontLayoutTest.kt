@@ -39,7 +39,7 @@ class LargeFontLayoutTest {
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = GpsState(),
-                        slots = List(8) { SlotView(null, null) }, actions = actions,
+                        slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
                         },
@@ -75,6 +75,15 @@ class LargeFontLayoutTest {
         val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
         shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+    }
+    @Test fun volumeDialogAndIconOnlyShortcutAt125Percent() {
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
+        compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertIsDisplayed()
+        compose.onAllNodesWithText("這是一個很長的應用程式捷徑名稱").assertCountEquals(0)
+        compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
+        compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
+        listOf("降低", "提高", "關閉").forEach(::fullLabel)
+        screenshot("home-volume-125")
     }
     @Test fun permissionCardButtonAt125Percent() {
         show(MediaUiState())

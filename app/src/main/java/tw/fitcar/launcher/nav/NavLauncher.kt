@@ -19,7 +19,7 @@ sealed interface LaunchResult {
  * 導航預設全螢幕；分割畫面僅為使用者主動啟用的實驗功能。
  *
  * 桌面（HOME）類型的 Activity 在 Android 上不能進入分割畫面，所以分割模式是：
- * 先開本 App 的一般 Activity「FIT 側欄」，再由側欄以 FLAG_ACTIVITY_LAUNCH_ADJACENT 開導航王。
+ * 先開本 App 的一般 Activity「車機側欄」，再由側欄以 FLAG_ACTIVITY_LAUNCH_ADJACENT 開導航王。
  * 車機若不支援，系統會直接把導航王開成全螢幕，即自然退回全螢幕。
  * 70/30 比例由系統分割列決定，App 無法強制。
  */

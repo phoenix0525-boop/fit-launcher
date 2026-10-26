@@ -29,7 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/* ---------------- 手勢：判斷原車機雙指音量手勢是否在 FIT 桌面內仍有效 ---------------- */
+/* ---------------- 手勢：判斷原車機雙指音量手勢是否在 車機桌面內仍有效 ---------------- */
 
 enum class GestureKind(val id: String, val label: String, val expect: String) {
     TWO_UP("gesture_two_up", "雙指上滑", "音量增加"),
@@ -53,14 +53,14 @@ object GestureTest {
             GestureKind.TWO_DOWN -> after.volume < before.volume
             else -> after.muted != before.muted || (after.volume == 0) != (before.volume == 0)
         }
-        val f = "在 FIT 桌面內做「${kind.label}」：音量 ${before.volume}${if (before.muted) "（靜音）" else ""} → ${after.volume}${if (after.muted) "（靜音）" else ""}；" +
+        val f = "在 車機桌面內做「${kind.label}」：音量 ${before.volume}${if (before.muted) "（靜音）" else ""} → ${after.volume}${if (after.muted) "（靜音）" else ""}；" +
             (if (appSaw) "App 有收到這個手勢的觸控。" else "App 沒收到這個手勢的觸控（被系統先攔截，或手勢未做完整）。")
         return if (changed) {
             CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.PASS, f + "系統層級有處理。",
-                "這個手勢由車機系統或觸控驅動提供，換成 FIT 桌面後仍有效，不需要另外實作。")
+                "這個手勢由車機系統或觸控驅動提供，換成 車機桌面後仍有效，不需要另外實作。")
         } else {
             CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.FAIL, f + "音量沒有變化。",
-                "若在原廠桌面做同樣手勢會${kind.expect}，表示手勢只存在原廠桌面，FIT 桌面需要自行實作（記入下一版需求）。" +
+                "若在原廠桌面做同樣手勢會${kind.expect}，表示手勢只存在原廠桌面，車機桌面需要自行實作（記入下一版需求）。" +
                     "若原廠桌面也沒反應，代表原車機不是用這個手勢，可忽略。")
         }
     }
@@ -86,10 +86,10 @@ object KeyLog {
         val codes = _events.value.map { it.name.removePrefix("KEYCODE_") }.distinct()
         return if (codes.isEmpty()) {
             CheckResult("keys", "操作", "方向盤／面板按鍵", Status.INFO, "測試期間 App 沒有收到任何按鍵事件。",
-                "方向盤按鍵由車機系統（MCU／CAN 盒）直接處理，App 收不到是正常的；請在手動檢查確認切歌、音量在 FIT 桌面上仍有效。")
+                "未收到事件不能判定正常。若原廠桌面有效而 車機桌面無效，需確認原廠專用按鍵介面；先記錄失效鍵與兩個桌面的差異。")
         } else {
             CheckResult("keys", "操作", "方向盤／面板按鍵", Status.INFO, "App 收到：${codes.joinToString("、")}。",
-                "這些按鍵 FIT 桌面可以接收；若有按鍵在 FIT 桌面上失效（例如 HOME、MODE），記下來可在下一版對應處理。")
+                "這些按鍵 車機桌面可以接收；若有按鍵在 車機桌面上失效（例如 HOME、MODE），記下來可在下一版對應處理。")
         }
     }
 }
@@ -123,12 +123,12 @@ object BrightnessTest {
             when (screenChanged) { true -> "使用者確認螢幕有變化。"; false -> "使用者確認螢幕沒有變化。"; null -> "" }
         return when {
             screenChanged == false -> CheckResult("brightness_test", "亮度", "背光實測", Status.FAIL, f,
-                "車機背光不是走 Android 系統亮度（可能由 MCU／原廠設定控制），FIT 桌面的亮度排程不會有效果，建議關閉，只保留日夜主題。",
-                Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
+                "車機背光不是走 Android 系統亮度（可能由 MCU／原廠設定控制），車機桌面的亮度排程不會有效果，建議關閉，只保留日夜主題。",
+                Fix("關閉 車機桌面亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
             !kept -> CheckResult("brightness_test", "亮度", "背光實測", Status.FAIL, f,
-                "寫入後被系統改回，可能是車燈調光或原廠自動亮度在控制。若開大燈時亮度會自己變，建議關閉 FIT 亮度排程以免互搶。",
-                Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
-            screenChanged == true -> CheckResult("brightness_test", "亮度", "背光實測", Status.PASS, f, "背光可由 FIT 桌面控制。夜間開大燈時再確認一次不會被車燈調光覆蓋。")
+                "寫入後被系統改回，可能是車燈調光或原廠自動亮度在控制。若開大燈時亮度會自己變，建議關閉 車機桌面亮度排程以免互搶。",
+                Fix("關閉 車機桌面亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
+            screenChanged == true -> CheckResult("brightness_test", "亮度", "背光實測", Status.PASS, f, "背光可由 車機桌面控制。夜間開大燈時再確認一次不會被車燈調光覆蓋。")
             else -> CheckResult("brightness_test", "亮度", "背光實測", Status.TODO, f, "請按「有變化／沒變化」確認螢幕實際亮度。")
         }
     }
@@ -221,16 +221,16 @@ data class ManualItem(val id: String, val group: String, val title: String, val 
 
 val MANUAL_ITEMS = listOf(
     ManualItem("m_voice", "操作", "語音控制", "點語音測開導航、播放、暫停、上一首／下一首、亮度；Google 目的地須先確認。", "記錄無服務、無收音、辨識錯字或控制對象不符。"),
-    ManualItem("m_google_hint", "導航", "Google 導航通知", "選 Google 地圖並開始導航，返回 FIT 核對提示；停止導航或 8 秒沒有新通知時確認舊方向距離消失。", "通知收不到時應顯示請看地圖，不能保留舊轉彎提示。"),
+    ManualItem("m_google_hint", "導航", "Google 導航通知", "選 Google 地圖並開始導航，返回車機桌面 核對提示；停止導航或 8 秒沒有新通知時確認舊方向距離消失。", "通知收不到時應顯示請看地圖，不能保留舊轉彎提示。"),
     ManualItem("m_player_kkbox", "音樂", "KKBOX 播放一致性", "從實際安裝清單選擇 KKBOX，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
     ManualItem("m_player_yt", "音樂", "官方 YT Music 播放一致性", "從實際安裝清單選擇 官方 YT Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
     ManualItem("m_player_morphe", "音樂", "Morphe Music 播放一致性", "從實際安裝清單選擇 Morphe Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
-    ManualItem("m_reverse", "手動檢查", "倒車影像", "FIT 桌面為預設桌面時打 R 檔。", "倒車畫面被蓋住或延遲：立即改回原廠桌面，回報給 AI 處理（最高優先）。"),
-    ManualItem("m_home", "手動檢查", "Home 鍵", "在導航王、KKBOX 中按 Home 鍵或面板 Home。", "沒回到 FIT 桌面：記下按鍵位置，下一版處理。"),
-    ManualItem("m_wheel", "手動檢查", "方向盤按鍵", "在 FIT 桌面與導航中按切歌、音量、語音鍵。", "在 FIT 桌面失效：記下哪個鍵，配合按鍵測試結果處理。"),
-    ManualItem("m_shield", "手動檢查", "神盾浮動窗", "開神盾後回到 FIT 桌面，看浮動窗與警示音。", "浮動窗消失：到神盾的「顯示在其他應用程式上層」開啟。"),
-    ManualItem("m_headlight", "手動檢查", "車燈調光", "夜間開關大燈，看螢幕亮度是否自行改變。", "會自己變：關閉 FIT 亮度排程，只保留日夜主題。"),
-    ManualItem("m_nav_landscape", "手動檢查", "導航王顯示", "從 FIT 桌面開導航王並開始導航。", "畫面方向、比例不對或返回後中斷：記錄情況。"),
+    ManualItem("m_reverse", "手動檢查", "倒車影像", "車機桌面為預設桌面時打 R 檔。", "倒車畫面被蓋住或延遲：立即改回原廠桌面，回報給 AI 處理（最高優先）。"),
+    ManualItem("m_home", "手動檢查", "Home 鍵", "在導航王、KKBOX 中按 Home 鍵或面板 Home。", "沒回到 車機桌面：記下按鍵位置，下一版處理。"),
+    ManualItem("m_wheel", "手動檢查", "方向盤按鍵", "在 車機桌面與導航中按切歌、音量、語音鍵。", "在 車機桌面失效：記下哪個鍵，配合按鍵測試結果處理。"),
+    ManualItem("m_shield", "手動檢查", "神盾浮動窗", "開神盾後回到 車機桌面，看浮動窗與警示音。", "浮動窗消失：到神盾的「顯示在其他應用程式上層」開啟。"),
+    ManualItem("m_headlight", "手動檢查", "車燈調光", "夜間開關大燈，確認是否依預期變暗、關燈恢復，且沒有反覆跳動。", "完全不變：比較原廠桌面與原廠車燈調光設定；反覆跳動：關閉 車機桌面亮度排程後重測。日夜主題與背光分開判定。"),
+    ManualItem("m_nav_landscape", "手動檢查", "導航王顯示", "從 車機桌面開導航王並開始導航。", "畫面方向、比例不對或返回後中斷：記錄情況。"),
     ManualItem("m_readability", "手動檢查", "行車中可讀性", "白天與夜間各看一次主畫面。", "字太小／太亮／反光：記下哪個區塊，調整字級或配色。"),
     ManualItem("m_touch", "手動檢查", "觸控範圍", "停車時點擊捷徑、播放鍵、所有 App。", "常點錯：記下哪個按鈕，放大觸控範圍。"),
 )
@@ -249,7 +249,7 @@ object Report {
     fun text(context: Context, results: Map<String, CheckResult>): String {
         val sb = StringBuilder()
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.TAIWAN).format(Date())
-        sb.appendLine("FIT 桌面 實機檢測報告")
+        sb.appendLine("車機桌面 實機檢測報告")
         sb.appendLine("時間：$now　版本：${BuildInfo.versionName(context)}")
         sb.appendLine("裝置：${Build.MANUFACTURER} ${Build.MODEL}／Android ${Build.VERSION.RELEASE}")
         val counts = Status.entries.joinToString("　") { s -> "${s.mark}${s.label} ${results.values.count { it.status == s }}" }

@@ -145,7 +145,7 @@ private fun ImprovementsTab(list: List<CheckResult>, todo: Int, actions: Checker
         if (list.isEmpty()) {
             Hint("目前沒有需要改進的項目。" + if (todo > 0) "還有 $todo 項待測試，請完成互動測試與手動檢查。" else "", size = 16)
         } else {
-            Hint("依嚴重程度排列。有按鈕的項目可以直接在 FIT 桌面套用建議；其他項目請匯出報告交給 AI 處理。", size = 14)
+            Hint("依嚴重程度排列。有按鈕的項目可以直接在 車機桌面套用建議；其他項目請匯出報告交給 AI 處理。", size = 14)
         }
     }
     list.forEach { ResultCard(it, actions.applyFix) }
@@ -175,7 +175,7 @@ private fun GestureTab() {
     var seen by remember { mutableStateOf(setOf<GestureKind>()) }
     var lastSeen by remember { mutableStateOf("尚未偵測到手勢") }
 
-    Section("原車機音量手勢在 FIT 桌面內是否仍有效") {
+    Section("原車機音量手勢在 車機桌面內是否仍有效") {
         Hint("1. 先調一個中間音量並播放音樂。2. 按下要測的手勢。3. 5 秒內在下方灰色區域做該手勢。系統會比對前後音量，判斷手勢是由車機系統處理（不需實作），還是只存在原廠桌面（需要實作）。", size = 14)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GestureKind.entries.forEach { k ->
@@ -315,7 +315,7 @@ private fun SplitTab(auto: CheckResult?, actions: CheckerActions) {
     val ctx = LocalContext.current
     val results by CheckStore.results.collectAsState()
     Section("分割畫面實測") {
-        Hint("按「開始測試」會開啟 FIT 側欄，並嘗試把導航王開在旁邊；約 2 秒後自動記錄結果。回到 FIT 桌面後，再進入 設定 → 實機檢測 查看結果。", size = 14)
+        Hint("按「開始測試」會開啟 車機側欄，並嘗試把導航王開在旁邊；約 2 秒後自動記錄結果。回到 車機桌面後，再進入 設定 → 實機檢測 查看結果。", size = 14)
         PrimaryButton("開始測試", actions.startSplitTest)
         Hint("也可以試試系統的手動分割（例如在最近使用畫面長按 App 圖示選「分割畫面」），結果在這裡記錄：", size = 14)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

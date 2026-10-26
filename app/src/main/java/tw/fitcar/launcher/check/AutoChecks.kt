@@ -90,7 +90,7 @@ object AutoChecks {
         return when {
             total >= 6.8 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.PASS, f + "符合 8 GB 等級（系統保留後通常顯示 7.x GB）。")
             total >= 5.0 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "低於 8 GB 等級，實體可能是 6 GB。",
-                "FIT 桌面已很輕量，不影響使用；如需確認可再以 CPU-Z 類工具比對。")
+                "車機桌面已很輕量，不影響使用；如需確認可再以 CPU-Z 類工具比對。")
             else -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "與標示 8 GB 明顯不符，系統資訊可能被廠商改寫。",
                 "建議記錄並向賣家反映；同時開導航＋音樂時留意是否被系統關閉。")
         }
@@ -120,14 +120,14 @@ object AutoChecks {
         val f = "$cores 核，最高 $ghz" + (hw?.let { "，$it" } ?: "") + "。"
         val ok = cores >= 8 && (maxKhz == 0L || maxKhz >= 2_500_000)
         return CheckResult("cpu", "車機硬體", "處理器（標示 UIS7870SC 8 核 2.7 GHz）", if (ok) Status.PASS else Status.INFO, f,
-            if (ok) "" else "核心數或時脈低於標示，記錄下來即可，不影響 FIT 桌面。")
+            if (ok) "" else "核心數或時脈低於標示，記錄下來即可，不影響 車機桌面。")
     }
 
     private fun android() = CheckResult(
         "android", "車機硬體", "Android 版本",
         if (Build.VERSION.SDK_INT >= 33) Status.PASS else Status.INFO,
         "Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}），安全性修補 ${if (Build.VERSION.SDK_INT >= 23) Build.VERSION.SECURITY_PATCH else "—"}。",
-        if (Build.VERSION.SDK_INT >= 33) "" else "實際版本低於畫面標示的 Android 13，系統資訊可能被改寫；FIT 桌面仍支援 Android 8 以上。",
+        if (Build.VERSION.SDK_INT >= 33) "" else "實際版本低於畫面標示的 Android 13，系統資訊可能被改寫；車機桌面仍支援 Android 8 以上。",
     )
 
     @Suppress("DEPRECATION")
@@ -150,10 +150,10 @@ object AutoChecks {
         val pkg = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
         val others = AppRepository.otherHomeApps(context).joinToString("、") { "${it.label}（${it.component.packageName}）" }.ifEmpty { "無" }
         return when (pkg) {
-            context.packageName -> CheckResult("home", "桌面", "預設桌面", Status.PASS, "FIT 桌面已是預設桌面。其他桌面：$others。",
+            context.packageName -> CheckResult("home", "桌面", "預設桌面", Status.PASS, "車機桌面已是預設桌面。其他桌面：$others。",
                 "請完成「手動檢查」中的 Home 鍵、休眠喚醒、倒車影像項目。")
             else -> CheckResult("home", "桌面", "預設桌面", Status.TODO, "目前預設桌面：${pkg ?: "未選擇"}。其他桌面：$others。",
-                "其他項目都檢查過後，再到設定 → 返回原廠桌面 → 變更預設桌面，選 FIT 桌面並做手動檢查。")
+                "其他項目都檢查過後，再到設定 → 返回原廠桌面 → 變更預設桌面，選 車機桌面並做手動檢查。")
         }
     }
 
@@ -171,7 +171,7 @@ object AutoChecks {
             boundKey != null -> CheckResult(id, group, title, Status.FAIL, "已綁定的 App 找不到，可能已移除或更新後改名。",
                 "請重新選擇$appName。", candidates.firstOrNull()?.let { Fix("綁定 ${it.label}", kind, it.key) })
             candidates.isNotEmpty() -> CheckResult(id, group, title, Status.INFO, "尚未綁定；偵測到可能的$appName：$names。",
-                "綁定後才能從 FIT 桌面直接開啟。", Fix("綁定 ${candidates.first().label}", kind, candidates.first().key))
+                "綁定後才能從 車機桌面直接開啟。", Fix("綁定 ${candidates.first().label}", kind, candidates.first().key))
             else -> CheckResult(id, group, title, Status.INFO, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定 → App 綁定手動選擇。")
         }
     }
@@ -189,7 +189,7 @@ object AutoChecks {
         val overlay = CheckResult(
             "shield_overlay", "測速", "神盾浮動視窗權限", Status.TODO,
             "Android 不允許其他 App 讀取神盾的浮動窗權限，需手動確認。",
-            "開啟神盾後回到 FIT 桌面，確認浮動窗與警示音仍在；若沒有，按下方按鈕到神盾的「顯示在其他應用程式上層」開啟。",
+            "開啟神盾後回到 車機桌面，確認浮動窗與警示音仍在；若沒有，按下方按鈕到神盾的「顯示在其他應用程式上層」開啟。",
             pkg?.let { Fix("開啟神盾浮動窗設定", FixKind.OPEN_OVERLAY_SETTINGS, it) },
         )
         return listOf(bind, overlay)
@@ -248,8 +248,8 @@ object AutoChecks {
             !can && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.FAIL, f,
                 "亮度排程已開但沒有權限，不會生效。", Fix("前往允許", FixKind.OPEN_WRITE_SETTINGS))
             auto && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.INFO, f,
-                "系統自動亮度開啟中，FIT 桌面排程寫入時會改為手動亮度；若想保留系統自動亮度，請關閉 FIT 桌面的亮度排程。",
-                Fix("關閉 FIT 亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
+                "系統自動亮度開啟中，車機桌面排程寫入時會改為手動亮度；若想保留系統自動亮度，請關閉 車機桌面的亮度排程。",
+                Fix("關閉 車機桌面亮度排程", FixKind.DISABLE_BRIGHTNESS_SCHEDULE))
             else -> CheckResult("brightness_perm", "亮度", "亮度排程權限", if (can || !schedule) Status.PASS else Status.TODO, f,
                 "請到「互動測試 → 亮度」確認背光真的有變化、且不會被車燈調光改回。")
         }
