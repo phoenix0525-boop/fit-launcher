@@ -81,12 +81,13 @@ fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null, size
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
+    val compact = LocalLayoutSpec.current.compactChrome
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 56.dp),
         shape = RadiusMd,
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+        contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 18.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = p.accent,
             contentColor = if (p.isNight) p.bgDeep else Color.White,
@@ -94,25 +95,26 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
             disabledContentColor = p.textSoft,
         ),
     ) {
-        if (icon != null) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        if (icon != null && !compact) { icon(); Box(Modifier.size(10.dp)) }
+        Text(text, fontSize = if (compact) 16.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: (@Composable () -> Unit)? = null) {
     val p = LocalPalette.current
+    val compact = LocalLayoutSpec.current.compactChrome
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 56.dp),
         shape = RadiusMd,
         border = BorderStroke(1.dp, p.line),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+        contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = 10.dp),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = p.surfaceStrong, contentColor = p.text, disabledContentColor = p.textSoft),
     ) {
-        if (icon != null) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        if (icon != null && !compact) { icon(); Box(Modifier.size(10.dp)) }
+        Text(text, fontSize = if (compact) 16.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 

@@ -3,6 +3,8 @@ package tw.fitcar.launcher.ui
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -100,16 +102,35 @@ fun HomeScreen(
     mapContent: @Composable (GpsState, Modifier) -> Unit = { fix, modifier -> FreeMapPanel(fix, modifier) },
 ) {
     val p = LocalPalette.current
-    Column(
-        Modifier.fillMaxSize().background(p.bg).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        StatusBar(shield, gps, actions)
-        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            NavPanel(nav, gps, actions, mapContent, Modifier.weight(6.5f).fillMaxHeight())
-            Column(Modifier.weight(3.5f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.5f))
-                ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
+    BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
+        val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
+        val gap = spec.gapDp.dp
+        CompositionLocalProvider(LocalLayoutSpec provides spec) {
+            Column(Modifier.fillMaxSize().padding(spec.outerDp.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
+                StatusBar(shield, gps, actions)
+                when (spec.arrangement) {
+                    HomeArrangement.TWO_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        NavPanel(nav, gps, actions, mapContent, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        Column(Modifier.weight(spec.sideWeight).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
+                            MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.5f))
+                            ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
+                        }
+                    }
+                    // 超寬螢幕：三欄，音樂與捷徑各自有完整高度
+                    HomeArrangement.THREE_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        NavPanel(nav, gps, actions, mapContent, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        MusicCard(music, media, actions, Modifier.weight(spec.sideWeight).fillMaxHeight())
+                        ShortcutsCard(slots, actions, Modifier.weight(spec.sideWeight * 0.8f).fillMaxHeight())
+                    }
+                    // 直向／正方形：地圖在上，音樂與捷徑並排在下
+                    HomeArrangement.STACKED -> {
+                        NavPanel(nav, gps, actions, mapContent, Modifier.fillMaxWidth().weight(spec.mapWeight))
+                        Row(Modifier.fillMaxWidth().weight(spec.sideWeight), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            MusicCard(music, media, actions, Modifier.weight(1f).fillMaxHeight())
+                            ShortcutsCard(slots, actions, Modifier.weight(1f).fillMaxHeight())
+                        }
+                    }
+                }
             }
         }
     }
@@ -118,17 +139,21 @@ fun HomeScreen(
 @Composable
 fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
     val p = LocalPalette.current
+    // 只顯示到分鐘：對齊整分更新，不必每秒重繪狀態列
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
-            delay(1000L - now % 1000L)
+            delay(60_000L - now % 60_000L + 50L)
         }
     }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.TAIWAN) }
+    val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.TAIWAN) }
     val date = Date(now)
+    val large = big && !LocalLayoutSpec.current.compactChrome
     Column(modifier) {
-        Text(SimpleDateFormat("HH:mm", Locale.TAIWAN).format(date), color = p.text, fontSize = if (big) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (big) 44.sp else 34.sp)
-        Text(SimpleDateFormat("M月d日 EEEE", Locale.TAIWAN).format(date), color = p.textSoft, fontSize = 15.sp)
+        Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
+        Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
     }
 }
 
@@ -137,14 +162,16 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
     val p = LocalPalette.current
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
+    val spec = LocalLayoutSpec.current
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 104.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(horizontal = 18.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = if (spec.compactChrome) 76.dp else 104.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg)
+            .padding(horizontal = if (spec.compactChrome) 12.dp else 18.dp, vertical = if (spec.compactChrome) 6.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp),
     ) {
-        Clock(Modifier.width(240.dp))
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-            CurrentLocationCard(gps, Modifier.weight(1f))
+        Clock(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(240.dp))
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+            if (spec.showLocationCard) CurrentLocationCard(gps, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
             // GPS 車速：啟動器自行計算，明確標示來源
             val fresh = remember(tick, gps) { gps.isFresh() }
             Row(
@@ -220,7 +247,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         Spacer(Modifier.height(8.dp))
         // 主要區：原本規劃為歌詞；目前沒有合法歌詞來源，依決策改顯示曲目並註明
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-        val spacious = maxHeight >= 240.dp
+        val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
             Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
@@ -283,7 +310,11 @@ private fun Progress(media: MediaUiState, actions: HomeActions) {
     val p = LocalPalette.current
     var position by remember { mutableLongStateOf(media.livePosition()) }
     LaunchedEffect(media) {
-        while (true) { position = media.livePosition(); delay(500) }
+        // 只顯示到秒：播放中對齊下一秒更新，暫停時每秒檢查一次即可
+        while (true) {
+            position = media.livePosition()
+            delay(if (media.isPlaying) (1000L - position % 1000L).coerceAtLeast(200L) else 1000L)
+        }
     }
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
