@@ -20,6 +20,14 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -41,6 +49,7 @@ import tw.fitcar.launcher.check.FixKind
 import tw.fitcar.launcher.check.KeyLog
 import tw.fitcar.launcher.data.AppEntry
 import tw.fitcar.launcher.data.NavOpenMode
+import tw.fitcar.launcher.data.AppCatalog
 import tw.fitcar.launcher.data.AppRepository
 import tw.fitcar.launcher.data.Prefs
 import tw.fitcar.launcher.data.Schedule
@@ -101,7 +110,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun selectGoogleNavigation() {
-        val app = AppRepository.launchableApps(this).firstOrNull { it.component.packageName == GoogleNavigation.PACKAGE }
+        val app = AppCatalog.apps.value.ifEmpty { AppRepository.launchableApps(this) }
+            .firstOrNull { it.component.packageName == GoogleNavigation.PACKAGE }
         if (app == null) { toast("找不到可啟動的 Google 地圖，請先安裝並啟用。 "); return }
         setBinding(BindingTarget.NAVIGATION, app.key)
         handleNav(NavLauncher.open(this, forceFullscreen = true))
@@ -165,6 +175,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         resumeTick++
+        AppCatalog.start(this)
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
         CheckStore.load(this)
@@ -307,11 +318,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val apps = remember(tick, screen) { AppRepository.launchableApps(this) }
-        val nav = remember(tick, state.bindings.navigation) { AppRepository.resolve(this, state.bindings.navigation) }
-        val music = remember(tick, state.bindings.music) { AppRepository.resolve(this, state.bindings.music) }
-        val shield = remember(tick, state.bindings.shield) { AppRepository.resolve(this, state.bindings.shield) }
-        val slots = remember(tick, state.shortcuts) { state.shortcuts.map { SlotView(it, AppRepository.resolve(this, it)) } }
+        // App 清單在背景載入並快取（AppCatalog），切換畫面不再於主執行緒重讀
+        val apps by AppCatalog.apps.collectAsState()
+        val nav = remember(tick, apps, state.bindings.navigation) { AppCatalog.resolve(this, state.bindings.navigation) }
+        val music = remember(tick, apps, state.bindings.music) { AppCatalog.resolve(this, state.bindings.music) }
+        val shield = remember(tick, apps, state.bindings.shield) { AppCatalog.resolve(this, state.bindings.shield) }
+        val slots = remember(tick, apps, state.shortcuts) { state.shortcuts.map { SlotView(it, AppCatalog.resolve(this, it)) } }
         var editing by remember { mutableStateOf<Int?>(null) }
 
         val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -334,8 +346,10 @@ class MainActivity : ComponentActivity() {
 
         FitTheme(palette) {
             Box(Modifier.fillMaxSize()) {
-                when (val s = screen) {
-                    Screen.Home -> HomeScreen(
+                val overlayOpen = screen != Screen.Home
+                // 主畫面常駐：切到設定／所有 App 時不銷毀地圖與播放卡，返回時不必重新載入
+                Box(if (overlayOpen) Modifier.fillMaxSize().clearAndSetSemantics {} else Modifier.fillMaxSize()) {
+                    HomeScreen(
                         nav = nav,
                         navModeLabel = if (state.navOpenMode == tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) "分割畫面優先" else "全螢幕",
                         splitResult = state.lastSplitResult,
@@ -366,6 +380,19 @@ class MainActivity : ComponentActivity() {
                             openGoogleNav = { selectGoogleNavigation() },
                         ),
                     )
+                }
+                AnimatedContent(
+                    targetState = screen,
+                    transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
+                    contentKey = { it::class },
+                    label = "screen",
+                ) { target ->
+                // 覆蓋畫面攔下所有觸控，避免點到底下的主畫面
+                if (target != Screen.Home) Box(
+                    Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+                ) {
+                when (val s = target) {
+                    Screen.Home -> Unit
                     Screen.AllApps -> FullScreenAppList(
                         title = "所有 App",
                         subtitle = "共 ${apps.size} 個可啟動的 App",
@@ -474,6 +501,8 @@ class MainActivity : ComponentActivity() {
                             ),
                         )
                     }
+                }
+                }
                 }
 
                 editing?.let { index ->
