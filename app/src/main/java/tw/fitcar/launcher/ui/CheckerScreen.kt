@@ -393,6 +393,9 @@ private fun ManualTab(results: Map<String, CheckResult>) {
     MANUAL_ITEMS.forEach { item ->
         var note by rememberSaveable(item.id) { mutableStateOf("") }
         var scenario by rememberSaveable(item.id) { mutableStateOf("") }
+        var testScenario by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
+        var testVersion by rememberSaveable(item.id) { mutableStateOf("") }
+        var testTime by rememberSaveable(item.id) { mutableStateOf(0L) }
         val r = results[item.id]
         Column(
             Modifier.fillMaxWidth().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
@@ -404,13 +407,18 @@ private fun ManualTab(results: Map<String, CheckResult>) {
             }
             Hint("做法：${item.howTo}", size = 14)
             Hint("有問題時：${item.ifBad}", size = 13)
-            Hint(CheckStore.scenario(ctx), size = 12)
+            SecondaryButton("開始本項測試", {
+                testScenario = CheckStore.scenario(ctx)
+                testVersion = CheckStore.version(ctx)
+                testTime = System.currentTimeMillis()
+            })
+            Hint(testScenario ?: "請先開始測試，記錄當時預設桌面與播放器情境。", size = 12)
             OutlinedTextField(value = scenario, onValueChange = { scenario = it }, label = { Text("測試情境（例如使用中的 App、白天／夜間）") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("備註（問題位置、裁字等）") }, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true, note, CheckStore.scenario(ctx) + "; " + scenario)) })
-                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false, note, CheckStore.scenario(ctx) + "; " + scenario)) })
-                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null, note, CheckStore.scenario(ctx) + "; " + scenario)) })
+                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
+                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
+                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
             }
         }
     }

@@ -71,7 +71,7 @@ object AutoChecks {
         val f = "可用給系統 %.1f GB（目前剩 %.1f GB）。".format(total, avail)
         return when {
             total >= 6.8 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.PASS, f + "符合 8 GB 等級（系統保留後通常顯示 7.x GB）。")
-            total >= 5.0 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.INFO, f + "低於 8 GB 等級，實體可能是 6 GB。",
+            total >= 5.0 -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "低於 8 GB 等級，實體可能是 6 GB。",
                 "FIT 桌面已很輕量，不影響使用；如需確認可再以 CPU-Z 類工具比對。")
             else -> CheckResult("memory", "車機硬體", "記憶體（標示 8 GB）", Status.FAIL, f + "與標示 8 GB 明顯不符，系統資訊可能被廠商改寫。",
                 "建議記錄並向賣家反映；同時開導航＋音樂時留意是否被系統關閉。")
@@ -85,7 +85,7 @@ object AutoChecks {
         val f = "使用者資料區 %.0f GB（剩 %.0f GB）。".format(total, free)
         return when {
             total >= 200 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.PASS, f + "符合 256 GB 等級（系統分割區另計）。")
-            total >= 100 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.INFO, f + "像是 128 GB 等級。", "實際可用空間足夠導航圖資與音樂快取；可向賣家確認規格。")
+            total >= 100 -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.FAIL, f + "像是 128 GB 等級。", "實際可用空間足夠導航圖資與音樂快取；可向賣家確認規格。")
             else -> CheckResult("storage", "車機硬體", "儲存空間（標示 256 GB）", Status.FAIL, f + "與標示 256 GB 明顯不符。", "建議記錄並向賣家反映。")
         }
     }
@@ -227,7 +227,7 @@ object AutoChecks {
         val schedule = Prefs.get(context).state.value.display.autoSchedule
         val f = "修改系統設定：${if (can) "已允許" else "未允許"}；系統自動亮度：${if (auto) "開" else "關"}；目前亮度約 ${cur ?: "—"}%。"
         return when {
-            !can && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.INFO, f,
+            !can && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.FAIL, f,
                 "亮度排程已開但沒有權限，不會生效。", Fix("前往允許", FixKind.OPEN_WRITE_SETTINGS))
             auto && schedule -> CheckResult("brightness_perm", "亮度", "亮度排程權限", Status.INFO, f,
                 "系統自動亮度開啟中，FIT 桌面排程寫入時會改為手動亮度；若想保留系統自動亮度，請關閉 FIT 桌面的亮度排程。",
@@ -241,8 +241,8 @@ object AutoChecks {
         val g = GpsSpeed.state.value
         val perm = GpsSpeed.hasPermission(context)
         return when {
-            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.INFO, "尚未允許定位，狀態列不會顯示 GPS 車速。", "", Fix("允許定位", FixKind.REQUEST_LOCATION))
-            !g.providerEnabled -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.INFO, "已允許，但系統 GPS 關閉。", "請在系統設定開啟定位。")
+            !perm -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.TODO, "尚未允許定位，狀態列不會顯示 GPS 車速。", "", Fix("允許定位", FixKind.REQUEST_LOCATION))
+            !g.providerEnabled -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.TODO, "已允許，但系統 GPS 關閉。", "請在系統設定開啟定位。")
             else -> CheckResult("gps_perm", "定位", "GPS 車速權限", Status.PASS, "已允許且 GPS 開啟。", "請到「互動測試 → GPS」量測定位時間。")
         }
     }

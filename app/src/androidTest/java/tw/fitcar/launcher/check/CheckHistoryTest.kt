@@ -29,6 +29,11 @@ class CheckHistoryTest {
         assertEquals(Status.TODO, CheckStore.results.value["m_reverse"]?.status)
         assertTrue(Report.text(context, CheckStore.results.value).contains("歷史結果"))
     }
+    @Test fun earlierVersionPassDoesNotCountInCurrentVersion() {
+        seed("0.2.1 (3)", CheckStore.scenario(context))
+        assertEquals(0, CheckStore.results.value.values.count { it.status == Status.PASS })
+        assertEquals(1, CheckStore.results.value.values.count { it.status == Status.HISTORY })
+    }
     @Test fun currentVersionWithDifferentDefaultHomeContextNeedsRetest() {
         seed(CheckStore.version(context), "另一個預設桌面")
         assertEquals(Status.TODO, CheckStore.results.value["m_reverse"]?.status)

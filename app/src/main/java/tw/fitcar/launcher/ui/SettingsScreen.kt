@@ -296,7 +296,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
     Section("實驗功能：左右視窗實測") {
         Text(
             when (data.state.lastSplitResult) {
-                true -> "最近一次：成功進入分割畫面"
+                true -> "最近一次：偵測到左右側欄尺寸，仍需目視確認"
                 false -> "最近一次：未進入分割畫面（已退回全螢幕）"
                 null -> "尚未測試"
             },

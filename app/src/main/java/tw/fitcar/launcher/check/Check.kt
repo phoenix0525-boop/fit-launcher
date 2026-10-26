@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** 檢測結果等級。「可改進的地方」= WARN＋FAIL。 */
+/** 檢測結果等級。「可改進的地方」只列有問題；歷史結果獨立保留。 */
 enum class Status(val mark: String, val label: String, val order: Int) {
     FAIL("✗", "有問題", 0),
     NA("—", "不適用", 5),
@@ -118,8 +118,8 @@ object CheckStore {
             val scenario = scenario(context)
             records!!.addAll(results.map { it.copy(appVersion = it.appVersion.ifBlank { version(context) },
                 scenario = it.scenario.ifBlank { scenario }, contextKey = it.contextKey.ifBlank { scenario },
-                status = if (it.id == "m_reverse" && "FIT預設=false" in scenario) Status.TODO else it.status,
-                finding = if (it.id == "m_reverse" && "FIT預設=false" in scenario) "本情境待測試：測試時 FIT 並非預設桌面。${it.finding}" else it.finding) })
+                status = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) Status.TODO else it.status,
+                finding = if (it.id == "m_reverse" && "FIT預設=false" in it.contextKey.ifBlank { scenario }) "本情境待測試：測試時 FIT 並非預設桌面。${it.finding}" else it.finding) })
             save(context)
             project(context)
         } else _results.value = _results.value + results.associateBy { it.id }
