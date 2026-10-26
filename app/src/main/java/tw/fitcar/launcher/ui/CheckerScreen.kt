@@ -88,31 +88,7 @@ fun CheckerScreen(actions: CheckerActions) {
             PrimaryButton("返回", actions.back, Modifier.heightIn(min = 72.dp), icon = { GlyphIcon(Glyph.BACK, size = 26.dp, tint = if (p.isNight) p.bgDeep else Color.White) })
         }
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(
-                Modifier.width(240.dp).fillMaxHeight().clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg)
-                    .verticalScroll(rememberScrollState()).padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                TABS.forEachIndexed { i, name ->
-                    val selected = i == tab
-                    val label = if (i == 0 && improvements.isNotEmpty()) "$name（${improvements.size}）" else name
-                    Text(
-                        label,
-                        Modifier.fillMaxWidth().clip(RadiusMd)
-                            .background(if (selected) p.accentSoft else Color.Transparent)
-                            .clickable { tab = i }
-                            .padding(horizontal = 16.dp, vertical = 15.dp),
-                        color = if (selected) p.accentStrong else p.text,
-                        fontSize = 17.sp,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-            Column(
-                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+        SectionNavLayout(TABS.mapIndexed { i, name -> if (i == 0 && improvements.isNotEmpty()) "$name（${improvements.size}）" else name }, tab, { tab = it }) {
                 when (tab) {
                     0 -> ImprovementsTab(improvements, results.values.count { it.status == Status.TODO }, actions)
                     1 -> AllResultsTab(results, actions)
@@ -125,7 +101,6 @@ fun CheckerScreen(actions: CheckerActions) {
                     else -> ReportTab(results)
                 }
             }
-        }
     }
 }
 

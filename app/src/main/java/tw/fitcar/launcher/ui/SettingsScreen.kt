@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -94,29 +95,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
             })
         }
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(
-                Modifier.width(260.dp).fillMaxHeight().clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg).padding(10.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                SECTIONS.forEachIndexed { i, name ->
-                    val selected = i == section
-                    Text(
-                        name,
-                        Modifier.fillMaxWidth().clip(RadiusMd)
-                            .background(if (selected) p.accentSoft else androidx.compose.ui.graphics.Color.Transparent)
-                            .clickable { section = i }
-                            .padding(horizontal = 18.dp, vertical = 18.dp),
-                        color = if (selected) p.accentStrong else p.text,
-                        fontSize = 18.sp,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-            Column(
-                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
+        SectionNavLayout(SECTIONS, section, { section = it }) {
                 when (section) {
                     0 -> CheckerEntrySection(actions)
                     1 -> DisplaySection(data, actions)
@@ -128,7 +107,6 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     else -> AboutSection(data)
                 }
             }
-        }
     }
 }
 
@@ -208,24 +186,40 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
 private fun PeriodRow(index: Int, period: Period, actions: SettingsActions) {
     val p = LocalPalette.current
     var temp by remember(period.brightness) { mutableFloatStateOf(period.brightness.toFloat()) }
-    Row(
-        Modifier.fillMaxWidth().clip(RadiusMd).background(p.surface).padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+    val times: @Composable () -> Unit = {
         Text(period.label, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.width(80.dp))
         SecondaryButton(Schedule.formatMinutes(period.startMinutes), { actions.pickTime(index, true) })
         Text("→", color = p.textSoft, fontSize = 18.sp)
         SecondaryButton(Schedule.formatMinutes(period.endMinutes), { actions.pickTime(index, false) })
-        Text("${temp.toInt()}%", color = p.text, fontSize = 17.sp, modifier = Modifier.width(80.dp))
+    }
+    val slider: @Composable (Modifier) -> Unit = { m ->
         Slider(
             value = temp, onValueChange = { temp = it }, valueRange = 1f..100f,
             onValueChangeFinished = {
                 val v = temp.toInt()
                 actions.updateDisplay { ds -> ds.copy(periods = ds.periods.mapIndexed { i, pr -> if (i == index) pr.copy(brightness = v) else pr }) }
             },
-            modifier = Modifier.weight(1f),
+            modifier = m,
             colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent, inactiveTrackColor = p.surfaceMuted),
         )
+    }
+    // 窄畫面分兩行，避免亮度滑桿被擠到無法操作
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(RadiusMd).background(p.surface).padding(12.dp)) {
+        if (maxWidth >= 640.dp) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                times()
+                Text("${temp.toInt()}%", color = p.text, fontSize = 17.sp, modifier = Modifier.width(80.dp))
+                slider(Modifier.weight(1f))
+            }
+        } else {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { times() }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${temp.toInt()}%", color = p.text, fontSize = 17.sp, modifier = Modifier.width(64.dp))
+                    slider(Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
 
