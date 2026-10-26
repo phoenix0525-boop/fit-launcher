@@ -345,7 +345,18 @@ private fun formatMs(ms: Long): String {
 internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
-        CardTitle(media.playerName ?: music?.label ?: "音樂") {
+        // A short two-column pane can leave zero height for weighted metadata.
+        // Keep player identity and song in the existing header height on these screens.
+        val compactTitle = LocalLayoutSpec.current.shortHeight && media.hasSession && media.permissionGranted
+        if (compactTitle) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text(media.playerName ?: music?.label ?: "音樂", color = p.textSoft, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                SecondaryButton("開啟", actions.openMusicApp)
+            }
+        } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
@@ -376,7 +387,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         val img = remember(art) { art.asImageBitmap() }
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
-                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
+                    if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (spacious) Hint("歌詞功能尚未提供", size = 13)
                 }
