@@ -13,6 +13,10 @@ class VoiceCommandTest {
         assertNull(VoiceCommand.parse("導航到"))
         assertNull(VoiceCommand.parse("下一首然後刪除檔案"))
     }
+    @Test fun explicitNavigationNameIsNotSilentlyRoutedToAnotherApp() {
+        assertEquals("導航王", VoiceCommand.parse("開啟導航王")?.requiredNavigationName)
+        assertEquals(VoiceAction.OPEN_GOOGLE, VoiceCommand.parse("開啟 google 地圖")?.action)
+    }
     @Test fun supportsBoundAppsAndBrightness() {
         assertEquals(VoiceAction.OPEN_NAV, VoiceCommand.parse("開啟導航王")?.action)
         assertEquals(VoiceAction.OPEN_SHIELD, VoiceCommand.parse("開啟神盾")?.action)

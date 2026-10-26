@@ -1,13 +1,14 @@
 package tw.fitcar.launcher.voice
 
 enum class VoiceAction { OPEN_NAV, OPEN_GOOGLE, OPEN_MUSIC, OPEN_SHIELD, PLAY, PAUSE, NEXT, PREVIOUS, BRIGHTER, DIMMER, NAVIGATE_TO }
-data class VoiceCommand(val action: VoiceAction, val destination: String? = null) {
+data class VoiceCommand(val action: VoiceAction, val destination: String? = null, val requiredNavigationName: String? = null) {
     companion object {
         fun parse(raw: String): VoiceCommand? {
             if (raw.length > 180) return null
-            val text = raw.trim().trimEnd('。', '！', '!', '？', '?').replace(Regex("\\s+"), "")
+            val text = raw.replace("google", "Google", ignoreCase = true).trim().trimEnd('。', '！', '!', '？', '?').replace(Regex("\\s+"), "")
+            if (text == "開啟導航王") return VoiceCommand(VoiceAction.OPEN_NAV, requiredNavigationName = "導航王")
             val action = when (text) {
-                "開導航", "開啟導航", "開啟導航王" -> VoiceAction.OPEN_NAV
+                "開導航", "開啟導航" -> VoiceAction.OPEN_NAV
                 "開啟Google地圖", "開啟谷歌地圖" -> VoiceAction.OPEN_GOOGLE
                 "開音樂", "開啟音樂", "開啟播放器" -> VoiceAction.OPEN_MUSIC
                 "開神盾", "開啟神盾" -> VoiceAction.OPEN_SHIELD

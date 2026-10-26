@@ -110,7 +110,12 @@ class MainActivity : ComponentActivity() {
     private fun executeVoice(command: VoiceCommand) {
         fun unsupported() = toast("目前播放器沒有提供這項控制，請先播放歌曲並開啟通知存取。")
         when (command.action) {
-            VoiceAction.OPEN_NAV -> handleNav(NavLauncher.open(this, forceFullscreen = true))
+            VoiceAction.OPEN_NAV -> {
+                val label = AppRepository.resolve(this, prefs.state.value.bindings.navigation)?.label.orEmpty()
+                if (command.requiredNavigationName != null && !label.contains(command.requiredNavigationName)) {
+                    toast("目前選定的導航不是${command.requiredNavigationName}，請先更換導航 App。")
+                } else handleNav(NavLauncher.open(this, forceFullscreen = true))
+            }
             VoiceAction.OPEN_GOOGLE -> selectGoogleNavigation()
             VoiceAction.OPEN_MUSIC -> {
                 val active = MediaRepository.state.value.packageName?.let { packageManager.getLaunchIntentForPackage(it) }
