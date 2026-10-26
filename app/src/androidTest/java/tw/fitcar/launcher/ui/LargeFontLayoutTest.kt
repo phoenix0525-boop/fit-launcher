@@ -55,7 +55,9 @@ class LargeFontLayoutTest {
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         // Check painted lines, ellipsis and vertical overflow. Paragraph width can include
         // fractional rounding/unused alignment space beyond the integer Text node width.
+        val visible = node.fetchSemanticsNode().boundsInRoot
         val clipped = layouts.isEmpty() || layouts.any { layout ->
+            visible.height + 1f < layout.size.height || visible.width + 1f < layout.size.width ||
             layout.didOverflowHeight || (0 until layout.lineCount).any { line ->
                 layout.isLineEllipsized(line) || layout.getLineLeft(line) < -1f ||
                     layout.getLineRight(line) > layout.size.width + 1f
@@ -69,6 +71,10 @@ class LargeFontLayoutTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.getExternalFilesDir(null), "$name.png")
         file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        // Gradle removes test APKs and their app-specific files before the shell pull.
+        val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
+        shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+        shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
     @Test fun permissionCardButtonAt125Percent() {
         show(MediaUiState())

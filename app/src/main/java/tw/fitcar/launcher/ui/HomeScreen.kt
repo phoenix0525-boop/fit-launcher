@@ -233,7 +233,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         val img = remember(art) { art.asImageBitmap() }
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
-                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp)
+                    Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (spacious) Hint("歌詞資料尚未連接", size = 13)
                 }
@@ -365,7 +365,7 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
             else -> {
                 AppIcon(slot.entry?.icon, if (compact) 32.dp else 48.dp)
                 Spacer(Modifier.height(4.dp))
-                Text(slot.entry?.label ?: "", color = p.text, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                Text(slot.entry?.label ?: "", color = p.text, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }
