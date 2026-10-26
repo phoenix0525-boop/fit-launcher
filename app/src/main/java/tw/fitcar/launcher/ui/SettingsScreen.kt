@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -66,6 +67,7 @@ class SettingsActions(
     val back: () -> Unit,
     val requestBluetooth: (() -> Unit)? = null,
     val setShortcutPages: ((Int) -> Unit)? = null,
+    val setAccent: ((AccentTheme) -> Unit)? = null,
     val updateDisplay: ((DisplaySettings) -> DisplaySettings) -> Unit,
     val setManualBrightness: (Int) -> Unit,
     val restoreAuto: () -> Unit,
@@ -134,6 +136,7 @@ private fun StatusLine(ok: Boolean, okText: String, badText: String) {
     Text(if (ok) "● $okText" else "● $badText", color = if (ok) p.success else p.danger, fontSize = 15.sp)
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
@@ -143,6 +146,26 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
         Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請在實機診斷記錄。", size = 13)
         if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
         data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
+    }
+    actions.setAccent?.let { setAccent ->
+        Section("主題強調色") {
+            Hint("按鈕、選取項目與進度條的顏色；日間與夜間會自動調整亮度，文字對比都符合 4.5:1。", size = 13)
+            val current = AccentTheme.fromId(data.state.accentTheme)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                AccentTheme.entries.forEach { t ->
+                    val swatch = androidx.compose.ui.graphics.Color(if (p.isNight) t.night.accent else t.day.accent)
+                    Row(
+                        Modifier.clip(RadiusMd).background(if (t == current) p.accentSoft else p.surface)
+                            .border(if (t == current) 2.dp else 1.dp, if (t == current) p.accent else p.line, RadiusMd)
+                            .clickable { setAccent(t) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        androidx.compose.foundation.layout.Box(Modifier.size(28.dp).clip(RadiusSm).background(swatch))
+                        Text(t.label, color = p.text, fontSize = 17.sp)
+                    }
+                }
+            }
+        }
     }
     Section("自動排程") {
         ToggleRow("亮度自動排程", "依下列時段調整系統背光", d.autoSchedule) { v -> actions.updateDisplay { it.copy(autoSchedule = v) } }

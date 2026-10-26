@@ -65,7 +65,11 @@ val NightPalette = Palette(
 
 val LocalPalette = staticCompositionLocalOf { DayPalette }
 
-fun paletteFor(theme: ThemeChoice) = if (theme == ThemeChoice.NIGHT) NightPalette else DayPalette
+fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE): Palette {
+    val base = if (theme == ThemeChoice.NIGHT) NightPalette else DayPalette
+    val c = if (theme == ThemeChoice.NIGHT) accent.night else accent.day
+    return base.copy(accent = Color(c.accent), accentStrong = Color(c.accentStrong), accentSoft = Color(c.accentSoft))
+}
 
 @Composable
 fun FitTheme(palette: Palette, content: @Composable () -> Unit) {
