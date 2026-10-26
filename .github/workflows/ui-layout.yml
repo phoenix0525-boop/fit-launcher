@@ -34,8 +34,11 @@ jobs:
             adb shell settings put system accelerometer_rotation 0
             adb shell settings put system user_rotation 0
             chmod +x gradlew
+            set +e
             ./gradlew connectedDebugAndroidTest --stacktrace
+            test_result=$?
             adb pull /sdcard/Android/data/tw.fitcar.launcher/files/ ui-screenshots/
+            exit $test_result
       - uses: actions/upload-artifact@v4
         if: always()
         with:

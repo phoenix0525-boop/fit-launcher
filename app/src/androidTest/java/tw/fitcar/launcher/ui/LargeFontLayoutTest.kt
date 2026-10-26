@@ -53,7 +53,7 @@ class LargeFontLayoutTest {
         node.assertIsDisplayed()
         val layouts = mutableListOf<TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertFalse("文字裁切：$text", layouts.isEmpty() || layouts.any { it.hasVisualOverflow })
+        assertFalse("文字裁切：$text layouts=${layouts.map { "${it.size} overflowW=${it.didOverflowWidth} overflowH=${it.didOverflowHeight} lines=${it.lineCount}" }}", layouts.isEmpty() || layouts.any { it.hasVisualOverflow })
     }
     private fun screenshot(name: String) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -63,6 +63,7 @@ class LargeFontLayoutTest {
     @Test fun permissionCardButtonAt125Percent() {
         show(MediaUiState())
         compose.onNodeWithText("前往授權").performScrollTo()
+        screenshot("home-permission-125")
         listOf("前往授權", "Google 導航", "開啟導航", "所有 App", "設定", "目前位置").forEach(::fullLabel)
         screenshot("home-permission-125")
     }
@@ -70,6 +71,7 @@ class LargeFontLayoutTest {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", title = "晴天", artist = "周杰倫",
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS))
+        screenshot("home-playing-125")
         listOf("晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
