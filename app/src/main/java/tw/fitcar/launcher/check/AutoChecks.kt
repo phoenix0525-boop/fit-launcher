@@ -47,6 +47,7 @@ object AutoChecks {
         out += defaultHome(context)
         out += navigation(context, apps)
         out += multiWindow(context)
+        out += googleAndVoice(context)
         out += music(context, apps)
         out += shield(context, apps)
         out += brightness(context)
@@ -55,6 +56,23 @@ object AutoChecks {
         out += audio(context)
         out += boot(context)
         return out
+    }
+
+    private fun googleAndVoice(context: Context): List<CheckResult> {
+        val google = tw.fitcar.launcher.nav.GoogleNavigation.isSelected(context)
+        val hint = tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.value
+        val nav = when {
+            !google -> CheckResult("google_hint", "導航", "Google 導航通知", Status.NA, "目前選擇其他導航；Google 通知不讀取。")
+            !MediaRepository.isPermissionGranted(context) -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO,
+                "尚未授權通知存取。", fix = Fix("開啟通知存取", FixKind.OPEN_NOTIFICATION_ACCESS))
+            !hint.connected -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO, "通知服務未連線。")
+            hint.fresh() -> CheckResult("google_hint", "導航", "Google 導航通知", Status.PASS, "收到 Google 地圖導航文字；8 秒無新資料即隱藏。轉彎正確性仍需人工確認。")
+            else -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO, "沒有新鮮導航文字；請在 Google 地圖開始導航。沒有資料時不猜測方向與距離。")
+        }
+        val recognizer = context.packageManager.resolveActivity(Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0)
+        val voice = CheckResult("voice_service", "操作", "語音辨識服務", if (recognizer == null) Status.TODO else Status.INFO,
+            if (recognizer == null) "找不到可處理語音辨識的服務。請安裝或啟用中文語音辨識。" else "找到語音辨識入口；麥克風、中文辨識與指令執行仍需在車機測試。")
+        return listOf(nav, voice)
     }
 
     private fun device() = CheckResult(

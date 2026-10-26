@@ -2,6 +2,11 @@ package tw.fitcar.launcher
 
 import android.Manifest
 import android.app.TimePickerDialog
+import android.speech.RecognizerIntent
+import tw.fitcar.launcher.voice.VoiceCommand
+import tw.fitcar.launcher.voice.VoiceAction
+import tw.fitcar.launcher.nav.GoogleNavigation
+import tw.fitcar.launcher.media.MediaListenerService
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
@@ -76,6 +81,81 @@ class MainActivity : ComponentActivity() {
     private var resumeTick by mutableIntStateOf(0)
     private var screen by mutableStateOf<Screen>(Screen.Home)
 
+    private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val text = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            val command = text?.let(VoiceCommand::parse)
+            if (command == null) toast("未辨識到支援的指令，請再試一次。") else executeVoice(command)
+        } else toast("語音辨識已取消或未取得結果。")
+    }
+
+    private fun startVoice() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-TW")
+            .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            .putExtra(RecognizerIntent.EXTRA_PROMPT, "開啟導航、導航到某地、播放音樂、暫停、下一首、開神盾、提高亮度")
+        try { voiceLauncher.launch(intent) }
+        catch (_: ActivityNotFoundException) { toast("車機未提供語音辨識，請先安裝或啟用支援中文的語音服務。") }
+        catch (_: SecurityException) { toast("系統未允許語音辨識，請檢查語音服務的麥克風權限。") }
+    }
+
+    private fun selectGoogleNavigation() {
+        val app = AppRepository.launchableApps(this).firstOrNull { it.component.packageName == GoogleNavigation.PACKAGE }
+        if (app == null) { toast("找不到可啟動的 Google 地圖，請先安裝並啟用。 "); return }
+        setBinding(BindingTarget.NAVIGATION, app.key)
+        handleNav(NavLauncher.open(this, forceFullscreen = true))
+    }
+
+    private fun executeVoice(command: VoiceCommand) {
+        fun unsupported() = toast("目前播放器沒有提供這項控制，請先播放歌曲並開啟通知存取。")
+        when (command.action) {
+            VoiceAction.OPEN_NAV -> {
+                val label = AppRepository.resolve(this, prefs.state.value.bindings.navigation)?.label.orEmpty()
+                if (command.requiredNavigationName != null && !label.contains(command.requiredNavigationName)) {
+                    toast("目前選定的導航不是${command.requiredNavigationName}，請先更換導航 App。")
+                } else handleNav(NavLauncher.open(this, forceFullscreen = true))
+            }
+            VoiceAction.OPEN_GOOGLE -> selectGoogleNavigation()
+            VoiceAction.OPEN_MUSIC -> {
+                val active = MediaRepository.state.value.packageName?.let { packageManager.getLaunchIntentForPackage(it) }
+                if (active != null) safeStart(active, "無法開啟目前播放器")
+                else launchKey(prefs.state.value.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
+            }
+            VoiceAction.OPEN_SHIELD -> launchKey(prefs.state.value.bindings.shield) { screen = Screen.PickForBinding(BindingTarget.SHIELD, false) }
+            VoiceAction.PLAY -> if (!MediaRepository.play()) unsupported()
+            VoiceAction.PAUSE -> if (!MediaRepository.pause()) unsupported()
+            VoiceAction.NEXT -> if (MediaRepository.state.value.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)) MediaRepository.next() else unsupported()
+            VoiceAction.PREVIOUS -> if (MediaRepository.state.value.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)) MediaRepository.previous() else unsupported()
+            VoiceAction.BRIGHTER, VoiceAction.DIMMER -> {
+                if (!BrightnessController.canWrite(this)) {
+                    toast("請先允許修改系統設定，再使用語音調整亮度。")
+                    safeStart(BrightnessController.permissionIntent(this), "無法開啟亮度權限設定")
+                } else {
+                    val step = if (command.action == VoiceAction.BRIGHTER) 10 else -10
+                    val value = Schedule.clampBrightness((BrightnessController.currentPercent(this) ?: BrightnessController.targetPercent(this)) + step)
+                    if (BrightnessController.apply(this, value, smooth = false)) {
+                        prefs.update { it.copy(display = it.display.copy(manualBrightness = value), manualOverride = true) }
+                        toast("亮度 $value%，已切換為手動亮度；可在設定恢復排程。")
+                    }
+                }
+            }
+            VoiceAction.NAVIGATE_TO -> {
+                if (!GoogleNavigation.isSelected(this)) {
+                    toast("語音目的地目前支援 Google 地圖，請先在導航選擇 Google 地圖。")
+                    return
+                }
+                val destination = command.destination ?: return
+                android.app.AlertDialog.Builder(this).setTitle("確認導航目的地")
+                    .setMessage("使用 Google 地圖導航到：$destination？")
+                    .setNegativeButton("取消", null)
+                    .setPositiveButton("開始導航") { _, _ ->
+                        safeStart(GoogleNavigation.destinationIntent(destination), "無法開啟 Google 地圖導航")
+                    }.show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         BrightnessController.scheduleNext(this)
@@ -88,6 +168,7 @@ class MainActivity : ComponentActivity() {
         MediaRepository.refresh(this)
         GpsSpeed.start(this)
         CheckStore.load(this)
+        MediaListenerService.rescanNavigation()
     }
 
     override fun onStop() {
@@ -203,6 +284,7 @@ class MainActivity : ComponentActivity() {
             })
         }
         if (target == BindingTarget.MUSIC) MediaRepository.refresh(this)
+        if (target == BindingTarget.NAVIGATION) MediaListenerService.rescanNavigation()
     }
 
     @Composable
@@ -280,6 +362,8 @@ class MainActivity : ComponentActivity() {
                             launchSlot = { i -> launchKey(state.shortcuts.getOrNull(i)) { screen = Screen.PickForSlot(i) } },
                             pickSlot = { i -> screen = Screen.PickForSlot(i) },
                             editSlot = { i -> editing = i },
+                            voice = { startVoice() },
+                            openGoogleNav = { selectGoogleNavigation() },
                         ),
                     )
                     Screen.AllApps -> FullScreenAppList(

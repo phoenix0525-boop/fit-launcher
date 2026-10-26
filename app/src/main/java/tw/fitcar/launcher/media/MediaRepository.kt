@@ -198,6 +198,21 @@ object MediaRepository {
         )
     }
 
+    fun play(): Boolean {
+        val controller = current ?: return false
+        val s = _state.value
+        if (!s.supports(PlaybackState.ACTION_PLAY) && !s.supports(PlaybackState.ACTION_PLAY_PAUSE)) return false
+        controller.transportControls.play()
+        return true
+    }
+    fun pause(): Boolean {
+        val controller = current ?: return false
+        val s = _state.value
+        if (!s.supports(PlaybackState.ACTION_PAUSE) && !s.supports(PlaybackState.ACTION_PLAY_PAUSE)) return false
+        controller.transportControls.pause()
+        return true
+    }
+
     fun playPause() {
         val c = current ?: return
         val s = _state.value

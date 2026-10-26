@@ -28,15 +28,15 @@ import java.io.File
 
 class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
-    private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+    private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState) {
+    private fun show(media: MediaUiState, google: Boolean = false) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
                 FitTheme(DayPalette) {
                     HomeScreen(
-                        nav = AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
+                        nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = GpsState(),
                         slots = List(8) { SlotView(null, null) }, actions = actions,
@@ -80,15 +80,20 @@ class LargeFontLayoutTest {
         show(MediaUiState())
         compose.onNodeWithText("前往授權").performScrollTo()
         screenshot("home-permission-125")
-        listOf("前往授權", "Google 導航", "開啟導航", "所有 App", "設定", "目前位置").forEach(::fullLabel)
+        listOf("前往授權", "Google 導航", "開啟導航", "所有 App", "設定", "語音", "目前位置").forEach(::fullLabel)
         screenshot("home-permission-125")
+    }
+    @Test fun googleNotificationCardKeepsButtonsVisibleAt125Percent() {
+        show(MediaUiState(), google = true)
+        listOf("Google 導航", "開啟導航", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
+        screenshot("home-google-voice-125")
     }
     @Test fun playingCardAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "app.morphe.android.apps.youtube.music", playerName = "Morphe Music", title = "晴天", artist = "周杰倫",
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS))
         screenshot("home-playing-125")
-        listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定").forEach(::fullLabel)
+        listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
 }
