@@ -372,4 +372,114 @@ class LargeFontLayoutTest {
         } finally { source.delete(); kotlinx.coroutines.runBlocking { store.reset() } }
     }
 
+    private fun albumFallback(night: Boolean, driving: Boolean = false) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repo = tw.fitcar.launcher.lyrics.LyricsRepository
+        repo.initialize(context)
+        val oldEnabled = repo.enabled.value
+        val oldCover = repo.coverFallback.value
+        repo.setEnabled(context, true); repo.setCoverFallback(context, true)
+        val art = Bitmap.createBitmap(180, 180, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.RED)
+            android.graphics.Canvas(this).drawCircle(90f, 90f, 60f, android.graphics.Paint().apply { color = android.graphics.Color.YELLOW })
+        }
+        val result = androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.lyrics.LyricsResult("找不到相符歌詞"))
+        val state = androidx.compose.runtime.mutableStateOf(MediaUiState(permissionGranted = true, packageName = "test.music",
+            title = "封面顯示測試", artist = "測試歌手", art = art))
+        try {
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f), LocalDriving provides driving) {
+                    FitTheme(paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                        AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                        Box(Modifier.fillMaxSize().padding(24.dp)) {
+                            MusicCard(musicApp, state.value, actions, emptyList(), Modifier.width(420.dp).fillMaxHeight(),
+                                lyricsResultOverride = result.value)
+                        }
+                    }
+                }
+            }
+            val cover = compose.onNodeWithContentDescription("無歌詞專輯封面底圖", useUnmergedTree = true)
+            cover.assertIsDisplayed()
+            listOf("封面顯示測試", "測試歌手", "找不到相符歌詞").forEach(::fullLabel)
+            val bg = cover.fetchSemanticsNode().boundsInRoot
+            val play = compose.onNodeWithContentDescription("播放／暫停").fetchSemanticsNode().boundsInRoot
+            assertTrue("封面必須覆蓋整張播放器，包含控制列", bg.top < play.top && bg.bottom >= play.bottom)
+            screenshot("player-album-fallback-${if (driving) "driving" else if (night) "night" else "day"}-125")
+            compose.runOnIdle { result.value = tw.fitcar.launcher.lyrics.LyricsResult("文字歌詞", plain = "可顯示的實際歌詞") }
+            cover.assertDoesNotExist(); fullLabel("可顯示的實際歌詞")
+            compose.runOnIdle { result.value = tw.fitcar.launcher.lyrics.LyricsResult("歌詞連線失敗，保留歌曲資訊") }
+            cover.assertIsDisplayed()
+            compose.runOnIdle { state.value = state.value.copy(packageName = "other.music", title = "下一首無封面", art = null) }
+            cover.assertDoesNotExist(); fullLabel("下一首無封面")
+            compose.runOnIdle { state.value = state.value.copy(art = art); repo.setCoverFallback(context, false) }
+            cover.assertDoesNotExist()
+        } finally { repo.setEnabled(context, oldEnabled); repo.setCoverFallback(context, oldCover) }
+    }
+    @Test fun albumFallbackDayAt125Percent() = albumFallback(false)
+    @Test fun albumFallbackNightAt125Percent() = albumFallback(true)
+    @Test fun albumFallbackDrivingAt125Percent() = albumFallback(false, true)
+    @Test fun albumFallbackSettingPersistsWithoutEnablingLyrics() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repo = tw.fitcar.launcher.lyrics.LyricsRepository
+        repo.initialize(context)
+        val oldEnabled = repo.enabled.value; val oldCover = repo.coverFallback.value
+        repo.setEnabled(context, false); repo.setCoverFallback(context, true)
+        try {
+            compose.setContent { FitTheme(DayPalette) { Column(Modifier.padding(24.dp)) { LyricsSetting() } } }
+            compose.onNodeWithContentDescription("無歌詞時顯示專輯封面").performClick()
+            repo.initialize(context)
+            assertFalse(repo.coverFallback.value); assertFalse(repo.enabled.value)
+            compose.onNodeWithContentDescription("無歌詞時顯示專輯封面").performClick()
+            repo.initialize(context)
+            assertTrue(repo.coverFallback.value); assertFalse(repo.enabled.value)
+        } finally { repo.setEnabled(context, oldEnabled); repo.setCoverFallback(context, oldCover) }
+    }
+
+    private fun googleNotificationPanel(night: Boolean, driving: Boolean = false) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val guidance = androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true,
+            activeNavigation = true, guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("300 公尺後右轉", "進入中山路", "預計 12:40 抵達"), receivedElapsed = now))
+        val permission = androidx.compose.runtime.mutableStateOf(true)
+        val google = androidx.compose.runtime.mutableStateOf(true)
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                    AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                    HomeScreen(nav = AppEntry("導航", ComponentName(if (google.value) "com.google.android.apps.maps" else "test.nav", "Main"), null),
+                        navModeLabel = "全螢幕", splitResult = false, music = musicApp, shield = null,
+                        media = MediaUiState(permissionGranted = permission.value),
+                        gps = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
+                            latitude = 24.95, longitude = 121.29, fixElapsed = now) else GpsState(),
+                        slots = emptyList(), actions = actions, googleGuidanceOverride = guidance.value, googleGuidanceNow = now,
+                        mapContent = { _, m -> Box(m) { Text("免費底圖測試") } })
+                }
+            }
+        }
+        compose.onNodeWithText("免費底圖測試").assertDoesNotExist()
+        compose.onNodeWithText("自動縮放").assertDoesNotExist()
+        compose.onNodeWithText("回到目前位置").assertDoesNotExist()
+        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "分割／多工").forEach(::fullLabel)
+        screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
+        compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
+        compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
+        fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true, activeNavigation = true) }
+        fullLabel("導航提示暫不可用，請開啟 Google 地圖確認")
+        compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true) }
+        fullLabel("請在 Google 地圖開始導航")
+        compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState() }
+        fullLabel("導航通知服務未連線")
+        compose.runOnIdle { permission.value = false }
+        fullLabel("請開啟通知存取以顯示導航提示")
+        fullLabel("通知權限")
+        compose.runOnIdle { google.value = false }
+        compose.onNodeWithText("Google 地圖導航通知").assertDoesNotExist()
+        fullLabel("免費底圖測試"); fullLabel("自動縮放"); fullLabel("回到目前位置")
+    }
+    @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
+    @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
+    @Test fun googleNotificationPanelDrivingAt125Percent() = googleNotificationPanel(false, true)
+
 }

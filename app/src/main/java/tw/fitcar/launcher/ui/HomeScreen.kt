@@ -115,6 +115,8 @@ fun HomeScreen(
     /** Test seam for deterministic lyric layout; production uses DesktopLyrics. */
     lyricsContent: (@Composable (MediaUiState) -> Unit)? = null,
     wallpaperOverride: tw.fitcar.launcher.wallpaper.WallpaperState? = null,
+    googleGuidanceOverride: tw.fitcar.launcher.nav.GoogleGuidanceState? = null,
+    googleGuidanceNow: Long? = null,
 ) {
     val p = LocalPalette.current
     val driving = rememberDriving(gps)
@@ -135,7 +137,7 @@ fun HomeScreen(
                 StatusBar(shield, gps, actions, speedAlertKmh)
                 when (spec.arrangement) {
                     HomeArrangement.TWO_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight(), media.permissionGranted, googleGuidanceOverride, googleGuidanceNow)
                         Column(Modifier.weight(spec.sideWeight).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
                             MusicCard(music, media, actions, recentPlayers, Modifier.fillMaxWidth().weight(if (spec.shortHeight) 1.5f else 2.2f), lyricsContent)
                             ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
@@ -143,13 +145,13 @@ fun HomeScreen(
                     }
                     // 超寬螢幕：三欄，音樂與捷徑各自有完整高度
                     HomeArrangement.THREE_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight(), media.permissionGranted, googleGuidanceOverride, googleGuidanceNow)
                         MusicCard(music, media, actions, recentPlayers, Modifier.weight(spec.sideWeight).fillMaxHeight(), lyricsContent)
                         ShortcutsCard(slots, actions, Modifier.weight(spec.sideWeight * 0.8f).fillMaxHeight())
                     }
                     // 直向／正方形：地圖在上，音樂與捷徑並排在下
                     HomeArrangement.STACKED -> {
-                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.fillMaxWidth().weight(spec.mapWeight))
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.fillMaxWidth().weight(spec.mapWeight), media.permissionGranted, googleGuidanceOverride, googleGuidanceNow)
                         Row(Modifier.fillMaxWidth().weight(spec.sideWeight), horizontalArrangement = Arrangement.spacedBy(gap)) {
                             MusicCard(music, media, actions, recentPlayers, Modifier.weight(1f).fillMaxHeight(), lyricsContent)
                             ShortcutsCard(slots, actions, Modifier.weight(1f).fillMaxHeight())
@@ -256,18 +258,17 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier) {
+private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier, notificationAccess: Boolean, guidanceOverride: tw.fitcar.launcher.nav.GoogleGuidanceState?, guidanceNow: Long?) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val googleSelected = nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
-        if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
+        if (googleSelected) {
             val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
-            val mediaState by tw.fitcar.launcher.media.MediaRepository.state.collectAsState()
             var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
             LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
-            GoogleGuidanceCard(guidance, mediaState.permissionGranted, now, actions.grantNotificationAccess)
-        }
-        Spacer(Modifier.height(10.dp))
-        mapContent(gps, Modifier.weight(1f).fillMaxWidth())
+            GoogleGuidanceCard(guidanceOverride ?: guidance, notificationAccess, guidanceNow ?: now,
+                actions.grantNotificationAccess, Modifier.weight(1f).fillMaxWidth())
+        } else mapContent(gps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         FlowRow(Modifier.semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
@@ -277,9 +278,11 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             // 更換導航 App 移到 設定 → App 綁定，主畫面少一顆不常用的按鈕
             SystemSplitShortcut()
-            val controls = LocalMapControls.current
-            SecondaryButton(if (controls.autoZoom) "自動縮放" else "手動縮放", { controls.toggleZoom() })
-            SecondaryButton("回到目前位置", { controls.returnToPosition() })
+            if (!googleSelected) {
+                val controls = LocalMapControls.current
+                SecondaryButton(if (controls.autoZoom) "自動縮放" else "手動縮放", { controls.toggleZoom() })
+                SecondaryButton("回到目前位置", { controls.returnToPosition() })
+            }
             UpdateIndicator()
         }
     }
@@ -389,13 +392,18 @@ private fun formatMs(ms: Long): String {
 }
 
 @Composable
-internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null) {
+internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null, lyricsResultOverride: tw.fitcar.launcher.lyrics.LyricsResult? = null) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
     LaunchedEffect(context) { tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context) }
-    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+    val coverFallback by tw.fitcar.launcher.lyrics.LyricsRepository.coverFallback.collectAsState()
+    val lyricResult = lyricsResultOverride ?: if (lyricsEnabled && media.hasSession && media.permissionGranted && lyricsContent == null) rememberLyricsResult(media) else null
+    val showCover = tw.fitcar.launcher.lyrics.shouldShowLyricsCover(coverFallback, lyricsEnabled,
+        media.hasSession && media.permissionGranted, media.art != null, lyricResult)
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        backgroundContent = if (showCover) ({ PlayerCoverBackground(media.art!!) }) else null) {
         // A short two-column pane can leave zero height for weighted metadata.
         // Keep player identity and song in the existing header height on these screens.
         val compactTitle = (LocalLayoutSpec.current.shortHeight || lyricsEnabled) && media.hasSession && media.permissionGranted
@@ -436,7 +444,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
-            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (showCover) 0f else 1f)).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
             verticalArrangement = Arrangement.spacedBy(if (lyricsEnabled) 4.dp else 6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -461,7 +469,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     }
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     if (!lyricsEnabled) Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving || lyricsEnabled) 1 else 2, overflow = TextOverflow.Ellipsis)
-                    if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else DesktopLyrics(media) }
+                    if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else LyricsLines(requireNotNull(lyricResult), media) }
                     else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
                 }
             }
@@ -493,7 +501,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 @Composable
 private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp).background(p.surface, CircleShape)) {
         GlyphIcon(glyph, size = 24.dp, tint = if (enabled) p.text else p.disabledContent)
     }
 }

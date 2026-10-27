@@ -22,6 +22,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -198,7 +199,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
-    LaunchedEffect(map, loaded, gps.fixElapsed, gps.providerEnabled, gps.permission, controls.following, hasPosition, canHold, controls.autoZoom, controls.recenter) {
+    LaunchedEffect(map, loaded, gps.fixElapsed, gps.providerEnabled, gps.permission, controls.following, hasPosition, canHold, controls.autoZoom, controls.recenter, gps.bearing, gps.speedKmh) {
         val ready = map
         if (handledRecenter != controls.recenter) { centered = false; handledRecenter = controls.recenter }
         if (ready != null && loaded && canHold) {
@@ -209,7 +210,11 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             if (controls.following && hasPosition) {
                 val target = if (controls.autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.zoom(gps.speedKmh.takeIf { gps.isFresh() }) else ready.cameraPosition.zoom
                 zoom = if (centered && controls.autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.smoothZoom(zoom, target) else target
-                val update = CameraUpdateFactory.newLatLngZoom(point, zoom)
+                // Retain the last camera bearing at a stop or with stale/invalid direction.
+                // Manual browsing remains untouched until following is explicitly resumed.
+                val bearing = tw.fitcar.launcher.system.MapFollowPolicy.bearing(ready.cameraPosition.bearing, gps, observedNow)
+                val update = CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(ready.cameraPosition)
+                    .target(point).zoom(zoom).bearing(bearing).build())
                 if (!centered) { ready.moveCamera(update); centered = true }
                 else ready.animateCamera(update, 750, null)
             }
@@ -223,7 +228,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (controls.following) "跟隨目前位置" else "自由瀏覽", size = 14,
+                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (controls.following) "跟隨位置 · 行進方向朝上" else "自由瀏覽", size = 14,
                     essential = !gps.permission || !gps.providerEnabled || !hasPosition)
                 // 本次行程（GPS 估算）：有里程才顯示
                 if (trip.distanceM >= 100.0) Text("本次 " + tw.fitcar.launcher.system.Trip.format(trip), color = LocalPalette.current.text,
