@@ -23,7 +23,7 @@ class MapReadabilityTest {
             val poi = SymbolLayer("poi", "roads").withSourceLayer("poi")
             val count = MapReadability.applyLayers(listOf(background, road, labels, shield, poi), true, 1.25f)
             assertEquals(1, count)
-            assertEquals("rgba(36, 55, 73, 1)", background.backgroundColor.value)
+            assertEquals(android.graphics.Color.parseColor("#243749"), background.backgroundColorAsInt)
             assertTrue(labels.textField.expression.toString().contains("name:zh"))
             assertTrue(labels.textSize.expression.toString().contains("26.25"))
             assertEquals(2f, labels.textHaloWidth.value!!, .001f)
