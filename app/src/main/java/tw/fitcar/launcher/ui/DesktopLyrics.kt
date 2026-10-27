@@ -91,9 +91,13 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
     val canSync = result.lines.isNotEmpty() && media.positionUpdateElapsed > 0
     val index by remember(result.lines) { derivedStateOf { Lrc.current(result.lines, position) } }
     var full by remember { mutableStateOf(false) }
-    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 14, essential = result.lines.isEmpty() && result.plain.isNullOrBlank())
+    // Valid synced lyrics use the available height for the current and next lines.
+    // Keep attribution in accessibility semantics and the full-screen view, rather than a third visual row.
+    if (!canSync) Hint(if (result.lines.isNotEmpty()) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status,
+        size = 14, essential = result.lines.isEmpty() && result.plain.isNullOrBlank())
     Column(
-        Modifier.fillMaxWidth().clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
+        Modifier.fillMaxWidth().semantics { if (canSync) contentDescription = result.status }
+            .clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (canSync) {
