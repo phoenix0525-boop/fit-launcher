@@ -20,7 +20,8 @@ class MapReadabilityTest {
             labels.setProperties(textField("{name:latin}"), textAllowOverlap(false))
             val shield = SymbolLayer("road_shield", "roads").withSourceLayer("transportation_name")
             shield.setProperties(textField("{ref}"))
-            val beforeShield = shield.textField.value
+            val beforeShield = shield.textField.toString()
+            assertTrue("Native shield must retain ref", beforeShield.contains("ref"))
             val poi = SymbolLayer("poi", "roads").withSourceLayer("poi")
             val count = MapReadability.applyLayers(listOf(background, road, labels, shield, poi), true, 1.25f)
             assertEquals(1, count)
@@ -30,7 +31,7 @@ class MapReadabilityTest {
             assertEquals(2f, labels.textHaloWidth.value!!, .001f)
             assertFalse(labels.textAllowOverlap.value!!)
             assertEquals(12f, labels.minZoom, .001f)
-            assertEquals("Native ref expression must remain unchanged", beforeShield, shield.textField.value)
+            assertEquals("Native ref expression must remain unchanged", beforeShield, shield.textField.toString())
             assertTrue(shield.textSize.value!! >= 18f)
             assertTrue(poi.minZoom >= 16f)
         }
