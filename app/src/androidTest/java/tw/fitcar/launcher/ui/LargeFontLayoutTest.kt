@@ -608,4 +608,30 @@ class LargeFontLayoutTest {
         screenshot("moving-card-clarity-125")
     }
 
+    @Test fun originalArtworkActualBoundsNeverExceed150Percent() {
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                Column(Modifier.fillMaxSize()) {
+                    listOf(VisualStyle.POMPOMPURIN,VisualStyle.SPIDERMAN).forEach { style ->
+                        FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,style)) {
+                            Row { ThemeArtPose.entries.forEach { pose -> ThemeArtwork(250.dp,pose) } }
+                        }
+                    }
+                }
+            }
+        }
+        ThemeArtPose.entries.forEach { pose ->
+            listOf(pose.drawable to pose.description,pose.spiderDrawable to pose.spiderDescription).forEach { (id,desc) ->
+                val context=InstrumentationRegistry.getInstrumentation().targetContext
+                val (w,h)=checkNotNull(ArtworkSize.originals[context.resources.getResourceEntryName(id)])
+                val rect=compose.onNodeWithContentDescription(desc,useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+                assertTrue("$desc width $rect",rect.width<=w*1.5f+1f)
+                assertTrue("$desc height $rect",rect.height<=h*1.5f+1f)
+                assertTrue(rect.width>0 && rect.height>0)
+            }
+        }
+        screenshot("original-artwork-bounds-125")
+    }
+
 }
