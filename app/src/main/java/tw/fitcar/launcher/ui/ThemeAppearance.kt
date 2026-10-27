@@ -24,16 +24,16 @@ enum class ThemeClarity(val id: String, val label: String, val alpha: Float) {
     CLEAR("clear", "清楚", .98f), BALANCED("balanced", "均衡", .94f), AIRY("airy", "通透", .90f);
     companion object { fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: BALANCED }
 }
-data class ThemeAppearanceOptions(val fullTheme: Boolean = true, val smallArt: Boolean = true, val clarity: ThemeClarity = ThemeClarity.BALANCED)
+data class ThemeAppearanceOptions(val fullTheme: Boolean = true, val smallArt: Boolean = true, val clarity: ThemeClarity = ThemeClarity.BALANCED, val keepDrivingTransparency: Boolean = false)
 object ThemeAppearanceStore {
     val state = MutableStateFlow(ThemeAppearanceOptions())
     fun initialize(context: Context) {
         val sp = context.getSharedPreferences("theme_appearance", Context.MODE_PRIVATE)
-        state.value = ThemeAppearanceOptions(sp.getBoolean("full", true), sp.getBoolean("small", true), ThemeClarity.fromId(sp.getString("clarity", null)))
+        state.value = ThemeAppearanceOptions(sp.getBoolean("full", true), sp.getBoolean("small", true), ThemeClarity.fromId(sp.getString("clarity", null)), sp.getBoolean("keep_driving_transparency", false))
     }
     fun save(context: Context, next: ThemeAppearanceOptions) {
         context.getSharedPreferences("theme_appearance", Context.MODE_PRIVATE).edit()
-            .putBoolean("full", next.fullTheme).putBoolean("small", next.smallArt).putString("clarity", next.clarity.id).apply()
+            .putBoolean("keep_driving_transparency", next.keepDrivingTransparency).putBoolean("full", next.fullTheme).putBoolean("small", next.smallArt).putString("clarity", next.clarity.id).apply()
         state.value = next
     }
 }
@@ -94,9 +94,18 @@ internal fun ThemeAppearanceSettings() {
         Text("顯示小插畫", Modifier.weight(1f), color = LocalPalette.current.text, fontSize = 20.sp)
         Switch(options.smallArt, { save(options.copy(smallArt = it)) }, Modifier.semantics { contentDescription = "顯示小插畫" })
     }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("行車時保持我的透明度", Modifier.weight(1f), color=LocalPalette.current.text, fontSize=20.sp)
+        Switch(options.keepDrivingTransparency, { save(options.copy(keepDrivingTransparency=it)) }, Modifier.semantics { contentDescription="行車時保持我的透明度" })
+    }
+    Hint("預設行車中卡片自動變清楚（98%不透明），停車後恢復所選透明度，不改寫設定。",size=14)
     Hint("主畫面僅時鐘旁保留小圖；所有 App、設定與關於頁各自配置。自訂桌布取代主畫面角色背景，地圖保持不透明。", size = 14)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ThemeClarity.entries.forEach { choice -> SecondaryButton((if (choice == options.clarity) "✓ " else "") + choice.label,
             { save(options.copy(clarity = choice)) }, Modifier.weight(1f)) }
     }
 }
+
+/** Visual-only override: never mutates stored appearance. No size/position animation. */
+fun cardOpacity(saved: Float, driving: Boolean, keep: Boolean): Float = if (driving && !keep) maxOf(.98f,saved) else saved
+@Composable internal fun effectiveCardOpacity(saved: Float): Float = cardOpacity(saved, LocalDriving.current, LocalThemeAppearance.current.keepDrivingTransparency)

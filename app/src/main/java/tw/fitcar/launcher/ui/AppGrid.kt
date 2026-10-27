@@ -66,7 +66,7 @@ fun FullScreenAppList(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 150.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth().clip(RadiusLg).background(p.surface.copy(alpha = if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else 1f)).border(1.dp, p.line, RadiusLg),
+                modifier = Modifier.weight(1f).fillMaxWidth().clip(RadiusLg).background(p.surface.copy(alpha = if (LocalFullThemeActive.current) effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha) else 1f)).border(1.dp, p.line, RadiusLg),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
