@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.graphics.Bitmap
 import android.media.session.PlaybackState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
@@ -337,5 +338,38 @@ class LargeFontLayoutTest {
     }
     @Test fun customWallpaperDayAt125Percent() = wallpaperHome(false)
     @Test fun customWallpaperNightAt125Percent() = wallpaperHome(true)
+
+    @Test fun wallpaperSettingsAndResetAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = tw.fitcar.launcher.wallpaper.WallpaperStore(context, "wallpaper_ui_${java.util.UUID.randomUUID()}")
+        val source = File(context.cacheDir, "wallpaper_ui_${java.util.UUID.randomUUID()}.png")
+        val image = Bitmap.createBitmap(100, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLUE) }
+        source.outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }; image.recycle()
+        try {
+            kotlinx.coroutines.runBlocking { assertTrue(store.importImage(android.net.Uri.fromFile(source)).isSuccess) }
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(DayPalette) {
+                        Column(Modifier.fillMaxSize().padding(20.dp).then(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()))) {
+                            WallpaperSettings(store)
+                        }
+                    }
+                }
+            }
+            listOf("選擇桌布圖片", "使用自訂桌布", "左右位置", "上下位置", "桌布啟用時顯示主題插畫", "恢復預設桌布").forEach {
+                compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
+            }
+            compose.onNodeWithText("恢復預設桌布").performClick()
+            fullLabel("恢復預設桌布？")
+            compose.onNodeWithText("取消").performClick()
+            assertTrue(store.state.value.visible)
+            compose.onNodeWithText("恢復預設桌布").performClick()
+            compose.onNodeWithText("恢復預設").performClick()
+            compose.waitUntil(5000) { store.state.value.bitmap == null }
+            assertTrue("恢復預設不能刪原圖", source.exists())
+            screenshot("wallpaper-settings-reset-125")
+        } finally { source.delete(); kotlinx.coroutines.runBlocking { store.reset() } }
+    }
 
 }

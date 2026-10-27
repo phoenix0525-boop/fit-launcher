@@ -38,9 +38,9 @@ internal fun WallpaperLayer(state: WallpaperState, night: Boolean, modifier: Mod
 }
 
 @Composable
-internal fun WallpaperSettings() {
+internal fun WallpaperSettings(storeOverride: WallpaperStore? = null) {
     val context = LocalContext.current
-    val store = remember(context) { WallpaperRepository.get(context) }
+    val store = remember(context, storeOverride) { storeOverride ?: WallpaperRepository.get(context) }
     val state by store.state.collectAsState()
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -84,7 +84,7 @@ internal fun WallpaperSettings() {
                 modifier = Modifier.semantics { contentDescription = "桌布夜間暗化" })
             Hint("只暗化桌布圖片，不調整螢幕背光；主題仍依原本日夜設定切換。", size = 13)
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text("顯示主畫面主題插畫", Modifier.weight(1f), color = LocalPalette.current.text)
+                Text("桌布啟用時顯示主題插畫", Modifier.weight(1f), color = LocalPalette.current.text)
                 Switch(state.options.showArt, { value -> store.update { it.copy(showArt = value) } }, enabled = !busy)
             }
             Hint("關閉可避免照片與蜘蛛人／布丁狗插畫同時出現；主題配色不受影響。桌布主要顯示在留白與卡片後方，不覆蓋導航地圖。", size = 13)
