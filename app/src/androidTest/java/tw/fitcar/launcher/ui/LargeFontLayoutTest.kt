@@ -93,6 +93,21 @@ class LargeFontLayoutTest {
         listOf("程式更新", "立即檢查", "自製測試文字").forEach(::fullLabel)
         screenshot("updates-lyrics-125")
     }
+    @Test fun centeredLyricsInNarrowPaneAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    Box(Modifier.width(360.dp).padding(12.dp)) {
+                        LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB",
+                            listOf(tw.fitcar.launcher.lyrics.LyricLine(0, "目前歌詞測試"))),
+                            MediaUiState(positionUpdateElapsed = 1))
+                    }
+                }
+            }
+        }
+        fullLabel("目前歌詞測試")
+    }
     @Test fun splitShortcutExplainsOptionalPermissionAt125Percent() {
         show(MediaUiState())
         compose.onNodeWithText("分割／多工").performClick()

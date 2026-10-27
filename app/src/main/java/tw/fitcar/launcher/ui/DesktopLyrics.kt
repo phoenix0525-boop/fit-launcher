@@ -73,15 +73,15 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
         if (canSync) {
             val i = index
             result.lines.getOrNull(i - 1)?.text?.takeIf { it.isNotBlank() && !driving }?.let {
-                Text(it, color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                Text(it, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
             }
-            Text(if (i < 0) "♪" else result.lines[i].text.ifBlank { "♪" }, color = p.text,
+            Text(if (i < 0) "♪" else result.lines[i].text.ifBlank { "♪" }, modifier = Modifier.fillMaxWidth(), color = p.text,
                 fontSize = if (driving) 30.sp else 28.sp, lineHeight = if (driving) 36.sp else 34.sp,
                 fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            result.lines.getOrNull(i + 1)?.let { Text(it.text, color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
+            result.lines.getOrNull(i + 1)?.let { Text(it.text, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
         } else (result.plain ?: result.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { it.text })?.let { text ->
             val (shown, more) = Lrc.preview(text, if (driving) 2 else 4)
-            Text(shown, color = p.text, fontSize = if (driving) 22.sp else 20.sp, lineHeight = if (driving) 30.sp else 28.sp, textAlign = TextAlign.Center)
+            Text(shown, modifier = Modifier.fillMaxWidth(), color = p.text, fontSize = if (driving) 22.sp else 20.sp, lineHeight = if (driving) 30.sp else 28.sp, textAlign = TextAlign.Center)
             if (more) Hint("無時間碼，只顯示前段；點一下看全文", size = 13)
         }
     }
