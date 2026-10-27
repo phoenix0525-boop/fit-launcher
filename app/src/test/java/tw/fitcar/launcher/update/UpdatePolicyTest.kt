@@ -15,7 +15,7 @@ class UpdatePolicyTest {
     }
     @Test fun nonProductionCertificatesNeverQualifyForAutomaticUpdates() {
         // Includes the delivered 0.4.14 Debug certificate. No test-certificate allowlist.
-        listOf("0C367B3CB11B164EA1CC77C03551D75FC8E8DE817CF801D8C2788F5671191984", "F".repeat(64)).forEach {
+        listOf("41715EE27F2DBEAA947273DF74F2C458BF950A79E59187F768A957B0DEA3ED99", "0C367B3CB11B164EA1CC77C03551D75FC8E8DE817CF801D8C2788F5671191984", "F".repeat(64)).forEach {
             assertFalse(UpdatePolicy.valid(22, 21, 1000, hash, it, url))
         }
     }
