@@ -74,9 +74,10 @@ fun FitCard(
     val p = LocalPalette.current
     val effectiveOpacity = effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha)
     val wallpaperOpacity = effectiveCardOpacity(.96f)
+    val actualOpacity = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f
     val frame = modifier.clip(RadiusLg)
-         .semantics { this[CardOpacityKey] = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f }
-        .background(p.surface.copy(alpha = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f))
+         .semantics { this[CardOpacityKey] = actualOpacity }
+        .background(p.surface.copy(alpha = actualOpacity))
         .border(1.dp, p.line, RadiusLg)
     if (backgroundContent == null) Column(frame.padding(padding), content = content)
     else Box(frame) {
