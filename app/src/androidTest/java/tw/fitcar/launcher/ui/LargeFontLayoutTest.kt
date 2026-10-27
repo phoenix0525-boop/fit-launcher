@@ -252,6 +252,9 @@ class LargeFontLayoutTest {
                     tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
                     tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行比較長也要完整顯示不能裁切"),
                     tw.fitcar.launcher.lyrics.LyricLine(20000, "下一行也要完整顯示"))), state) })
+            // Source attribution remains available without taking a row from the current/next lyrics.
+            compose.onNodeWithContentDescription("同步歌詞 · LRCLIB", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText("同步歌詞 · LRCLIB").assertDoesNotExist()
             listOf("自製歌曲測試", "測試歌手", "目前這一行比較長也要完整顯示不能裁切", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
             val current = compose.onNodeWithText("目前這一行比較長也要完整顯示不能裁切", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
