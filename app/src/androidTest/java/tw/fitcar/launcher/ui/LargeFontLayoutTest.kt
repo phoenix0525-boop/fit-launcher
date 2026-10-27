@@ -119,6 +119,8 @@ class LargeFontLayoutTest {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertIsDisplayed()
         compose.onAllNodesWithText("這是一個很長的應用程式捷徑名稱").assertCountEquals(0)
+        val audio = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        fullLabel(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString())
         compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
         compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
         listOf("降低", "提高", "關閉").forEach(::fullLabel)
