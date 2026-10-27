@@ -73,7 +73,7 @@ fun FitCard(
 ) {
     val p = LocalPalette.current
     val frame = modifier.clip(RadiusLg)
-        .background(p.surface.copy(alpha = if (backgroundContent == null && LocalWallpaperActive.current) .96f else 1f))
+        .background(p.surface.copy(alpha = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else if (LocalWallpaperActive.current) .96f else 1f))
         .border(1.dp, p.line, RadiusLg)
     if (backgroundContent == null) Column(frame.padding(padding), content = content)
     else Box(frame) {
@@ -111,7 +111,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 18.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = p.accent,
-            contentColor = if (p.isNight) p.bgDeep else Color.White,
+            contentColor = p.onAccent,
             disabledContainerColor = p.surfaceMuted,
             disabledContentColor = p.textSoft,
         ),
@@ -253,7 +253,7 @@ fun Pill(text: String, modifier: Modifier = Modifier, color: Color? = null) {
 fun Section(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPalette.current
     Column(
-        modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(18.dp),
+        modifier.clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else 1f)).border(1.dp, p.line, RadiusMd).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

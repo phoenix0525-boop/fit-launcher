@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,29 +47,26 @@ fun FullScreenAppList(
     selectedKey: String? = null,
 ) {
     val p = LocalPalette.current
-    Column(Modifier.fillMaxSize().background(p.bg).padding(20.dp)) {
+    ThemePageFrame(ThemePage.APPS) {
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(title, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 Hint(subtitle, size = 15)
             }
-            if (p.characterArt) {
-                ThemeArtwork(80.dp, ThemeArtPose.APPS)
-                Spacer(Modifier.padding(horizontal = 8.dp))
-            }
             PrimaryButton(backLabel, onBack, Modifier.heightIn(min = 72.dp), icon = {
-                GlyphIcon(Glyph.HOME, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
+                GlyphIcon(Glyph.HOME, size = 26.dp, tint = p.onAccent)
             })
         }
         Spacer(Modifier.height(18.dp))
         if (apps.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Hint("找不到可啟動的 App。", size = 18)
             }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 150.dp),
-                modifier = Modifier.fillMaxSize().clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg),
+                modifier = Modifier.weight(1f).fillMaxWidth().clip(RadiusLg).background(p.surface.copy(alpha = if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else 1f)).border(1.dp, p.line, RadiusLg),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -92,6 +90,10 @@ fun FullScreenAppList(
                 }
             }
         }
+        if (p.characterArt && LocalThemeAppearance.current.smallArt) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { ThemeArtwork(80.dp, ThemeArtPose.APPS) }
+        }
+    }
     }
 }
 

@@ -129,10 +129,11 @@ fun HomeScreen(
     BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
         val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
         val gap = spec.gapDp.dp
+        ThemeBackdrop(ThemePage.HOME, visible = !wallpaper.visible)
         WallpaperLayer(wallpaper, p.isNight, Modifier.matchParentSize())
         val contentPalette = if (wallpaper.visible && !wallpaper.options.showArt) p.copy(characterArt = false) else p
         CompositionLocalProvider(LocalLayoutSpec provides spec, LocalDriving provides driving,
-            LocalMapControls provides mapControls, LocalWallpaperActive provides wallpaper.visible, LocalPalette provides contentPalette) {
+            LocalMapControls provides mapControls, LocalWallpaperActive provides wallpaper.visible, LocalFullThemeActive provides (p.characterArt && LocalThemeAppearance.current.fullTheme), LocalPalette provides contentPalette) {
             Column(Modifier.fillMaxSize().padding(spec.outerDp.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
                 StatusBar(shield, gps, actions, speedAlertKmh)
                 when (spec.arrangement) {
@@ -184,7 +185,7 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
             Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
             Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
         }
-        if (hasArt) ThemeArtwork(64.dp, ThemeArtPose.CLOCK)
+        if (hasArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(64.dp, ThemeArtPose.CLOCK)
     }
 }
 
@@ -229,7 +230,7 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
     var alert by remember { mutableStateOf(false) }
     LaunchedEffect(gps, fresh, alertKmh) { alert = tw.fitcar.launcher.system.SpeedAlert.next(alert, gps.speedKmh, fresh, alertKmh) }
     val bg = if (alert) p.danger else p.surfaceStrong
-    val fg = if (alert) (if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White) else p.text
+    val fg = if (alert) contrastInk(p.danger) else p.text
     Row(
         Modifier.clip(RadiusMd).background(bg).border(1.dp, p.line, RadiusMd).padding(horizontal = 14.dp, vertical = 6.dp)
             .semantics { contentDescription = if (alert) "GPS 車速超過 $alertKmh 公里" else "GPS 車速" },
@@ -261,6 +262,7 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
 private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier, notificationAccess: Boolean, guidanceOverride: tw.fitcar.launcher.nav.GoogleGuidanceState?, guidanceNow: Long?) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val googleSelected = nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE
+    CompositionLocalProvider(LocalFullThemeActive provides false, LocalWallpaperActive provides false) {
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         if (googleSelected) {
             val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
@@ -286,6 +288,8 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             UpdateIndicator()
         }
     }
+}
+
 }
 
 /** 天氣（中央氣象署最近測站），點擊看 5 天紀錄；未啟用時不顯示。 */
@@ -418,7 +422,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 SecondaryButton("開啟", actions.openMusicApp)
             }
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp, ThemeArtPose.MUSIC)
+            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp, ThemeArtPose.MUSIC)
             if (!lyricsEnabled) LyricsEnableButton()
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
@@ -444,7 +448,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
-            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (showCover) 0f else 1f)).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (showCover || LocalFullThemeActive.current) 0f else 1f)).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
             verticalArrangement = Arrangement.spacedBy(if (lyricsEnabled) 4.dp else 6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -488,7 +492,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         .semantics { contentDescription = "播放／暫停" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 24.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
+                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 24.dp, tint = p.onAccent)
                 }
                 if (media.canSeek) SeekButton("+15", tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
                 ControlButton(Glyph.NEXT, next, actions.next)
@@ -588,7 +592,7 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp)
+            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
                     Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))

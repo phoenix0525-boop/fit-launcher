@@ -85,7 +85,7 @@ fun CheckerScreen(actions: CheckerActions) {
                 Hint(Status.entries.joinToString("　") { s -> "${s.mark}${s.label} ${results.values.count { it.status == s }}" }, size = 15)
             }
             SecondaryButton("重新檢測", actions.rerun)
-            PrimaryButton("返回", actions.back, Modifier.heightIn(min = 72.dp), icon = { GlyphIcon(Glyph.BACK, size = 26.dp, tint = if (p.isNight) p.bgDeep else Color.White) })
+            PrimaryButton("返回", actions.back, Modifier.heightIn(min = 72.dp), icon = { GlyphIcon(Glyph.BACK, size = 26.dp, tint = p.onAccent) })
         }
         Spacer(Modifier.height(16.dp))
         SectionNavLayout(TABS.mapIndexed { i, name -> if (i == 0 && improvements.isNotEmpty()) "$name（${improvements.size}）" else name }, tab, { tab = it }) {

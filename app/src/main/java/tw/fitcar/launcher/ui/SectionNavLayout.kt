@@ -34,6 +34,7 @@ fun SectionNavLayout(
     items: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
+    footer: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
@@ -44,9 +45,10 @@ fun SectionNavLayout(
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(
                     Modifier.width(sidebarWidth).fillMaxHeight().clip(RadiusLg)
-                        .background(p.surface).border(1.dp, p.line, RadiusLg).verticalScroll(rememberScrollState()).padding(10.dp),
+                        .background(p.surface).border(1.dp, p.line, RadiusLg).padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items.forEachIndexed { i, name ->
                         val on = i == selected
                         Text(
@@ -60,6 +62,8 @@ fun SectionNavLayout(
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }
+                    }
+                    footer?.invoke()
                 }
                 Column(
                     Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),

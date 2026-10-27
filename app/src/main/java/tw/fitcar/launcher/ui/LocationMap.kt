@@ -26,6 +26,8 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMapOptions
+import androidx.compose.ui.platform.LocalDensity
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
@@ -117,7 +119,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val view = remember(context) {
         MapLibre.getInstance(context.applicationContext)
-        MapView(context).apply { onCreate(null) }
+        MapView(context, MapLibreMapOptions.createFromAttributes(context).localIdeographFontFamily("sans-serif")).apply { onCreate(null) }
     }
     var map by remember(view) { mutableStateOf<MapLibreMap?>(null) }
     var marker by remember(view) { mutableStateOf<Marker?>(null) }
@@ -132,10 +134,13 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     var handledRecenter by remember(view) { mutableIntStateOf(-1) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(view) { while (true) { now = SystemClock.elapsedRealtime(); delay(2_000) } }
+    val fontScale = LocalDensity.current.fontScale
     val night = LocalPalette.current.isNight
     var nightFailed by remember(view) { mutableStateOf(false) }
     val styleUrl = tw.fitcar.launcher.system.MapStyles.forTheme(night, nightFailed)
     val currentStyle by rememberUpdatedState(styleUrl)
+    val currentNight by rememberUpdatedState(night)
+    val currentFontScale by rememberUpdatedState(fontScale)
     val homeVisible = LocalHomeVisible.current
     // MapView 的 onResume／onPause 只能成對呼叫；設定頁或所有 App 蓋住主畫面時暫停繪製，返回時恢復
     val run = remember(view) { MapRun(view) }
@@ -187,7 +192,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             view.onDestroy()
         }
     }
-    LaunchedEffect(map, retry, styleUrl) {
+    LaunchedEffect(map, retry, styleUrl, fontScale) {
         loaded = false
         failed = false
         slow = false
@@ -195,7 +200,11 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         marker?.let { old -> map?.removeMarker(old) }
         marker = null
         MapDiagnostics.base("底圖載入中")
-        map?.setStyle(styleUrl) { loaded = true; failed = false; MapDiagnostics.base(if (styleUrl.contains("/dark")) "深色底圖樣式已載入（夜間）" else "底圖樣式已載入（圖磚顯示仍需目視確認）") }
+        map?.setStyle(styleUrl) { style ->
+            val labels = tw.fitcar.launcher.system.MapReadability.apply(style, currentNight, currentFontScale)
+            loaded = true; failed = false
+            MapDiagnostics.base("${if (currentNight) "夜間高對比" else "日間"}樣式已載入；中文道路標籤圖層 $labels（實際路名／圖磚需目視確認）")
+        }
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
