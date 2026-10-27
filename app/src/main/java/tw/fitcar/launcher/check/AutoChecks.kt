@@ -270,7 +270,8 @@ object AutoChecks {
         val v = am.getStreamVolume(AudioManager.STREAM_MUSIC)
         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         val muted = am.isStreamMute(AudioManager.STREAM_MUSIC)
-        return CheckResult("audio", "操作", "媒體音量", Status.INFO, "媒體音量 $v／$max${if (muted) "（靜音）" else ""}；手勢測試會以此判斷音量是否改變。")
+        val last = context.getSharedPreferences("volume_diagnostics", Context.MODE_PRIVATE).getString("last_readback", null)
+        return CheckResult("audio", "操作", "媒體音量", Status.INFO, "Android 媒體音量 $v／$max${if (muted) "（靜音）" else ""}；fixed=${am.isVolumeFixed}。數值變化不代表原廠主機實際音量已改變。${last?.let { "\n最近回讀（不是實際聲音驗證）：$it" }.orEmpty()}")
     }
 
     /** 比對上次開啟時的開機時間，判斷熄火後是休眠喚醒還是重新開機。 */

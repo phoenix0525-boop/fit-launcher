@@ -123,7 +123,7 @@ class LargeFontLayoutTest {
         fullLabel(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString())
         compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
         compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
-        listOf("降低", "提高", "關閉").forEach(::fullLabel)
+        listOf("降低", "提高", "系統音量", "關閉").forEach(::fullLabel)
         screenshot("home-volume-125", dialog = true)
     }
     @Test fun permissionCardButtonAt125Percent() {
@@ -266,6 +266,28 @@ class LargeFontLayoutTest {
             tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context)
             assertTrue(tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value)
         } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
+    }
+
+    @Test fun relativeVolumeReportsOnlyAndroidReadback() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val before = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+        val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        val initial = (max / 2).coerceAtLeast(2)
+        try {
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, initial, 0)
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲"))
+            compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
+            compose.onNodeWithText("降低").performClick()
+            compose.waitUntil(5000) { audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == initial - 1 }
+            val message = tw.fitcar.launcher.system.VolumeReadback.NUMERIC_ONLY.message
+            compose.waitUntil(5000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(message).performScrollTo()
+            fullLabel(message)
+            assertTrue(context.getSharedPreferences("volume_diagnostics", android.content.Context.MODE_PRIVATE)
+                .getString("last_readback", "")!!.startsWith("相對增減"))
+            screenshot("volume-readback-125", dialog = true)
+        } finally { audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, before, 0) }
     }
 
 }
