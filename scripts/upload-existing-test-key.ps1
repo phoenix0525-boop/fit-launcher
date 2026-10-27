@@ -3,7 +3,7 @@
 $previousErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 $repo = 'phoenix0525-boop/fit-launcher'
-$expected = '310A8779E7E321D3187FBBED280725BFBB36A7EB7FDD39A9D39F487221961108'
+$expected = '945997E4EB8E3D19A79D5CAB2E841762DF5D9B0AB57AEF320BE0591BDC693917'
 $folder = 'G:\我的雲端硬碟\小工具指令\Honda Fit車機\簽章金鑰（勿上傳GitHub）\測試金鑰'
 $keyPath = Join-Path $folder 'vehicle-test.p12'
 $ptr = [IntPtr]::Zero
