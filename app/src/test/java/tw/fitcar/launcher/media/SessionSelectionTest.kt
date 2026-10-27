@@ -40,4 +40,14 @@ class SessionSelectionTest {
         assertEquals(1, SessionSelection.choose(sessions, kk, true, 1))
         assertEquals(0, SessionSelection.choose(sessions, yt, true, 1))
     }
+    @Test fun coldStartRestoresRememberedPausedSourceOverConfiguredPausedApp() {
+        assertEquals(1, SessionSelection.choose(listOf(SessionCandidate(kk, false), SessionCandidate(morphe, false)), kk, true, null, morphe))
+    }
+    @Test fun explicitFixedSelectionOverridesMemory() {
+        assertEquals(0, SessionSelection.choose(listOf(SessionCandidate(kk, false), SessionCandidate(morphe, true)), kk, false, null, morphe))
+    }
+    @Test fun deletedRememberedSessionDoesNotInventAConnection() {
+        assertNull(SessionSelection.choose(emptyList(), kk, true, null, morphe))
+        assertEquals(0, SessionSelection.choose(listOf(SessionCandidate(yt, true)), kk, true, null, morphe))
+    }
 }

@@ -235,6 +235,7 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             SecondaryButton("更換", actions.bindNav)
             SystemSplitShortcut()
+            UpdateIndicator()
         }
         Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
     }
@@ -346,10 +347,13 @@ private fun formatMs(ms: Long): String {
 @Composable
 internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
+    LaunchedEffect(context) { tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context) }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         // A short two-column pane can leave zero height for weighted metadata.
         // Keep player identity and song in the existing header height on these screens.
-        val compactTitle = LocalLayoutSpec.current.shortHeight && media.hasSession && media.permissionGranted
+        val compactTitle = (LocalLayoutSpec.current.shortHeight || lyricsEnabled) && media.hasSession && media.permissionGranted
         if (compactTitle) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f)) {
@@ -363,7 +367,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
         Spacer(Modifier.height(8.dp))
-        // 主要區：原本規劃為歌詞；目前沒有合法歌詞來源，依決策改顯示曲目並註明
+        // Original lyrics area: opt-in independent lookup, with honest metadata fallback.
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
@@ -380,18 +384,20 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 }
                 !media.hasSession -> {
                     GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)
-                    Text("尚未播放", color = p.text, fontSize = 22.sp)
-                    Hint("開啟選定播放器播放後，這裡會顯示歌曲資訊。", size = 14)
+                    Text("播放器待連接", color = p.text, fontSize = 22.sp)
+                    Hint("已記住上次播放器；按下方按鈕重新開啟。播放進度由播放器保留。", size = 14)
+                    PrimaryButton("連接上次播放器", actions.playPause)
                 }
                 else -> {
                     val art = media.art
-                    if (art != null && spacious) {
+                    if (art != null && spacious && !lyricsEnabled) {
                         val img = remember(art) { art.asImageBitmap() }
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
-                    Text(listOfNotNull(media.artist, if (spacious) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (spacious) Hint("歌詞功能尚未提供", size = 13)
+                    Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (lyricsEnabled) DesktopLyrics(media)
+                    else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
                 }
             }
         }

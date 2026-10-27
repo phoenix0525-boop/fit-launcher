@@ -63,6 +63,16 @@ object MediaRepository {
     private var listenerRegistered = false
     private var current: MediaController? = null
     private var appContext: Context? = null
+    fun rememberedPackage(context: Context): String? = context.getSharedPreferences("last_player", Context.MODE_PRIVATE).getString("package", null)
+    fun resumePackage(context: Context): String? {
+        val prefs = Prefs.get(context).state.value
+        val selected = prefs.bindings.music?.let { ComponentName.unflattenFromString(it)?.packageName }
+        return if (prefs.mediaMode == MediaMode.FIXED) selected else state.value.packageName ?: rememberedPackage(context) ?: selected
+    }
+    private fun rememberPlayer(context: Context, packageName: String) {
+        if (rememberedPackage(context) != packageName) context.getSharedPreferences("last_player", Context.MODE_PRIVATE).edit().putString("package", packageName).apply()
+    }
+
 
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
         appContext?.let { select(it, controllers.orEmpty()) }
@@ -140,6 +150,7 @@ object MediaRepository {
             controllers.map { SessionCandidate(it.packageName, it.playbackState?.state == PlaybackState.STATE_PLAYING) },
             preferredPackage, prefs.mediaMode == MediaMode.FOLLOW_CURRENT,
             controllers.indexOfFirst { it.sessionToken == current?.sessionToken }.takeIf { it >= 0 },
+            rememberedPackage(ctx),
         )?.let { controllers[it] }
 
         if (chosen?.sessionToken != current?.sessionToken) {
@@ -147,6 +158,7 @@ object MediaRepository {
             current = chosen
             chosen?.registerCallback(callback, main)
         }
+        if (chosen?.playbackState?.state == PlaybackState.STATE_PLAYING) rememberPlayer(ctx, chosen.packageName)
         publish(controllers)
     }
 
@@ -170,7 +182,9 @@ object MediaRepository {
         }
         val c = current
         if (c == null) {
-            _state.value = MediaUiState(permissionGranted = true, sessions = lastSessions)
+            val last = appContext?.let { resumePackage(it) }
+            val name = appContext?.let { ctx -> last?.let { pkg -> runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull() } }
+            _state.value = MediaUiState(permissionGranted = true, playerName = name, sessions = lastSessions)
             return
         }
         val md = c.metadata

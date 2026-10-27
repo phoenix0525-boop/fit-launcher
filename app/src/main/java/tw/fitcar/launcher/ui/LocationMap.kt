@@ -95,7 +95,7 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
     Column(modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
         .padding(horizontal = 14.dp, vertical = 8.dp)) {
         Text("目前位置", color = p.textSoft, fontSize = 12.sp)
-        Text(label, color = p.text, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(if (address != null && freshAddress) "附近地址：$label" else label, color = p.text, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

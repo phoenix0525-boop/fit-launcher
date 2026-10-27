@@ -16,13 +16,14 @@ object RoadGeocoder {
     fun chineseLabel(parts: List<String?>, addressLine: String?): String? {
         val han = Regex("[\u3400-\u9fff]")
         val useful = parts.filterNotNull().map(String::trim).filter { it.isNotBlank() }.distinct()
-        val label = useful.joinToString(" ").takeIf { han.containsMatchIn(it) }
+        val full = addressLine?.trim()?.takeIf { han.containsMatchIn(it) && Regex("[0-9０-９]+(?:之[0-9０-９]+)?號").containsMatchIn(it) }
+        val label = full ?: useful.joinToString(" ").takeIf { han.containsMatchIn(it) }
             ?: addressLine?.takeIf { han.containsMatchIn(it) }
         return label?.take(160)
     }
 
     private fun label(entry: Address?): String? = entry?.let {
-        chineseLabel(listOf(it.adminArea, it.subAdminArea, it.locality, it.subLocality, it.thoroughfare), it.getAddressLine(0))
+        chineseLabel(listOf(it.adminArea, it.subAdminArea, it.locality, it.subLocality, it.thoroughfare, it.subThoroughfare?.let { number -> if (number.all(Char::isDigit)) "${number}號" else number }), it.getAddressLine(0))
     }
 
     suspend fun lookup(context: Context, latitude: Double, longitude: Double): String? {
