@@ -52,6 +52,10 @@ fun FullScreenAppList(
                 Text(title, color = p.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 Hint(subtitle, size = 15)
             }
+            if (p.characterArt) {
+                PompompurinArtwork(56.dp, PompompurinPose.CHEER)
+                Spacer(Modifier.padding(horizontal = 8.dp))
+            }
             PrimaryButton(backLabel, onBack, Modifier.heightIn(min = 72.dp), icon = {
                 GlyphIcon(Glyph.HOME, size = 26.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
             })

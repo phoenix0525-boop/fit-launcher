@@ -166,7 +166,12 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
     val large = big && !LocalLayoutSpec.current.compactChrome
     Column(modifier) {
         Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
-        Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
+        if (p.characterArt && large) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(dateFormat.format(date), modifier = Modifier.weight(1f), color = p.textSoft, fontSize = 15.sp, maxLines = 1)
+                PompompurinArtwork(40.dp, PompompurinPose.THANKS)
+            }
+        } else Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
     }
 }
 
@@ -389,6 +394,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 SecondaryButton("開啟", actions.openMusicApp)
             }
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(40.dp, PompompurinPose.REST)
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
