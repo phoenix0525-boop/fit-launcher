@@ -18,6 +18,10 @@ class SettingsBackupTest {
             assertTrue(it, runCatching { SettingsBackup.decode(it) }.isFailure)
         }
     }
+    @Test fun emptyKnownGroupCanRestoreDefaultsButEmptyEnvelopeIsRejected() {
+        assertEquals(emptyMap<String,Any>(),SettingsBackup.decode("{\"schemaVersion\":1,\"groups\":{\"fit_launcher\":{}}}").groups["fit_launcher"])
+        assertTrue(runCatching { SettingsBackup.decode("{\"schemaVersion\":1,\"groups\":{}}") }.isFailure)
+    }
     @Test fun legacySchemaZeroCompatible() {
         assertEquals(sample, SettingsBackup.decode(SettingsBackup.encode(sample, "old", "now").replace("\"schemaVersion\":1", "\"schemaVersion\":0")).groups)
     }
