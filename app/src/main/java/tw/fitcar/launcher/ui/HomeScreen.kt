@@ -258,12 +258,7 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
 @Composable
 private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val coverFallback by tw.fitcar.launcher.lyrics.LyricsRepository.coverFallback.collectAsState()
-    val lyricResult = lyricsResultOverride ?: if (lyricsEnabled && media.hasSession && media.permissionGranted && lyricsContent == null) rememberLyricsResult(media) else null
-    val showCover = tw.fitcar.launcher.lyrics.shouldShowLyricsCover(coverFallback, lyricsEnabled,
-        media.hasSession && media.permissionGranted, media.art != null, lyricResult)
-    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-        backgroundContent = if (showCover) ({ PlayerCoverBackground(media.art!!) }) else null) {
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
             val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
             val mediaState by tw.fitcar.launcher.media.MediaRepository.state.collectAsState()
@@ -400,7 +395,12 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
     LaunchedEffect(context) { tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context) }
-    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+    val coverFallback by tw.fitcar.launcher.lyrics.LyricsRepository.coverFallback.collectAsState()
+    val lyricResult = lyricsResultOverride ?: if (lyricsEnabled && media.hasSession && media.permissionGranted && lyricsContent == null) rememberLyricsResult(media) else null
+    val showCover = tw.fitcar.launcher.lyrics.shouldShowLyricsCover(coverFallback, lyricsEnabled,
+        media.hasSession && media.permissionGranted, media.art != null, lyricResult)
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        backgroundContent = if (showCover) ({ PlayerCoverBackground(media.art!!) }) else null) {
         // A short two-column pane can leave zero height for weighted metadata.
         // Keep player identity and song in the existing header height on these screens.
         val compactTitle = (LocalLayoutSpec.current.shortHeight || lyricsEnabled) && media.hasSession && media.permissionGranted
