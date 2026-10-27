@@ -137,8 +137,9 @@ fun AppIcon(drawable: Drawable?, size: Dp, modifier: Modifier = Modifier) {
             try { d.toBitmap(192, 192).asImageBitmap().also { IconCache.put(d, it) } } catch (e: Exception) { null }
         }
     }
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
+    val renderedBitmap = bitmap
+    if (renderedBitmap != null) {
+        Image(bitmap = renderedBitmap, contentDescription = null, modifier = modifier.size(size))
     } else {
         val p = LocalPalette.current
         Box(modifier.size(size).clip(RadiusMd).background(p.surfaceMuted))
