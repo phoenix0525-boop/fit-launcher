@@ -54,6 +54,8 @@ class Prefs private constructor(context: Context) {
         save(next)
     }
 
+    fun reload() { _state.value = load() }
+
     private fun load(): LauncherState {
         val periods = DEFAULT_PERIODS.map { p ->
             Period(

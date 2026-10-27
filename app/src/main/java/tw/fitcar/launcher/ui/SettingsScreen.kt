@@ -93,7 +93,7 @@ class SettingsActions(
     val setSpeedAlert: ((Int) -> Unit)? = null,
 )
 
-private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "更新", "關於")
+private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "更新", "關於", "備份與還原")
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
@@ -120,7 +120,8 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     5 -> FactoryHomeSection(data, actions)
                     6 -> DiagnosticsSection(data)
                     7 -> UpdateSection()
-                    else -> AboutSection(data)
+                    8 -> AboutSection(data)
+                    else -> BackupSection()
                 }
             }
     }
