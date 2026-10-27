@@ -56,10 +56,35 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             echo '未使用固定測試金鑰，無法覆蓋安裝' >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Record verified Debug APK provenance
+        shell: bash
+        run: |
+          python - <<'PYPROVENANCE'
+          import hashlib, json, os, re, subprocess
+          from pathlib import Path
+          folder = Path('app/build/outputs/apk/debug')
+          apk = folder / 'app-debug.apk'
+          signer = sorted((Path(os.environ['ANDROID_HOME']) / 'build-tools').glob('*/apksigner'))[-1]
+          verified = subprocess.run([str(signer), 'verify', '--verbose', '--print-certs', str(apk)], capture_output=True, text=True, check=True)
+          certificates = re.findall(r'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]+)', verified.stdout)
+          assert len(certificates) == 1, 'Expected one verified APK signing certificate'
+          certificate = certificates[0].upper()
+          expected = Path('docs/test-certificate.sha256').read_text().strip().replace(':', '').upper()
+          digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+          report = dict(versionName='0.4.15', versionCode=22, package='tw.fitcar.launcher', head=os.environ['GITHUB_SHA'], run=os.environ['GITHUB_RUN_ID'], sha256=digest, sizeBytes=apk.stat().st_size, certificateSha256=certificate, fixedTestSigning=(certificate == expected), cryptographicVerification='apksigner verify passed', buildType='Debug test only')
+          (folder / 'signing-provenance.json').write_text(json.dumps(report, indent=2) + '\n')
+          (folder / 'app-debug.apk.sha256').write_text(digest + '  app-debug.apk\n')
+          (folder / 'certificate-sha256.txt').write_text(certificate + '\n')
+          print(json.dumps(report))
+          PYPROVENANCE
       - uses: actions/upload-artifact@v4
         with:
           name: fit-launcher-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/*.sha256
+            app/build/outputs/apk/debug/signing-provenance.json
+            app/build/outputs/apk/debug/certificate-sha256.txt
           if-no-files-found: error
       - name: Build clean unsigned release APK and AAB for policy audit
         run: ./gradlew --no-daemon assembleRelease bundleRelease --stacktrace
