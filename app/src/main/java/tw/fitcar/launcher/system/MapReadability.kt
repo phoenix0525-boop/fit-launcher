@@ -46,6 +46,10 @@ object MapReadability {
                     textHaloWidth(if (night) 2f else 1.5f), textHaloBlur(.25f), textOpacity(1f))
                 layer.minZoom = minOf(layer.minZoom, 12f)
                 labels++
+            } else if (layer.sourceLayer == "transportation_name" &&
+                (layer.id.contains("shield", true) || layer.id.contains("name_motorway", true) || layer.id.contains("ref", true))) {
+                layer.setProperties(textSize(16f * scale), textColor(if (night) MapReadabilityPolicy.NIGHT_TEXT else "#243749"),
+                    textHaloColor(if (night) MapReadabilityPolicy.NIGHT_BACKGROUND else "#FFFFFF"), textHaloWidth(2f), textOpacity(1f))
             } else if (night && layer.sourceLayer == "poi") {
                 // Keep POIs available at close range while prioritising road names during driving.
                 layer.minZoom = maxOf(layer.minZoom, 16f)
