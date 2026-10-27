@@ -57,7 +57,7 @@ object SettingsBackup {
             o.keys().forEach { k -> if (known(g, k)) { val v = o.get(k); validate(g,k,v); entries[k]=v } }
             result[g]=entries
         } }
-        require(result.values.any { it.isNotEmpty() }) { "備份中沒有可還原的設定" }
+        require(result.isNotEmpty()) { "備份中沒有可還原的設定" }
         return BackupPlan(result)
     }
 }

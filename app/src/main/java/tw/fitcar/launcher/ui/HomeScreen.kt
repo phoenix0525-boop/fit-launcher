@@ -125,7 +125,8 @@ fun HomeScreen(
     val wallpaperState by wallpaperStore.state.collectAsState()
     val wallpaper = wallpaperOverride ?: wallpaperState
     val mapPrefs = context.getSharedPreferences("map_preferences", android.content.Context.MODE_PRIVATE)
-    val mapControls = remember { MapPanelControls(mapPrefs.getBoolean("auto_zoom",true)) { mapPrefs.edit().putBoolean("auto_zoom",it).apply() } }
+    val backupRevision by tw.fitcar.launcher.data.BackupStore.revision.collectAsState()
+    val mapControls = remember(backupRevision) { MapPanelControls(mapPrefs.getBoolean("auto_zoom",true)) { mapPrefs.edit().putBoolean("auto_zoom",it).apply() } }
     LaunchedEffect(wallpaperStore) { if (wallpaperOverride == null) wallpaperStore.load() }
     BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
         val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
