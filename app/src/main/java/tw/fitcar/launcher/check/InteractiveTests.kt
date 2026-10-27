@@ -68,7 +68,10 @@ object GestureTest {
 
 /* ---------------- 按鍵：記錄方向盤／面板按鍵送到 App 的 KeyEvent ---------------- */
 
-data class KeyRecord(val code: Int, val name: String, val time: Long)
+data class KeyRecord(
+    val code: Int, val name: String, val time: Long,
+    val scanCode: Int = 0, val source: Int = 0, val deviceId: Int = 0, val longPress: Boolean = false,
+)
 
 object KeyLog {
     private val _events = MutableStateFlow<List<KeyRecord>>(emptyList())
@@ -77,7 +80,17 @@ object KeyLog {
 
     fun onKey(event: KeyEvent) {
         if (!recording || event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) return
-        _events.value = (listOf(KeyRecord(event.keyCode, KeyEvent.keyCodeToString(event.keyCode), System.currentTimeMillis())) + _events.value).take(30)
+        _events.value = (listOf(KeyRecord(event.keyCode, KeyEvent.keyCodeToString(event.keyCode), System.currentTimeMillis(),
+            event.scanCode, event.source, event.deviceId, event.isLongPress)) + _events.value).take(30)
+    }
+
+    /** 匯出用的完整事件紀錄（時間由舊到新），用來判斷哪顆方向盤鍵沒有送到第三方桌面。 */
+    fun formatLines(records: List<KeyRecord>, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): List<String> {
+        val f = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).apply { timeZone = zone }
+        return records.sortedBy { it.time }.map {
+            "${f.format(java.util.Date(it.time))} ${it.name} code=${it.code} scan=${it.scanCode} src=0x${Integer.toHexString(it.source)} dev=${it.deviceId}" +
+                if (it.longPress) " long" else ""
+        }
     }
 
     fun clear() { _events.value = emptyList() }
@@ -88,7 +101,7 @@ object KeyLog {
             CheckResult("keys", "操作", "方向盤／面板按鍵", Status.INFO, "測試期間 App 沒有收到任何按鍵事件。",
                 "未收到事件不能判定正常。若原廠桌面有效而 車機桌面無效，需確認原廠專用按鍵介面；先記錄失效鍵與兩個桌面的差異。")
         } else {
-            CheckResult("keys", "操作", "方向盤／面板按鍵", Status.INFO, "App 收到：${codes.joinToString("、")}。",
+            CheckResult("keys", "操作", "方向盤／面板按鍵", Status.INFO, "App 收到：${codes.joinToString("、")}。\n事件紀錄：\n" + formatLines(_events.value).joinToString("\n"),
                 "這些按鍵 車機桌面可以接收；若有按鍵在 車機桌面上失效（例如 HOME、MODE），記下來可在下一版對應處理。")
         }
     }

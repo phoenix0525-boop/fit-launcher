@@ -89,6 +89,10 @@ class HomeActions(
     val editSlot: (Int) -> Unit,
     val voice: (() -> Unit)? = null,
     val openGoogleNav: (() -> Unit)? = null,
+    val goHome: (() -> Unit)? = null,
+    val goWork: (() -> Unit)? = null,
+    /** 音樂卡快速切換：開啟指定套件的播放器。 */
+    val openPlayer: ((String) -> Unit)? = null,
 )
 
 @Composable
@@ -103,33 +107,39 @@ fun HomeScreen(
     slots: List<SlotView>,
     actions: HomeActions,
     mapContent: @Composable (GpsState, Modifier) -> Unit = { fix, modifier -> FreeMapPanel(fix, modifier) },
+    /** 最近播放器（套件, 名稱），固定模式時傳空清單。 */
+    recentPlayers: List<Pair<String, String>> = emptyList(),
+    hasHome: Boolean = false,
+    hasWork: Boolean = false,
+    speedAlertKmh: Int = 0,
 ) {
     val p = LocalPalette.current
+    val driving = rememberDriving(gps)
     BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
         val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
         val gap = spec.gapDp.dp
-        CompositionLocalProvider(LocalLayoutSpec provides spec) {
+        CompositionLocalProvider(LocalLayoutSpec provides spec, LocalDriving provides driving) {
             Column(Modifier.fillMaxSize().padding(spec.outerDp.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
-                StatusBar(shield, gps, actions)
+                StatusBar(shield, gps, actions, speedAlertKmh)
                 when (spec.arrangement) {
                     HomeArrangement.TWO_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        NavPanel(nav, gps, actions, mapContent, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
                         Column(Modifier.weight(spec.sideWeight).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                            MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.5f))
+                            MusicCard(music, media, actions, recentPlayers, Modifier.fillMaxWidth().weight(1.5f))
                             ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
                         }
                     }
                     // 超寬螢幕：三欄，音樂與捷徑各自有完整高度
                     HomeArrangement.THREE_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                        NavPanel(nav, gps, actions, mapContent, Modifier.weight(spec.mapWeight).fillMaxHeight())
-                        MusicCard(music, media, actions, Modifier.weight(spec.sideWeight).fillMaxHeight())
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
+                        MusicCard(music, media, actions, recentPlayers, Modifier.weight(spec.sideWeight).fillMaxHeight())
                         ShortcutsCard(slots, actions, Modifier.weight(spec.sideWeight * 0.8f).fillMaxHeight())
                     }
                     // 直向／正方形：地圖在上，音樂與捷徑並排在下
                     HomeArrangement.STACKED -> {
-                        NavPanel(nav, gps, actions, mapContent, Modifier.fillMaxWidth().weight(spec.mapWeight))
+                        NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.fillMaxWidth().weight(spec.mapWeight))
                         Row(Modifier.fillMaxWidth().weight(spec.sideWeight), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            MusicCard(music, media, actions, Modifier.weight(1f).fillMaxHeight())
+                            MusicCard(music, media, actions, recentPlayers, Modifier.weight(1f).fillMaxHeight())
                             ShortcutsCard(slots, actions, Modifier.weight(1f).fillMaxHeight())
                         }
                     }
@@ -161,10 +171,8 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
 }
 
 @Composable
-internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
+internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions, speedAlertKmh: Int = 0) {
     val p = LocalPalette.current
-    var tick by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
     val spec = LocalLayoutSpec.current
     Row(
         Modifier.fillMaxWidth().heightIn(min = if (spec.compactChrome) 76.dp else 104.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg)
@@ -179,34 +187,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             if (spec.showLocationCard) CurrentLocationCard(gps, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
-            // GPS 車速：啟動器自行計算，明確標示來源
-            val fresh = remember(tick, gps) { gps.isFresh() }
-            Row(
-                Modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    when {
-                        !gps.permission -> "—"
-                        fresh -> "%.0f".format(gps.speedKmh ?: 0f)
-                        else -> "—"
-                    },
-                    color = p.text, fontSize = 28.sp, fontWeight = FontWeight.Medium,
-                )
-                CompassBadge(gps, fresh)
-                Column {
-                    Text("GPS 車速 km/h", color = p.text, fontSize = 13.sp)
-                    Text(
-                        when {
-                            !gps.permission -> "未授權定位"
-                            !gps.providerEnabled -> "GPS 已關閉"
-                            fresh -> gps.accuracyM?.let { "精度 ±%.0f m".format(it) } ?: "已定位"
-                            else -> "GPS 尚未定位"
-                        },
-                        color = p.textSoft, fontSize = 12.sp,
-                    )
-                }
-            }
+            SpeedChip(gps, speedAlertKmh)
         }
         WeatherChip()
         actions.voice?.let { SecondaryButton("語音", it) }
@@ -215,9 +196,51 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions) {
     }
 }
 
+/**
+ * GPS 車速（啟動器自行計算，明確標示來源）。自己的 1 秒計時只重算這個小區塊，不再讓整個狀態列每秒重組。
+ * 行車中數字放大、只留單位；超過自訂門檻時底色變警示色。
+ */
+@Composable
+private fun SpeedChip(gps: GpsState, alertKmh: Int) {
+    val p = LocalPalette.current
+    val driving = LocalDriving.current
+    val compact = LocalLayoutSpec.current.compactChrome
+    var tick by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
+    val fresh = remember(tick, gps) { gps.isFresh() }
+    var alert by remember { mutableStateOf(false) }
+    LaunchedEffect(gps, fresh, alertKmh) { alert = tw.fitcar.launcher.system.SpeedAlert.next(alert, gps.speedKmh, fresh, alertKmh) }
+    val bg = if (alert) p.danger else p.surfaceStrong
+    val fg = if (alert) (if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White) else p.text
+    Row(
+        Modifier.clip(RadiusMd).background(bg).border(1.dp, p.line, RadiusMd).padding(horizontal = 14.dp, vertical = 6.dp)
+            .semantics { contentDescription = if (alert) "GPS 車速超過 $alertKmh 公里" else "GPS 車速" },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            if (gps.permission && fresh) "%.0f".format(gps.speedKmh ?: 0f) else "—",
+            color = fg, fontSize = if (driving) 44.sp else if (compact) 28.sp else 34.sp, fontWeight = FontWeight.Medium,
+            lineHeight = if (driving) 48.sp else if (compact) 32.sp else 38.sp, maxLines = 1,
+        )
+        CompassBadge(gps, fresh)
+        Column {
+            Text(if (driving) "km/h" else "GPS km/h", color = fg, fontSize = if (driving) 20.sp else if (compact) 13.sp else 15.sp, maxLines = 1)
+            if (!driving) Text(
+                when {
+                    !gps.permission -> "未授權定位"
+                    !gps.providerEnabled -> "GPS 已關閉"
+                    fresh -> gps.accuracyM?.let { "精度 ±%.0f m".format(it) } ?: "已定位"
+                    else -> "GPS 尚未定位"
+                },
+                color = if (alert) fg else p.textSoft, fontSize = 13.sp, maxLines = 1,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, modifier: Modifier) {
+private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
@@ -231,13 +254,15 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
         mapContent(gps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
-            SecondaryButton("更換", actions.bindNav)
+            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）
+            if (hasHome) actions.goHome?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
+            if (hasWork) actions.goWork?.let { SecondaryButton("去公司", it) }
+            SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
+            // 更換導航 App 移到 設定 → App 綁定，主畫面少一顆不常用的按鈕
             SystemSplitShortcut()
             UpdateIndicator()
         }
-        Hint("地圖顯示目前位置；開始導航會全螢幕開啟選定 App。", size = 13)
     }
 }
 
@@ -259,7 +284,7 @@ private fun WeatherChip() {
             cur?.tempC?.let { "%.0f°".format(it) } ?: "—°",
             color = if (w.error != null && cur == null) p.danger else p.text, fontSize = 24.sp, fontWeight = FontWeight.Medium, maxLines = 1,
         )
-        Text(
+        if (!LocalDriving.current) Text(
             when {
                 cur == null && w.error != null -> "天氣未更新"
                 cur == null -> "讀取中…"
@@ -311,10 +336,10 @@ private fun CompassBadge(gps: GpsState, fresh: Boolean) {
         Text(
             "▲",
             Modifier.rotate(heading ?: 0f),
-            color = if (heading != null) p.accent else p.line,
+            color = if (heading != null) p.accent else p.disabledContent,
             fontSize = 20.sp, lineHeight = 22.sp,
         )
-        Text(heading?.let { tw.fitcar.launcher.system.Compass.cardinal(it) } ?: "—", color = p.textSoft, fontSize = 12.sp, maxLines = 1)
+        Text(heading?.let { tw.fitcar.launcher.system.Compass.cardinal(it) } ?: "—", color = p.textSoft, fontSize = 14.sp, maxLines = 1)
     }
 }
 
@@ -345,8 +370,9 @@ private fun formatMs(ms: Long): String {
 }
 
 @Composable
-internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, modifier: Modifier) {
+internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier) {
     val p = LocalPalette.current
+    val driving = LocalDriving.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
     LaunchedEffect(context) { tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context) }
@@ -365,6 +391,22 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
+        }
+        // 快速切換最近播放器（跟隨模式，至少兩個時才顯示）
+        val switchable = recentPlayers.filter { it.first != media.packageName }
+        if (recentPlayers.size >= 2 && switchable.isNotEmpty() && !LocalLayoutSpec.current.shortHeight) actions.openPlayer?.let { open ->
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                switchable.take(2).forEach { (pkg, label) ->
+                    Text(
+                        label,
+                        Modifier.weight(1f, fill = false).heightIn(min = 48.dp).clip(RadiusSm).background(p.surfaceMuted)
+                            .combinedClickableCompat(onClick = { open(pkg) }).padding(horizontal = 12.dp, vertical = 12.dp)
+                            .semantics { contentDescription = "切換到 $label" },
+                        color = p.text, fontSize = if (driving) 20.sp else 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Spacer(Modifier.height(8.dp))
         // Original lyrics area: opt-in independent lookup, with honest metadata fallback.
@@ -395,7 +437,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
-                    Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving) 1 else 2, overflow = TextOverflow.Ellipsis)
                     if (lyricsEnabled) DesktopLyrics(media)
                     else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
                 }
@@ -409,12 +451,14 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
                 val next = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)
                 ControlButton(Glyph.PREV, prev, actions.previous)
+                if (media.canSeek) SeekButton("−15", -tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
                 Box(
                     Modifier.size(56.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause),
                     contentAlignment = Alignment.Center,
                 ) {
                     GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 30.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
                 }
+                if (media.canSeek) SeekButton("+15", tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
                 ControlButton(Glyph.NEXT, next, actions.next)
                 VolumeControl()
             }
@@ -426,7 +470,19 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
     IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(56.dp)) {
-        GlyphIcon(glyph, size = 30.dp, tint = if (enabled) p.text else p.line)
+        GlyphIcon(glyph, size = 30.dp, tint = if (enabled) p.text else p.disabledContent)
+    }
+}
+
+/** 倒退／快進 15 秒：行車中比拖曳進度條好按。 */
+@Composable
+private fun SeekButton(label: String, deltaMs: Long, media: MediaUiState, actions: HomeActions) {
+    val p = LocalPalette.current
+    IconButton(
+        onClick = { actions.seekTo(tw.fitcar.launcher.system.SeekStep.target(media.livePosition(), deltaMs, media.durationMs)) },
+        modifier = Modifier.size(56.dp).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
+    ) {
+        Text(label, color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
@@ -447,10 +503,13 @@ private fun Progress(media: MediaUiState, actions: HomeActions) {
     Column(Modifier.fillMaxWidth()) {
         if (media.canSeek) {
             Slider(
+                // 行車中不可拖曳（容易誤觸），改用 ±15 秒按鈕
+                enabled = !LocalDriving.current,
                 value = if (dragging) dragValue else (position.toFloat() / duration).coerceIn(0f, 1f),
                 onValueChange = { dragging = true; dragValue = it },
                 onValueChangeFinished = { actions.seekTo((dragValue * duration).toLong()); dragging = false },
-                colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent, inactiveTrackColor = p.surfaceMuted),
+                colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent, inactiveTrackColor = p.surfaceMuted,
+                    disabledThumbColor = p.accent, disabledActiveTrackColor = p.accent, disabledInactiveTrackColor = p.surfaceMuted),
             )
         } else if (duration > 0) {
             LinearProgressIndicator(
@@ -479,10 +538,9 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
         CardTitle("捷徑") {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
-                    Box(Modifier.size(9.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.line))
+                    Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))
                 }
             }
-            Hint("長按可更換", size = 12)
         }
         Spacer(Modifier.height(8.dp))
         HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->

@@ -19,6 +19,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import tw.fitcar.launcher.data.AppEntry
@@ -30,7 +31,7 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState()) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
@@ -38,7 +39,7 @@ class LargeFontLayoutTest {
                     HomeScreen(
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
-                        shield = null, media = media, gps = GpsState(),
+                        shield = null, media = media, gps = gps,
                         slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
@@ -92,6 +93,21 @@ class LargeFontLayoutTest {
         listOf("程式更新", "立即檢查", "自製測試文字").forEach(::fullLabel)
         screenshot("updates-lyrics-125")
     }
+    @Test fun centeredLyricsInNarrowPaneAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    Box(Modifier.width(360.dp).padding(12.dp)) {
+                        LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB",
+                            listOf(tw.fitcar.launcher.lyrics.LyricLine(0, "目前歌詞測試"))),
+                            MediaUiState(positionUpdateElapsed = 1))
+                    }
+                }
+            }
+        }
+        fullLabel("目前歌詞測試")
+    }
     @Test fun splitShortcutExplainsOptionalPermissionAt125Percent() {
         show(MediaUiState())
         compose.onNodeWithText("分割／多工").performClick()
@@ -118,6 +134,44 @@ class LargeFontLayoutTest {
         show(MediaUiState(), google = true)
         listOf("Google 導航", "開啟導航", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
         screenshot("home-google-voice-125")
+    }
+    @Test fun drivingModeAt125Percent() {
+        // 60 km/h、剛定位：進入行車大字模式（按鈕 20 sp、隱藏次要說明、車速放大）
+        val now = android.os.SystemClock.elapsedRealtime()
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫",
+            playbackState = PlaybackState.STATE_PLAYING, durationMs = 240000,
+            actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
+            gps = GpsState(permission = true, providerEnabled = true, speedKmh = 60f, accuracyM = 5f, latitude = 24.95, longitude = 121.29, fixElapsed = now, bearing = 90f))
+        compose.waitForIdle()
+        listOf("km/h", "晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
+        // Primary driving labels must stay legible at the agreed 19.2 sp minimum.
+        listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach { text ->
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(text, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue("行車主要文字不得小於 19.2 sp：$text", layouts.isNotEmpty() &&
+                layouts.all { it.layoutInput.style.fontSize.value >= 19.2f })
+        }
+        assertTrue("行車中應隱藏「GPS km/h」完整標籤", compose.onAllNodesWithText("GPS km/h").fetchSemanticsNodes().isEmpty())
+        screenshot("home-driving-125")
+    }
+    @Test fun drivingVolumeValueAt125PercentKeepsMinimumFont() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val value = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString()
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f), LocalDriving provides true) {
+                FitTheme(DayPalette) { VolumeControl() }
+            }
+        }
+        compose.onAllNodesWithText("音量", useUnmergedTree = true).assertCountEquals(0)
+        fullLabel(value)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(value, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertTrue("行車音量數值不得小於 19.2 sp", layouts.isNotEmpty() &&
+            layouts.all { it.layoutInput.style.fontSize.value >= 19.2f })
     }
     @Test fun playingCardAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "app.morphe.android.apps.youtube.music", playerName = "Morphe Music", title = "晴天", artist = "周杰倫",

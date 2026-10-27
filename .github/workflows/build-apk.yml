@@ -25,6 +25,7 @@ jobs:
           python scripts/check_signing_policy.py
           python scripts/check_version_progression.py
           python scripts/check_release_configuration.py
+          python scripts/check_ui_workflow.py
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
       - name: Build debug APK

@@ -20,3 +20,12 @@ class LrcTest {
         assertEquals("", lines.first().text)
     }
 }
+
+class LrcPreviewTest {
+    @Test fun previewShowsFirstNonBlankLines() {
+        val (text, more) = Lrc.preview("第一行\n\n 第二行 \n第三行", 2)
+        assertEquals("第一行\n第二行", text)
+        assertTrue(more)
+        assertEquals("只有一行" to false, Lrc.preview("只有一行", 4))
+    }
+}

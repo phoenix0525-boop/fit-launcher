@@ -49,6 +49,31 @@ object NavLauncher {
         }
     }
 
+    /**
+     * 回家／去公司：以 geo: 地址交給綁定的導航 App。
+     * 導航 App 是否接受地址需實機確認；不接受時改讓系統選擇可處理地址的 App。
+     */
+    fun openPlace(context: Context, address: String?): LaunchResult {
+        val uri = Places.geoUri(address) ?: return LaunchResult.Failed("還沒設定這個地點，請到 設定 → App 綁定 → 常用地點 填寫地址。")
+        val navPkg = Prefs.get(context).state.value.bindings.navigation
+            ?.let { android.content.ComponentName.unflattenFromString(it)?.packageName }
+        val base = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            context.startActivity(if (navPkg != null) Intent(base).setPackage(navPkg) else base)
+            LaunchResult.Ok
+        } catch (e: Exception) {
+            if (e !is ActivityNotFoundException && e !is SecurityException) throw e
+            try {
+                context.startActivity(Intent.createChooser(base, "用哪個 App 導航？").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                LaunchResult.Ok
+            } catch (e2: ActivityNotFoundException) {
+                LaunchResult.Failed("車機上沒有可以用地址導航的 App。")
+            } catch (e2: SecurityException) {
+                LaunchResult.Failed("系統不允許開啟地址導航：${e2.message}")
+            }
+        }
+    }
+
     /** 由側欄呼叫：把導航王開在相鄰視窗。 */
     fun launchAdjacent(activity: Activity): LaunchResult {
         val key = Prefs.get(activity).state.value.bindings.navigation ?: return LaunchResult.NotBound

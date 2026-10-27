@@ -7,6 +7,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import tw.fitcar.launcher.lyrics.Lrc
@@ -42,18 +49,68 @@ internal fun DesktopLyrics(media: MediaUiState) {
     LyricsLines(result, media)
 }
 
+/**
+ * 歌詞大字顯示：目前行 28 sp（行車 30 sp），上一行與下一行淡色 18 sp。
+ * 位置每 250 ms 取樣，但只有「目前行號」改變時才重組畫面（derivedStateOf）。
+ * 無時間碼時只顯示前 4 行；點歌詞區可開全螢幕歌詞。
+ */
 @Composable
 internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
     val p = LocalPalette.current
+    val driving = LocalDriving.current
     var position by remember { mutableLongStateOf(media.livePosition()) }
     LaunchedEffect(media, result.lines) {
         if (result.lines.isNotEmpty()) while (true) { position = media.livePosition(); delay(if (media.isPlaying) 250 else 1000) }
     }
     val canSync = result.lines.isNotEmpty() && media.positionUpdateElapsed > 0
-    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 12)
-    if (canSync) {
-        val index = Lrc.current(result.lines, position)
-        Text(if (index < 0) "♪" else result.lines[index].text.ifBlank { "♪" }, color = p.text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
-        result.lines.getOrNull(index + 1)?.let { Text(it.text, color = p.textSoft, fontSize = 16.sp) }
-    } else (result.plain ?: result.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { it.text })?.let { Text(it, color = p.text, fontSize = 18.sp) }
+    val index by remember(result.lines) { derivedStateOf { Lrc.current(result.lines, position) } }
+    var full by remember { mutableStateOf(false) }
+    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 13)
+    Column(
+        Modifier.fillMaxWidth().clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (canSync) {
+            val i = index
+            result.lines.getOrNull(i - 1)?.text?.takeIf { it.isNotBlank() && !driving }?.let {
+                Text(it, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            }
+            Text(if (i < 0) "♪" else result.lines[i].text.ifBlank { "♪" }, modifier = Modifier.fillMaxWidth(), color = p.text,
+                fontSize = if (driving) 30.sp else 28.sp, lineHeight = if (driving) 36.sp else 34.sp,
+                fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            result.lines.getOrNull(i + 1)?.let { Text(it.text, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
+        } else (result.plain ?: result.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { it.text })?.let { text ->
+            val (shown, more) = Lrc.preview(text, if (driving) 2 else 4)
+            Text(shown, modifier = Modifier.fillMaxWidth(), color = p.text, fontSize = if (driving) 22.sp else 20.sp, lineHeight = if (driving) 30.sp else 28.sp, textAlign = TextAlign.Center)
+            if (more) Hint("無時間碼，只顯示前段；點一下看全文", size = 13)
+        }
+    }
+    if (full) FullScreenLyrics(result, media, position, canSync) { full = false }
+}
+
+/** 全螢幕歌詞：目前行 40 sp，前後各兩行；無時間碼時可捲動全文。點任意處關閉。 */
+@Composable
+private fun FullScreenLyrics(result: LyricsResult, media: MediaUiState, position: Long, canSync: Boolean, onClose: () -> Unit) {
+    val p = LocalPalette.current
+    androidx.compose.ui.window.Dialog(onDismissRequest = onClose, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier.fillMaxSize().background(p.bg).clickable(onClick = onClose).padding(32.dp)
+                .then(if (canSync) Modifier else Modifier.verticalScroll(rememberScrollState())),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+        ) {
+            Text(listOfNotNull(media.title, media.artist).joinToString(" · "), color = p.textSoft, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (canSync) {
+                val i = Lrc.current(result.lines, position)
+                for (k in i - 2..i + 2) {
+                    val line = result.lines.getOrNull(k) ?: continue
+                    Text(line.text.ifBlank { "♪" }, color = if (k == i) p.text else p.textSoft,
+                        fontSize = if (k == i) 40.sp else 24.sp, lineHeight = if (k == i) 48.sp else 30.sp,
+                        fontWeight = if (k == i) FontWeight.Medium else FontWeight.Normal, textAlign = TextAlign.Center)
+                }
+            } else {
+                Text(result.plain ?: result.lines.joinToString("\n") { it.text }, color = p.text, fontSize = 26.sp, lineHeight = 38.sp, textAlign = TextAlign.Center)
+            }
+            Hint("點任意處關閉 · LRCLIB", size = 15, essential = true)
+        }
+    }
 }

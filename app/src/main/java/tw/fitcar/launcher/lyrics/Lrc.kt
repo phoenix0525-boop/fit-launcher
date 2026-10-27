@@ -14,4 +14,10 @@ object Lrc {
         }.sortedBy { it.timeMs }.groupBy { it.timeMs }.map { (time, lines) -> LyricLine(time, lines.map { it.text }.distinct().joinToString("\n")) }
     }
     fun current(lines: List<LyricLine>, positionMs: Long): Int = lines.indexOfLast { it.timeMs <= positionMs }
+
+    /** 無時間碼歌詞：行車中不列整首，只取前幾行非空白文字；第二個值表示是否還有更多。 */
+    fun preview(text: String, maxLines: Int): Pair<String, Boolean> {
+        val lines = text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+        return lines.take(maxLines.coerceAtLeast(1)).joinToString("\n") to (lines.size > maxLines)
+    }
 }

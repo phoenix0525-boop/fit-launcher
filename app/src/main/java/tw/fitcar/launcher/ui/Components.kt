@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,8 +73,10 @@ fun CardTitle(text: String, modifier: Modifier = Modifier, trailing: @Composable
     }
 }
 
+/** 次要說明文字。行車中（[LocalDriving]）預設隱藏；必要的提示傳 essential = true。 */
 @Composable
-fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null, size: Int = 14) {
+fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null, size: Int = 14, essential: Boolean = false) {
+    if (LocalDriving.current && !essential) return
     Text(text, modifier = modifier, color = color ?: LocalPalette.current.textSoft, fontSize = size.sp, lineHeight = (size + 6).sp)
 }
 
@@ -96,7 +99,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         ),
     ) {
         if (icon != null && !compact) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = if (compact) 16.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else if (compact) 16.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -114,19 +117,29 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         colors = ButtonDefaults.outlinedButtonColors(containerColor = p.surfaceStrong, contentColor = p.text, disabledContentColor = p.textSoft),
     ) {
         if (icon != null && !compact) { icon(); Box(Modifier.size(10.dp)) }
-        Text(text, fontSize = if (compact) 16.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else if (compact) 16.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
     }
+}
+
+/** 圖示點陣圖快取：同一個 Drawable 只轉換一次，切頁與返回主畫面不再重算。 */
+private object IconCache {
+    private val cache = android.util.LruCache<Drawable, ImageBitmap>(160)
+    fun get(d: Drawable): ImageBitmap? = cache.get(d)
+    fun put(d: Drawable, b: ImageBitmap) { cache.put(d, b) }
 }
 
 @Composable
 fun AppIcon(drawable: Drawable?, size: Dp, modifier: Modifier = Modifier) {
-    val bitmap: ImageBitmap? = remember(drawable) {
-        drawable?.let {
-            try { it.toBitmap(192, 192).asImageBitmap() } catch (e: Exception) { null }
+    // 轉點陣圖改在背景執行緒，第一次開「所有 App」或翻捷徑頁時不卡主執行緒
+    val bitmap: ImageBitmap? by androidx.compose.runtime.produceState(drawable?.let { IconCache.get(it) }, drawable) {
+        val d = drawable ?: run { value = null; return@produceState }
+        if (value == null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            try { d.toBitmap(192, 192).asImageBitmap().also { IconCache.put(d, it) } } catch (e: Exception) { null }
         }
     }
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
+    val renderedBitmap = bitmap
+    if (renderedBitmap != null) {
+        Image(bitmap = renderedBitmap, contentDescription = null, modifier = modifier.size(size))
     } else {
         val p = LocalPalette.current
         Box(modifier.size(size).clip(RadiusMd).background(p.surfaceMuted))

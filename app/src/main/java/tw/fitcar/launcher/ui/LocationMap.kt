@@ -43,7 +43,8 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
     var querying by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     // This clock must continue even while the geocoder is waiting for a network response.
-    LaunchedEffect(Unit) { while (true) { now = SystemClock.elapsedRealtime(); delay(1_000) } }
+    // 地址新鮮度門檻是 120 秒，5 秒更新一次就夠，不必每秒重組。
+    LaunchedEffect(Unit) { while (true) { now = SystemClock.elapsedRealtime(); delay(5_000) } }
     LaunchedEffect(context) {
         var requestedAt = 0L
         var lookupPosition: LatLng? = null
@@ -94,8 +95,9 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
     }
     Column(modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
         .padding(horizontal = 14.dp, vertical = 8.dp)) {
-        Text("目前位置", color = p.textSoft, fontSize = 12.sp)
-        Text(if (address != null && freshAddress) "附近地址：$label" else label, color = p.text, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val driving = LocalDriving.current
+        if (!driving) Text("目前位置", color = p.textSoft, fontSize = 13.sp)
+        Text(if (address != null && freshAddress) "附近地址：$label" else label, color = p.text, fontSize = if (driving) 20.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -129,6 +131,17 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     var recenter by remember(view) { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(view) { while (true) { now = SystemClock.elapsedRealtime(); delay(2_000) } }
+    val night = LocalPalette.current.isNight
+    var nightFailed by remember(view) { mutableStateOf(false) }
+    val styleUrl = tw.fitcar.launcher.system.MapStyles.forTheme(night, nightFailed)
+    val currentStyle by rememberUpdatedState(styleUrl)
+    val homeVisible = LocalHomeVisible.current
+    // MapView 的 onResume／onPause 只能成對呼叫；設定頁或所有 App 蓋住主畫面時暫停繪製，返回時恢復
+    val run = remember(view) { MapRun(view) }
+    LaunchedEffect(homeVisible, run) {
+        run.visible = homeVisible
+        if (homeVisible && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) run.resume() else if (!homeVisible) run.pause()
+    }
     // A GPS callback can be newer than the last UI timer tick. Never compare it to that older tick.
     val observedNow = maxOf(now, SystemClock.elapsedRealtime())
     val hasPosition = gps.hasRecentPosition(observedNow)
@@ -137,15 +150,21 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> view.onStart()
-                Lifecycle.Event.ON_RESUME -> view.onResume()
-                Lifecycle.Event.ON_PAUSE -> view.onPause()
+                Lifecycle.Event.ON_RESUME -> if (run.visible) run.resume()
+                Lifecycle.Event.ON_PAUSE -> run.pause()
                 Lifecycle.Event.ON_STOP -> view.onStop()
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
         var disposed = false
-        val failureListener = MapView.OnDidFailLoadingMapListener { if (!disposed) { failed = true; MapDiagnostics.base("底圖載入失敗") } }
+        val failureListener = MapView.OnDidFailLoadingMapListener {
+            if (!disposed) {
+                // 深色樣式失敗時先退回亮色，不讓地圖整片空白
+                if (currentStyle.contains("/dark")) { nightFailed = true; MapDiagnostics.base("深色底圖載入失敗，改用亮色") }
+                else { failed = true; MapDiagnostics.base("底圖載入失敗") }
+            }
+        }
         view.addOnDidFailLoadingMapListener(failureListener)
         view.getMapAsync { ready ->
             if (!disposed) {
@@ -162,17 +181,20 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             disposed = true
             view.removeOnDidFailLoadingMapListener(failureListener)
             lifecycle.removeObserver(observer)
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) view.onPause()
+            run.pause()
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) view.onStop()
             view.onDestroy()
         }
     }
-    LaunchedEffect(map, retry) {
+    LaunchedEffect(map, retry, styleUrl) {
         loaded = false
         failed = false
         slow = false
+        // 換樣式前先移除舊標記，載入後由下方定位流程重新加
+        marker?.let { old -> map?.removeMarker(old) }
+        marker = null
         MapDiagnostics.base("底圖載入中")
-        map?.setStyle("https://tiles.openfreemap.org/styles/liberty") { loaded = true; failed = false; MapDiagnostics.base("底圖樣式已載入（圖磚顯示仍需目視確認）") }
+        map?.setStyle(styleUrl) { loaded = true; failed = false; MapDiagnostics.base(if (styleUrl.contains("/dark")) "深色底圖樣式已載入（夜間）" else "底圖樣式已載入（圖磚顯示仍需目視確認）") }
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
@@ -195,17 +217,33 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             marker = null
         }
     }
+    val driving = LocalDriving.current
+    val trip by tw.fitcar.launcher.system.TripMeter.state.collectAsState()
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (following) "跟隨目前位置" else "自由瀏覽", Modifier.weight(1f), size = 13)
-            SecondaryButton(if (autoZoom) "自動縮放" else "手動縮放", { autoZoom = !autoZoom; if (autoZoom) following = true })
-            SecondaryButton("回到目前位置", { centered = false; following = true; recenter++ })
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (following) "跟隨目前位置" else "自由瀏覽", size = 14,
+                    essential = !gps.permission || !gps.providerEnabled || !hasPosition)
+                // 本次行程（GPS 估算）：有里程才顯示
+                if (trip.distanceM >= 100.0) Text("本次 " + tw.fitcar.launcher.system.Trip.format(trip), color = LocalPalette.current.text,
+                    fontSize = if (driving) 20.sp else 17.sp, maxLines = 1)
+            }
+            if (!driving) SecondaryButton(if (autoZoom) "自動縮放" else "手動縮放", { autoZoom = !autoZoom; if (autoZoom) following = true })
+            if (!following || !driving) SecondaryButton("回到目前位置", { centered = false; following = true; recenter++ })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
         if (failed || slow && !loaded) {
             Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 13)
             SecondaryButton("重試載入", { marker = null; retry++ })
         }
-        Hint("© OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors", size = 11)
+        // 地圖版權由 MapLibre 地圖右下角的 ⓘ 顯示，不再於主畫面常駐一行小字
     }
+}
+
+/** 追蹤 MapView 是否已 onResume，確保 onResume／onPause 成對且不重複呼叫。 */
+private class MapRun(private val view: MapView) {
+    var visible = true
+    private var resumed = false
+    fun resume() { if (!resumed) { view.onResume(); resumed = true } }
+    fun pause() { if (resumed) { view.onPause(); resumed = false } }
 }

@@ -51,6 +51,10 @@ object GpsSpeed {
                 bearing = if (location.hasBearing()) location.bearing else null,
                 fixElapsed = location.elapsedRealtimeNanos / 1_000_000L,
             )
+            TripMeter.onFix(location.latitude, location.longitude,
+                if (location.hasAccuracy()) location.accuracy else null,
+                if (location.hasSpeed()) location.speed * 3.6f else null,
+                location.elapsedRealtimeNanos / 1_000_000L)
         }
         override fun onProviderEnabled(provider: String) { _state.value = _state.value.copy(providerEnabled = true) }
         override fun onProviderDisabled(provider: String) { _state.value = _state.value.copy(providerEnabled = false, speedKmh = null) }
@@ -84,4 +88,14 @@ object GpsSpeed {
             running = false
         }
     }
+}
+
+/** 本次行程（GPS 估算），只存在記憶體；久停 30 分鐘後自動視為新的一趟。 */
+object TripMeter {
+    private val _state = MutableStateFlow(TripState())
+    val state: StateFlow<TripState> = _state.asStateFlow()
+    fun onFix(lat: Double, lon: Double, accuracyM: Float?, speedKmh: Float?, elapsed: Long) {
+        _state.value = Trip.add(_state.value, lat, lon, accuracyM, speedKmh, elapsed)
+    }
+    fun reset() { _state.value = TripState() }
 }
