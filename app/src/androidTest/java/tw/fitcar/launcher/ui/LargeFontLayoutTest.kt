@@ -184,7 +184,7 @@ class LargeFontLayoutTest {
         listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
-    private fun pompompurin(night: Boolean, driving: Boolean = false) {
+    private fun pompompurin(night: Boolean, driving: Boolean = false, spider: Boolean = false) {
         val fix = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
             latitude = 24.95, longitude = 121.29, accuracyM = 5f,
             fixElapsed = android.os.SystemClock.elapsedRealtime()) else GpsState()
@@ -192,14 +192,14 @@ class LargeFontLayoutTest {
             title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
             gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
-                AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN))
+                if (spider) AccentTheme.HERO_RED else AccentTheme.CARAMEL, if (spider) VisualStyle.SPIDERMAN else VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
-        compose.onNodeWithContentDescription("布丁狗主題插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人蹲姿插畫" else "布丁狗主題插畫").assertIsDisplayed()
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
-        compose.onNodeWithContentDescription("布丁狗趴睡插畫").assertIsDisplayed()
-        compose.onNodeWithContentDescription("布丁狗感謝插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人飛躍插畫" else "布丁狗趴睡插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人伸手插畫" else "布丁狗感謝插畫").assertIsDisplayed()
         fullLabel(java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.TAIWAN).format(java.util.Date()))
-        screenshot("home-pompompurin-${if (night) "night" else "day"}${if (driving) "-driving" else ""}-125")
+        screenshot("home-${if (spider) "spiderman" else "pompompurin"}-${if (night) "night" else "day"}${if (driving) "-driving" else ""}-125")
     }
     @Test fun pompompurinDayAt125Percent() = pompompurin(false)
     @Test fun pompompurinNightAt125Percent() = pompompurin(true)
@@ -217,7 +217,7 @@ class LargeFontLayoutTest {
         listOf("所有 App", "返回桌面").forEach(::fullLabel)
         screenshot("apps-pompompurin-125")
     }
-    private fun lyricsCard(driving: Boolean, night: Boolean) {
+    private fun lyricsCard(driving: Boolean, night: Boolean, spider: Boolean = false) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
         tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, true)
@@ -229,7 +229,7 @@ class LargeFontLayoutTest {
                 positionMs = 10000, positionUpdateElapsed = android.os.SystemClock.elapsedRealtime(), durationMs = 240000,
                 actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
                 gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
-                    AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN),
+                    if (spider) AccentTheme.HERO_RED else AccentTheme.CARAMEL, if (spider) VisualStyle.SPIDERMAN else VisualStyle.POMPOMPURIN),
                 lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB", listOf(
                     tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
                     tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行比較長也要完整顯示不能裁切"),
@@ -239,9 +239,9 @@ class LargeFontLayoutTest {
             val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("下一行必須位於目前行下方", next.top >= current.bottom)
             compose.onNodeWithContentDescription("播放／暫停").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
-            compose.onNodeWithContentDescription("布丁狗感謝插畫").assertWidthIsAtLeast(64.dp)
+            compose.onNodeWithContentDescription(if (spider) "蜘蛛人伸手插畫" else "布丁狗感謝插畫").assertWidthIsAtLeast(64.dp)
             compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
-            screenshot("home-lyrics-${if (driving) "driving" else if (night) "night" else "day"}-125")
+            screenshot("home-${if (spider) "spiderman-" else ""}lyrics-${if (driving) "driving" else if (night) "night" else "day"}-125")
             if (!driving) {
                 compose.onNodeWithContentDescription("播放進度，點擊調整").performClick()
                 compose.onNodeWithContentDescription("調整播放進度滑桿").assertIsDisplayed()
@@ -288,6 +288,26 @@ class LargeFontLayoutTest {
                 .getString("last_readback", "")!!.startsWith("相對增減"))
             screenshot("volume-readback-125", dialog = true)
         } finally { audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, before, 0) }
+    }
+
+    @Test fun spidermanDayAt125Percent() = pompompurin(false, spider = true)
+    @Test fun spidermanNightAt125Percent() = pompompurin(true, spider = true)
+    @Test fun spidermanDrivingAt125Percent() = pompompurin(false, true, true)
+    @Test fun spidermanLyricsDayAt125Percent() = lyricsCard(false, false, true)
+    @Test fun spidermanLyricsNightAt125Percent() = lyricsCard(false, true, true)
+    @Test fun spidermanLyricsDrivingAt125Percent() = lyricsCard(true, false, true)
+    @Test fun spidermanAppListAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                    FullScreenAppList("所有 App", "選擇要開啟的程式", emptyList(), "返回桌面", {}, {})
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("蜘蛛人蓄勢插畫").assertIsDisplayed()
+        listOf("所有 App", "返回桌面").forEach(::fullLabel)
+        screenshot("apps-spiderman-125")
     }
 
 }

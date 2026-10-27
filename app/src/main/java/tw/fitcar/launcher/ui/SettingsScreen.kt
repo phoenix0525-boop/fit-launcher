@@ -27,6 +27,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -193,10 +194,13 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                             .clickable {
                                 setStyle(style)
                                 if (style == VisualStyle.POMPOMPURIN) actions.setAccent?.invoke(AccentTheme.CARAMEL)
+                                if (style == VisualStyle.SPIDERMAN) actions.setAccent?.invoke(AccentTheme.HERO_RED)
                             }.padding(16.dp),
                     ) {
-                        if (preview.characterArt) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            PompompurinPose.entries.forEach { pose -> PompompurinArtwork(56.dp, pose) }
+                        if (preview.characterArt) CompositionLocalProvider(LocalPalette provides preview) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                ThemeArtPose.entries.forEach { pose -> ThemeArtwork(56.dp, pose) }
+                            }
                         }
                         Text((if (style == current) "✓ " else "") + style.label, color = preview.text, fontSize = 18.sp)
                         Text(style.description, color = preview.textSoft, fontSize = 14.sp)
@@ -493,6 +497,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
+        Hint("• 0.4.11：新增蜘蛛人紅藍日夜主題與四款透明插畫，保留布丁狗與歌詞版面。", size = 14)
         Hint("• 0.4.10：放大布丁狗、增加歌詞預覽空間、精簡控制鈕，加入導航地址接收檢查與替代入口。", size = 14)
         Hint("• 0.4.9：四款布丁狗插畫分別搭配時鐘、播放卡、App清單與捷徑。", size = 14)
         Hint("• 0.4.8：新增布丁狗日夜主題與焦糖棕強調色；保留125%可讀性。", size = 14)

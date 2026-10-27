@@ -172,7 +172,7 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
             Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
             Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
         }
-        if (hasArt) PompompurinArtwork(64.dp, PompompurinPose.THANKS)
+        if (hasArt) ThemeArtwork(64.dp, ThemeArtPose.CLOCK)
     }
 }
 
@@ -397,7 +397,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 SecondaryButton("開啟", actions.openMusicApp)
             }
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(64.dp, PompompurinPose.REST)
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp, ThemeArtPose.MUSIC)
             if (!lyricsEnabled) LyricsEnableButton()
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
@@ -567,7 +567,7 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(64.dp)
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
                     Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))
