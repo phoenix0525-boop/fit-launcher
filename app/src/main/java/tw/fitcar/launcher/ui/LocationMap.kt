@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -37,7 +38,7 @@ import tw.fitcar.launcher.system.MapDiagnostics
 
 /** Keep useful Chinese text during lookups; label cached text instead of claiming an old road is current. */
 @Composable
-internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
+internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier, requestLocation: (() -> Unit)? = null) {
     val context = LocalContext.current
     val latest by rememberUpdatedState(gps)
     var address by remember { mutableStateOf<String?>(null) }
@@ -96,10 +97,18 @@ internal fun CurrentLocationCard(gps: GpsState, modifier: Modifier = Modifier) {
         gps.hasRecentPosition(observedNow) -> if (querying) "正在查詢中文位置…" else "中文路段暫不可用"
         else -> "等待 GPS 定位…"
     }
+    // 未授權時縮成一行提示，點一下直接請求定位，不再佔一大塊
+    if (!gps.permission && requestLocation != null) {
+        Text("目前位置：尚未授權定位 · 點此允許",
+            modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
+                .clickable(onClick = requestLocation).heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 14.dp),
+            color = p.text, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        return
+    }
     Column(modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
         .padding(horizontal = 14.dp, vertical = 8.dp)) {
         val driving = LocalDriving.current
-        if (!driving) Text("目前位置", color = p.textSoft, fontSize = 13.sp)
+        if (!driving) Text("目前位置", color = p.textSoft, fontSize = TypeScale.NOTE.sp)
         Text(if (address != null && freshAddress) "附近地址：$label" else label, color = p.text, fontSize = if (driving) 20.sp else 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -139,6 +148,12 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     var nightFailed by remember(view) { mutableStateOf(false) }
     val styleUrl = tw.fitcar.launcher.system.MapStyles.forTheme(night, nightFailed)
     val currentStyle by rememberUpdatedState(styleUrl)
+    // 網路狀態：離線造成的載入失敗不應永久放棄深色底圖；恢復連線時自動重試
+    val netStatus by tw.fitcar.launcher.system.SystemStatusMonitor.state.collectAsState()
+    val online = netStatus.internet
+    val currentOnline by rememberUpdatedState(online)
+    // 日夜切換時重新允許深色底圖（例如前一晚曾失敗）
+    LaunchedEffect(night) { nightFailed = false }
     val currentNight by rememberUpdatedState(night)
     val currentFontScale by rememberUpdatedState(fontScale)
     val homeVisible = LocalHomeVisible.current
@@ -167,8 +182,9 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         val failureListener = MapView.OnDidFailLoadingMapListener {
             if (!disposed) {
                 // 深色樣式失敗時先退回亮色，不讓地圖整片空白
-                if (currentStyle.contains("/dark")) { nightFailed = true; MapDiagnostics.base("深色底圖載入失敗，改用亮色") }
-                else { failed = true; MapDiagnostics.base("底圖載入失敗") }
+                // 只有在有網路時深色樣式仍失敗，才判定是樣式問題並暫時改用亮色；離線失敗保留深色、等網路恢復再試
+                if (currentStyle.contains("/dark") && currentOnline) { nightFailed = true; MapDiagnostics.base("深色底圖載入失敗，暫時改用亮色") }
+                else { failed = true; MapDiagnostics.base(if (currentOnline) "底圖載入失敗" else "離線：底圖載入失敗，網路恢復後自動重試") }
             }
         }
         view.addOnDidFailLoadingMapListener(failureListener)
@@ -232,6 +248,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
             marker = null
         }
     }
+    LaunchedEffect(online) { if (online && (failed || slow && !loaded)) { nightFailed = false; marker = null; retry++ } }
     val driving = LocalDriving.current
     val trip by tw.fitcar.launcher.system.TripMeter.state.collectAsState()
     Column(modifier) {
@@ -246,8 +263,8 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
         if (failed || slow && !loaded) {
-            Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 13)
-            SecondaryButton("重試載入", { marker = null; retry++ })
+            Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 14)
+            SecondaryButton("重試載入", { nightFailed = false; marker = null; retry++ })
         }
         // 地圖版權由 MapLibre 地圖右下角的 ⓘ 顯示，不再於主畫面常駐一行小字
     }

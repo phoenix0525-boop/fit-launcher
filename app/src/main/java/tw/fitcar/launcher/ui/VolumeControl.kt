@@ -19,7 +19,7 @@ import androidx.compose.foundation.verticalScroll
 
 /** Control Android media volume, never claim to control a vendor's separate amplifier. */
 @Composable
-internal fun VolumeControl() {
+internal fun VolumeControl(size: androidx.compose.ui.unit.Dp = 48.dp) {
     val context = LocalContext.current
     val audio = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     var open by remember { mutableStateOf(false) }
@@ -83,7 +83,7 @@ internal fun VolumeControl() {
         onDispose { if (registered) runCatching { context.unregisterReceiver(receiver) } }
     }
     LaunchedEffect(audio, open) { while (true) { refresh(); delay(if (open) 500 else 3_000) } }
-    IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)
+    IconButton(onClick = { open = true }, modifier = Modifier.size(size)
         .semantics { contentDescription = "媒體音量 $volume／$maximum" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             GlyphIcon(Glyph.VOLUME, size = 16.dp, tint = p.text)
@@ -107,11 +107,11 @@ internal fun VolumeControl() {
                 }
                 Spacer(Modifier.height(8.dp))
                 SecondaryButton("系統音量", { openSystemVolume() }, Modifier.fillMaxWidth())
-                if (busy) Hint("等待系統回讀…", size = 13, essential = true)
-                verification?.let { Hint(it, size = 13, essential = true) }
+                if (busy) Hint("等待系統回讀…", size = 14, essential = true)
+                verification?.let { Hint(it, size = 14, essential = true) }
                 if (audio.isVolumeFixed) Hint("系統音量固定，請使用車機音量鍵。", essential = true)
                 error?.let { Hint(it, color = p.danger, essential = true) }
-                Hint("顯示 Android 數值，不代表原廠主機音量已改變；若聲音沒變，請用系統音量或車機音量鍵。", size = 13, essential = true)
+                Hint("顯示 Android 數值，不代表原廠主機音量已改變；若聲音沒變，請用系統音量或車機音量鍵。", size = 14, essential = true)
             }
         },
         confirmButton = { TextButton(onClick = { open = false }) { Text("關閉") } },

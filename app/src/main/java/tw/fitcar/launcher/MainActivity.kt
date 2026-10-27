@@ -179,6 +179,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         activityResumed=true
+        // 回到桌面時直接重新套用桌面調暗；不依賴暫停期間是否剛好發生過重組（避免導航王返回後不再調暗）
+        applyDesktopDim()
         resumeTick++
         AppCatalog.start(this)
         MediaRepository.refresh(this)
@@ -187,6 +189,15 @@ class MainActivity : ComponentActivity() {
         tw.fitcar.launcher.weather.WeatherRepository.refresh(this)
         CheckStore.load(this)
         MediaListenerService.rescanNavigation()
+    }
+
+    /** 依目前設定計算並套用本視窗亮度；只影響車機桌面自己的視窗，不寫系統亮度。 */
+    private fun applyDesktopDim() {
+        val opts = tw.fitcar.launcher.ui.DesktopDimStore.state.value
+        val night = tw.fitcar.launcher.system.DesktopDimming.night(prefs.state.value.display, BrightnessController.nowMinutes())
+        val value = tw.fitcar.launcher.system.DesktopDimming.window(activityResumed, opts.auto, tw.fitcar.launcher.ui.DesktopDimStore.manual.value, night, opts.percent)
+        window.attributes = window.attributes.apply { screenBrightness = value }
+        tw.fitcar.launcher.ui.DesktopDimStore.active.value = value >= 0f
     }
 
     override fun onPause() {
@@ -363,11 +374,7 @@ class MainActivity : ComponentActivity() {
             previousDimNight=dimNight
         }
         val dimValue=tw.fitcar.launcher.system.DesktopDimming.window(activityResumed,dim.auto,manualDim,dimNight,dim.percent)
-        LaunchedEffect(dimValue) {
-            val applied=if(activityResumed) dimValue else -1f
-            window.attributes=window.attributes.apply { screenBrightness=applied }
-            tw.fitcar.launcher.ui.DesktopDimStore.active.value=applied>=0f
-        }
+        LaunchedEffect(dimValue, activityResumed) { applyDesktopDim() }
         val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme), tw.fitcar.launcher.ui.VisualStyle.fromId(state.visualStyle))
         LaunchedEffect(palette) {
             window.statusBarColor = palette.bg.toArgb()
@@ -446,6 +453,7 @@ class MainActivity : ComponentActivity() {
                 editSlot = { i -> editing = i },
                 voice = { startVoice() },
                 openGoogleNav = { selectGoogleNavigation() },
+                requestLocation = { locationRequest?.invoke() },
                 goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.homeAddress)) },
                 goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.workAddress)) },
                 openPlayer = { pkg ->
@@ -493,14 +501,22 @@ class MainActivity : ComponentActivity() {
                 ) {
                 when (val s = target) {
                     Screen.Home -> Unit
-                    Screen.AllApps -> FullScreenAppList(
-                        title = "所有 App",
-                        subtitle = "共 ${apps.size} 個可啟動的 App",
-                        apps = apps,
-                        backLabel = "返回桌面",
-                        onBack = { screen = Screen.Home },
-                        onSelect = { app -> safeStart(AppRepository.launchIntent(app.component), "無法啟動 ${app.label}") },
-                    )
+                    Screen.AllApps -> CompositionLocalProvider(tw.fitcar.launcher.ui.LocalDriving provides tw.fitcar.launcher.ui.rememberDriving(gps)) {
+                        // 最近使用只存在車機；行車中自動隱藏搜尋框
+                        val recentApps = remember(tick, screen) { tw.fitcar.launcher.data.AppUsage.recent(this@MainActivity) }
+                        FullScreenAppList(
+                            title = "所有 App",
+                            subtitle = "共 ${apps.size} 個可啟動的 App",
+                            apps = apps,
+                            backLabel = "返回桌面",
+                            onBack = { screen = Screen.Home },
+                            onSelect = { app ->
+                                tw.fitcar.launcher.data.AppUsage.record(this@MainActivity, app.key)
+                                safeStart(AppRepository.launchIntent(app.component), "無法啟動 ${app.label}")
+                            },
+                            recentKeys = recentApps,
+                        )
+                    }
                     is Screen.PickForSlot -> FullScreenAppList(
                         title = "選擇捷徑 App",
                         subtitle = "第 ${s.index / ShortcutSlots.PER_PAGE + 1} 頁・第 ${s.index % ShortcutSlots.PER_PAGE + 1} 格",

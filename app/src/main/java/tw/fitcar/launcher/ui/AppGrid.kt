@@ -22,6 +22,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,8 +47,16 @@ fun FullScreenAppList(
     onBack: () -> Unit,
     onSelect: (AppEntry) -> Unit,
     selectedKey: String? = null,
+    /** 最近使用的 App key（只在「所有 App」提供）。 */
+    recentKeys: List<String> = emptyList(),
+    /** 是否提供搜尋框；行車中自動隱藏。 */
+    searchable: Boolean = true,
 ) {
     val p = LocalPalette.current
+    var query by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    val showSearch = searchable && !LocalDriving.current && apps.size > 8
+    val filtered = if (showSearch) apps.filter { tw.fitcar.launcher.data.AppUsage.matches(it.label, it.component.packageName, query) } else apps
+    val recent = if (query.isBlank()) recentKeys.mapNotNull { k -> apps.firstOrNull { it.key == k } } else emptyList()
     ThemePageFrame(ThemePage.APPS) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -57,6 +67,12 @@ fun FullScreenAppList(
             PrimaryButton(backLabel, onBack, Modifier.heightIn(min = 72.dp), icon = {
                 GlyphIcon(Glyph.HOME, size = 26.dp, tint = p.onAccent)
             })
+        }
+        if (showSearch) {
+            Spacer(Modifier.height(12.dp))
+            androidx.compose.material3.OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(),
+                singleLine = true, label = { Text("搜尋 App 名稱", fontSize = TypeScale.SECONDARY.sp) },
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = TypeScale.BODY.sp))
         }
         Spacer(Modifier.height(18.dp))
         if (apps.isEmpty()) {
@@ -71,29 +87,44 @@ fun FullScreenAppList(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(apps, key = { it.key }) { app ->
-                    val selected = app.key == selectedKey
-                    Column(
-                        Modifier
-                            .clip(RadiusMd)
-                            .background(if (selected) p.accentSoft else p.surfaceStrong)
-                            .border(if (selected) 2.dp else 1.dp, if (selected) p.accent else p.line, RadiusMd)
-                            .clickable { onSelect(app) }
-                            .padding(vertical = 18.dp, horizontal = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        AppIcon(app.icon, 72.dp)
-                        Spacer(Modifier.height(10.dp))
-                        Hint(app.component.packageName, size = 11)
-                        Text(app.label, color = p.text, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 20.sp, modifier = Modifier.fillMaxWidth())
+                if (recent.isNotEmpty()) {
+                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }, key = "recent-title") {
+                        Text("最近使用", color = p.text, fontSize = TypeScale.MAIN.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    items(recent, key = { "recent-" + it.key }) { app -> AppTile(app, app.key == selectedKey, onSelect) }
+                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }, key = "all-title") {
+                        Text("全部", color = p.text, fontSize = TypeScale.MAIN.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
+                if (filtered.isEmpty()) item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }, key = "empty") {
+                    Hint("找不到符合「$query」的 App", size = 18, essential = true)
+                }
+                items(filtered, key = { it.key }) { app -> AppTile(app, app.key == selectedKey, onSelect) }
             }
         }
         if (p.characterArt && LocalThemeAppearance.current.smallArt) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { ThemeArtwork(80.dp, ThemeArtPose.APPS) }
         }
     }
+    }
+}
+
+@Composable
+private fun AppTile(app: AppEntry, selected: Boolean, onSelect: (AppEntry) -> Unit) {
+    val p = LocalPalette.current
+    Column(
+        Modifier
+            .clip(RadiusMd)
+            .background(if (selected) p.accentSoft else p.surfaceStrong)
+            .border(if (selected) 2.dp else 1.dp, if (selected) p.accent else p.line, RadiusMd)
+            .clickable { onSelect(app) }
+            .padding(vertical = 18.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AppIcon(app.icon, 72.dp)
+        Spacer(Modifier.height(10.dp))
+        // 不顯示套件名稱（開發用資訊）；名稱加大
+        Text(app.label, color = p.text, fontSize = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 23.sp, modifier = Modifier.fillMaxWidth())
     }
 }
 

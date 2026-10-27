@@ -94,7 +94,7 @@ class MultiScreenLayoutTest {
     private fun check(w: Int, h: Int) {
         show(DpSize(w.dp, h.dp))
         screenshot("home-${w}x${h}-125")
-        listOf("所有 App", "設定", "語音", "開啟導航", "Google 導航", "KKBOX", "晴天").forEach(::assertNotClipped)
+        listOf("所有 App", "設定", "語音", "開啟導航", "更多", "KKBOX", "晴天").forEach(::assertNotClipped)
     }
 
     @Test fun zx09Landscape() {

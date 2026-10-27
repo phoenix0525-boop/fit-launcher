@@ -14,7 +14,7 @@ object BackupStore {
             "manual_theme" to (if(s.display.manualTheme==ThemeChoice.NIGHT) "night" else "day"),
             "manual_brightness" to s.display.manualBrightness, "smooth_transition" to s.display.smoothTransition,
             "experimental_split" to (s.navOpenMode==NavOpenMode.SPLIT_FIRST), "media_mode" to (if(s.mediaMode==MediaMode.FIXED) "fixed" else "follow"),
-            "manual_override" to s.manualOverride, "shortcut_pages" to s.shortcutPages,
+            "shortcut_pages" to s.shortcutPages,
             "accent_theme" to s.accentTheme, "visual_style" to s.visualStyle, "speed_alert_kmh" to s.speedAlertKmh)
         listOf("bind_navigation" to s.bindings.navigation,"bind_music" to s.bindings.music,"bind_shield" to s.bindings.shield,"home_address" to s.homeAddress,"work_address" to s.workAddress).forEach { (k,v) -> if(v!=null) main[k]=v }
         s.shortcuts.forEachIndexed { i,v -> if(v!=null) main["shortcut_$i"]=v }
@@ -35,7 +35,7 @@ object BackupStore {
                 val missing = if (v is String && (k.startsWith("bind_") || Regex("shortcut_\\d+").matches(k)) && AppRepository.resolve(context, v) == null) "（找不到，請重新選擇）" else ""
                 "$g / ${label(k)} → ${v ?: "還原預設／清除"}$missing"
             }
-        } + "歌詞：關閉，需重新同意"
+        } + "歌詞：關閉，需重新同意" + "亮度：回到依時段排程"
     }
     private fun label(k: String) = mapOf("bind_navigation" to "導航App", "bind_music" to "播放器", "bind_shield" to "測速App", "home_address" to "回家地址", "work_address" to "公司地址", "shortcut_pages" to "捷徑頁數", "clarity" to "卡片透明度")[k] ?: k
     private fun SharedPreferences.Editor.putValue(k: String, v: Any) { when (v) {
@@ -45,7 +45,7 @@ object BackupStore {
     /** Entire plan is validated before writes; on a storage error restore all previous values. */
     @Synchronized fun apply(context: Context, plan: BackupPlan) {
         val validated = SettingsBackup.decode(SettingsBackup.encode(plan.groups,"validation","now"))
-        val names = validated.groups.keys + "desktop_lyrics"
+        val names = validated.groups.keys + "desktop_lyrics" + "fit_launcher"
         val before = names.associateWith { context.getSharedPreferences(it, Context.MODE_PRIVATE).all.toMap() }
         try {
             validated.groups.forEach { (g, entries) ->
@@ -57,6 +57,8 @@ object BackupStore {
                 }.commit()) { "儲存失敗，已還原原設定" }
             }
             check(context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).edit().putBoolean("lrclib",false).commit())
+            // 手動亮度覆寫是暫時狀態，不從備份還原；匯入後回到依時段排程
+            check(context.getSharedPreferences("fit_launcher", Context.MODE_PRIVATE).edit().putBoolean("manual_override",false).commit())
         } catch (e: Exception) {
             before.forEach { (g, entries) -> context.getSharedPreferences(g,Context.MODE_PRIVATE).edit().apply {
                 clear(); entries.forEach { (k,v) -> when(v) { is Float -> putFloat(k,v); is Long -> putLong(k,v); is Set<*> -> @Suppress("UNCHECKED_CAST") putStringSet(k,v as Set<String>); null -> {}; else -> putValue(k,v) } }
