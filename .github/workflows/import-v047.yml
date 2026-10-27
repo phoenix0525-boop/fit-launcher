@@ -1,0 +1,34 @@
+name: Import verified 0.4.7 bundle
+on:
+  push:
+    branches: [codex/import-ux-v047]
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and push the exact authorized commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin codex/vehicle-auto-update
+          git bundle verify .handoff/ux-v047.bundle
+          git fetch .handoff/ux-v047.bundle claude/ux-v047:claude/ux-v047
+          test "$(git rev-parse claude/ux-v047)" = "835786db221fd1a3b8ab4b87294ecde5abcfc94f"
+          test "$(git rev-parse claude/ux-v047^)" = "175398bd074da6a6b3ff0ee1fec8f606945812a2"
+          git show claude/ux-v047:app/build.gradle.kts > /tmp/v047.gradle
+          python - <<'PY'
+          import pathlib,re
+          text=pathlib.Path('/tmp/v047.gradle').read_text()
+          assert re.search(r'versionCode\s*=\s*14\b',text)
+          assert re.search(r'versionName\s*=\s*"0\.4\.7"',text)
+          PY
+          if git ls-remote --exit-code origin refs/heads/claude/ux-v047 > /tmp/existing; then
+            test "$(cut -f1 /tmp/existing)" = "835786db221fd1a3b8ab4b87294ecde5abcfc94f"
+          else
+            git push origin claude/ux-v047:refs/heads/claude/ux-v047
+          fi
