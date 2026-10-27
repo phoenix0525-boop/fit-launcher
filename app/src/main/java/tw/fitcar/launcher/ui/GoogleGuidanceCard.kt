@@ -35,7 +35,8 @@ internal fun GoogleGuidanceCard(state: GoogleGuidanceState, permission: Boolean,
             Text(when {
                 !permission -> "請開啟通知存取以顯示導航提示"
                 !state.connected -> "導航通知服務未連線"
-                state.activeNavigation -> "導航提示已過期，請開啟 Google 地圖確認"
+                state.activeNavigation && state.guidance != null -> "導航提示已過期，請開啟 Google 地圖確認"
+                state.activeNavigation -> "導航提示暫不可用，請開啟 Google 地圖確認"
                 else -> "請在 Google 地圖開始導航"
             }, color = p.text, fontSize = 22.sp, lineHeight = 30.sp)
             if (!permission || !state.connected) SecondaryButton("通知權限", grant)
