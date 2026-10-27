@@ -191,6 +191,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         activityResumed=false
+        tw.fitcar.launcher.ui.DesktopDimStore.active.value=false
         window.attributes=window.attributes.apply { screenBrightness=-1f }
         super.onPause()
     }
@@ -363,8 +364,9 @@ class MainActivity : ComponentActivity() {
         }
         val dimValue=tw.fitcar.launcher.system.DesktopDimming.window(activityResumed,dim.auto,manualDim,dimNight,dim.percent)
         LaunchedEffect(dimValue) {
-            window.attributes=window.attributes.apply { screenBrightness=dimValue }
-            tw.fitcar.launcher.ui.DesktopDimStore.active.value=dimValue>=0f
+            val applied=if(activityResumed) dimValue else -1f
+            window.attributes=window.attributes.apply { screenBrightness=applied }
+            tw.fitcar.launcher.ui.DesktopDimStore.active.value=applied>=0f
         }
         val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme), tw.fitcar.launcher.ui.VisualStyle.fromId(state.visualStyle))
         LaunchedEffect(palette) {

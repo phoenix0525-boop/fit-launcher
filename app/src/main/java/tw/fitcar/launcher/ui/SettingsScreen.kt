@@ -510,6 +510,7 @@ internal fun AboutSection(data: SettingsData) {
             }
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
+        Hint("• 0.4.15：設定備份與確認還原、角色原圖尺寸限制、行車卡片清楚模式與僅桌面視窗調暗；支援獨立測試簽章。", size = 14)
         Hint("• 0.4.14：淺色蜘蛛人全版風格、各頁插畫、卡片透明度與夜間中文路名可讀性。", size = 14)
         Hint("• 0.4.13：無歌詞時可用淡化專輯封面作為整張播放器底圖；獨立開關；Google 導航通知取代地圖欄位，免費地圖行進方向朝上。", size = 14)
         Hint("• 0.4.12：自訂本機桌布、夜間圖片暗化與獨立插畫開關；地圖控制整合至下方工具列。", size = 14)
