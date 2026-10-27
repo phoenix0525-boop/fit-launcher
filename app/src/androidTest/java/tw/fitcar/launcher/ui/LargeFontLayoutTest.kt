@@ -193,6 +193,7 @@ class LargeFontLayoutTest {
                 AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
         compose.onNodeWithContentDescription("布丁狗主題插畫").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription("布丁狗趴睡插畫").assertIsDisplayed()
         compose.onNodeWithContentDescription("布丁狗感謝插畫").assertIsDisplayed()
         fullLabel(java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.TAIWAN).format(java.util.Date()))
@@ -229,15 +230,22 @@ class LargeFontLayoutTest {
                     AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN),
                 lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB", listOf(
                     tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
-                    tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行完整顯示"),
+                    tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行比較長也要完整顯示不能裁切"),
                     tw.fitcar.launcher.lyrics.LyricLine(20000, "下一行也要完整顯示"))), state) })
-            listOf("自製歌曲測試", "測試歌手", "目前這一行完整顯示", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
-            val current = compose.onNodeWithText("目前這一行完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            listOf("自製歌曲測試", "測試歌手", "目前這一行比較長也要完整顯示不能裁切", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
+            val current = compose.onNodeWithText("目前這一行比較長也要完整顯示不能裁切", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("下一行必須位於目前行下方", next.top >= current.bottom)
             compose.onNodeWithContentDescription("播放／暫停").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
             compose.onNodeWithContentDescription("布丁狗感謝插畫").assertWidthIsAtLeast(64.dp)
+            compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
             screenshot("home-lyrics-${if (driving) "driving" else if (night) "night" else "day"}-125")
+            if (!driving) {
+                compose.onNodeWithContentDescription("播放進度，點擊調整").performClick()
+                compose.onNodeWithContentDescription("調整播放進度滑桿").assertIsDisplayed()
+                fullLabel("調整播放進度")
+                compose.onNodeWithText("關閉").performClick()
+            }
         } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
     }
     @Test fun lyricsCurrentAndNextOnHomeAt125Percent() = lyricsCard(false, false)
