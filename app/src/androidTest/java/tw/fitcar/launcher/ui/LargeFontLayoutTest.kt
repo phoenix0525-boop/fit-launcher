@@ -524,10 +524,28 @@ class LargeFontLayoutTest {
             }
         }
         fullLabel("設定"); fullLabel("返回桌面")
-        compose.onNodeWithText("關於").performClick()
+        compose.onNodeWithContentDescription("蜘蛛人飛躍插畫").assertIsDisplayed()
+        compose.onNodeWithText("關於").performScrollTo().performClick()
         fullLabel("個人化啟動器"); fullLabel("版本 0.4.14")
         compose.onNodeWithContentDescription("蜘蛛人蹲姿插畫").assertIsDisplayed()
         screenshot("settings-about-spiderman-light-night-125")
+    }
+
+    @Test fun lightSpiderAppGridKeepsCornerArtSeparateAt125Percent() {
+        val apps = (1..12).map { AppEntry("工具程式$it", ComponentName("test.app$it", "Main"), null) }
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN), appearanceOverride = ThemeAppearanceOptions()) {
+                    FullScreenAppList("所有 App", "選擇要開啟的程式", apps, "返回桌面", {}, {})
+                }
+            }
+        }
+        listOf("所有 App", "返回桌面", "工具程式1", "工具程式12").forEach(::fullLabel)
+        val art = compose.onNodeWithContentDescription("蜘蛛人蓄勢插畫").fetchSemanticsNode().boundsInRoot
+        val app = compose.onNodeWithText("工具程式12").fetchSemanticsNode().boundsInRoot
+        assertTrue("角落插畫不得蓋住App項目", art.top >= app.bottom)
+        screenshot("apps-spiderman-light-night-grid-125")
     }
 
 }

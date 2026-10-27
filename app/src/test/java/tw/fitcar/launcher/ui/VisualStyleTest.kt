@@ -40,7 +40,7 @@ class VisualStyleTest {
                 ThemeChoice.entries.forEach { theme ->
                     val p = paletteFor(theme, accent, style)
                     assertEquals(theme == ThemeChoice.NIGHT, p.isNight)
-                    assertEquals(if (p.isNight) accent.night.accent else accent.day.accent, p.accent.toArgb().toLong() and 0xFFFFFFFFL)
+                    assertEquals(if (p.isNight && style != VisualStyle.SPIDERMAN) accent.night.accent else accent.day.accent, p.accent.toArgb().toLong() and 0xFFFFFFFFL)
                     if (p.isNight && style != VisualStyle.SPIDERMAN) assertTrue(Contrast.luminance(p.bg.toArgb().toLong()) < 0.05)
                     if (style == VisualStyle.SPIDERMAN) assertTrue("Spider surfaces must stay light", Contrast.luminance(p.bg.toArgb().toLong()) > .45)
                 }
