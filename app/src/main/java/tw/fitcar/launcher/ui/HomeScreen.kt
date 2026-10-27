@@ -482,7 +482,7 @@ private fun SeekButton(label: String, deltaMs: Long, media: MediaUiState, action
         onClick = { actions.seekTo(tw.fitcar.launcher.system.SeekStep.target(media.livePosition(), deltaMs, media.durationMs)) },
         modifier = Modifier.size(56.dp).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
     ) {
-        Text(label, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Text(label, color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 

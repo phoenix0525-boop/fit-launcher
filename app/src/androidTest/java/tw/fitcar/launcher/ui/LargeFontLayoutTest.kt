@@ -129,6 +129,14 @@ class LargeFontLayoutTest {
             gps = GpsState(permission = true, providerEnabled = true, speedKmh = 60f, accuracyM = 5f, latitude = 24.95, longitude = 121.29, fixElapsed = now, bearing = 90f))
         compose.waitForIdle()
         listOf("km/h", "晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
+        // Primary driving labels must stay legible at the agreed 19.2 sp minimum.
+        listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach { text ->
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(text, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue("行車主要文字不得小於 19.2 sp：$text", layouts.isNotEmpty() &&
+                layouts.all { it.layoutInput.style.fontSize.value >= 19.2f })
+        }
         assertTrue("行車中應隱藏「GPS km/h」完整標籤", compose.onAllNodesWithText("GPS km/h").fetchSemanticsNodes().isEmpty())
         screenshot("home-driving-125")
     }
