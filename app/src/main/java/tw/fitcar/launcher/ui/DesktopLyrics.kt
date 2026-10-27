@@ -27,6 +27,7 @@ import tw.fitcar.launcher.media.MediaUiState
 internal fun LyricsSetting() {
     val context = LocalContext.current
     val enabled by LyricsRepository.enabled.collectAsState()
+    val coverFallback by LyricsRepository.coverFallback.collectAsState()
     var consent by remember { mutableStateOf(false) }
     LaunchedEffect(context) { LyricsRepository.initialize(context) }
     Row(Modifier.fillMaxWidth()) {
@@ -34,6 +35,12 @@ internal fun LyricsSetting() {
         Switch(checked = enabled, onCheckedChange = { if (it) consent = true else LyricsRepository.setEnabled(context, false) })
     }
     Hint("顯示於右上播放卡原歌詞區；未收錄或無法比對時保留歌曲資訊。", size = 13)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("無歌詞時顯示專輯封面", Modifier.weight(1f), color = LocalPalette.current.text, fontSize = 20.sp)
+        Switch(checked = coverFallback, onCheckedChange = { LyricsRepository.setCoverFallback(context, it) },
+            modifier = Modifier.semantics { contentDescription = "無歌詞時顯示專輯封面" })
+    }
+    Hint("淡化封面作為整張播放器底圖；有歌詞時隱藏。僅使用播放器提供的封面，不另行連網下載。", size = 13)
     LyricsConsent(consent) { consent = false }
 }
 
@@ -58,14 +65,17 @@ private fun LyricsConsent(open: Boolean, onClose: () -> Unit) {
 }
 
 @Composable
-internal fun DesktopLyrics(media: MediaUiState) {
-    var result by remember(media.packageName, media.title, media.artist, media.album, media.durationMs) { mutableStateOf(LyricsResult("正在查詢歌詞…")) }
+internal fun rememberLyricsResult(media: MediaUiState): LyricsResult {
+    var result by remember(media.packageName, media.title, media.artist, media.album, media.durationMs) { mutableStateOf(LyricsResult("正在查詢歌詞…", loading = true)) }
     LaunchedEffect(media.packageName, media.title, media.artist, media.album, media.durationMs) {
         delay(600) // Let track metadata settle; do not query while it is changing.
         result = LyricsRepository.lookup(media.title, media.artist, media.album, media.durationMs)
     }
-    LyricsLines(result, media)
+    return result
 }
+
+@Composable
+internal fun DesktopLyrics(media: MediaUiState) { LyricsLines(rememberLyricsResult(media), media) }
 
 /**
  * 歌詞大字顯示：目前行 28 sp（行車 30 sp），下一行 20 sp；省略上一行以保留預覽高度。
@@ -83,7 +93,7 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
     val canSync = result.lines.isNotEmpty() && media.positionUpdateElapsed > 0
     val index by remember(result.lines) { derivedStateOf { Lrc.current(result.lines, position) } }
     var full by remember { mutableStateOf(false) }
-    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 13)
+    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 13, essential = result.lines.isEmpty() && result.plain.isNullOrBlank())
     Column(
         Modifier.fillMaxWidth().clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),

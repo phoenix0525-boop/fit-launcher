@@ -9,6 +9,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -66,17 +68,18 @@ internal fun ThemeArtwork(size: Dp = 64.dp, pose: ThemeArtPose = ThemeArtPose.SH
 fun FitCard(
     modifier: Modifier = Modifier,
     padding: PaddingValues = PaddingValues(18.dp),
+    backgroundContent: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
-    Column(
-        modifier
-            .clip(RadiusLg)
-            .background(p.surface.copy(alpha = if (LocalWallpaperActive.current) .96f else 1f))
-            .border(1.dp, p.line, RadiusLg)
-            .padding(padding),
-        content = content,
-    )
+    val frame = modifier.clip(RadiusLg)
+        .background(p.surface.copy(alpha = if (backgroundContent == null && LocalWallpaperActive.current) .96f else 1f))
+        .border(1.dp, p.line, RadiusLg)
+    if (backgroundContent == null) Column(frame.padding(padding), content = content)
+    else Box(frame) {
+        backgroundContent()
+        Column(Modifier.fillMaxSize().padding(padding), content = content)
+    }
 }
 
 @Composable

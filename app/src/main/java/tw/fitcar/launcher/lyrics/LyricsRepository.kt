@@ -15,13 +15,27 @@ import java.net.URL
 import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 
-data class LyricsResult(val status: String, val lines: List<LyricLine> = emptyList(), val plain: String? = null)
+data class LyricsResult(val status: String, val lines: List<LyricLine> = emptyList(), val plain: String? = null, val loading: Boolean = false)
+/** Never use album art as a substitute for lyrics that are actually available. */
+fun shouldShowLyricsCover(enabled: Boolean, lyricsEnabled: Boolean, usableSession: Boolean, hasArt: Boolean, result: LyricsResult?): Boolean =
+    enabled && lyricsEnabled && usableSession && hasArt && result != null && !result.loading &&
+        result.lines.none { it.text.isNotBlank() } && result.plain.isNullOrBlank()
+
 object LyricsRepository {
     val enabled = MutableStateFlow(false)
+    val coverFallback = MutableStateFlow(true)
     private val mutex = Mutex()
     private val cache = linkedMapOf<String, LyricsResult>()
     private var blockedUntil = 0L
-    fun initialize(context: Context) { enabled.value = context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).getBoolean("lrclib", false) }
+    fun initialize(context: Context) {
+        val prefs = context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE)
+        enabled.value = prefs.getBoolean("lrclib", false)
+        coverFallback.value = prefs.getBoolean("cover_fallback", true)
+    }
+    fun setCoverFallback(context: Context, value: Boolean) {
+        context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).edit().putBoolean("cover_fallback", value).apply()
+        coverFallback.value = value
+    }
     fun setEnabled(context: Context, value: Boolean) {
         context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).edit().putBoolean("lrclib", value).apply()
         enabled.value = value

@@ -372,4 +372,68 @@ class LargeFontLayoutTest {
         } finally { source.delete(); kotlinx.coroutines.runBlocking { store.reset() } }
     }
 
+    private fun albumFallback(night: Boolean, driving: Boolean = false) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repo = tw.fitcar.launcher.lyrics.LyricsRepository
+        repo.initialize(context)
+        val oldEnabled = repo.enabled.value
+        val oldCover = repo.coverFallback.value
+        repo.setEnabled(context, true); repo.setCoverFallback(context, true)
+        val art = Bitmap.createBitmap(180, 180, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.RED)
+            android.graphics.Canvas(this).drawCircle(90f, 90f, 60f, android.graphics.Paint().apply { color = android.graphics.Color.YELLOW })
+        }
+        val result = androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.lyrics.LyricsResult("找不到相符歌詞"))
+        val state = androidx.compose.runtime.mutableStateOf(MediaUiState(permissionGranted = true, packageName = "test.music",
+            title = "封面顯示測試", artist = "測試歌手", art = art))
+        try {
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f), LocalDriving provides driving) {
+                    FitTheme(paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                        AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                        Box(Modifier.fillMaxSize().padding(24.dp)) {
+                            MusicCard(musicApp, state.value, actions, emptyList(), Modifier.width(420.dp).fillMaxHeight(),
+                                lyricsResultOverride = result.value)
+                        }
+                    }
+                }
+            }
+            val cover = compose.onNodeWithContentDescription("無歌詞專輯封面底圖", useUnmergedTree = true)
+            cover.assertIsDisplayed()
+            listOf("封面顯示測試", "測試歌手", "找不到相符歌詞").forEach(::fullLabel)
+            val bg = cover.fetchSemanticsNode().boundsInRoot
+            val play = compose.onNodeWithContentDescription("播放／暫停").fetchSemanticsNode().boundsInRoot
+            assertTrue("封面必須覆蓋整張播放器，包含控制列", bg.top < play.top && bg.bottom >= play.bottom)
+            screenshot("player-album-fallback-${if (driving) "driving" else if (night) "night" else "day"}-125")
+            compose.runOnIdle { result.value = tw.fitcar.launcher.lyrics.LyricsResult("文字歌詞", plain = "可顯示的實際歌詞") }
+            cover.assertDoesNotExist(); fullLabel("可顯示的實際歌詞")
+            compose.runOnIdle { result.value = tw.fitcar.launcher.lyrics.LyricsResult("歌詞連線失敗，保留歌曲資訊") }
+            cover.assertIsDisplayed()
+            compose.runOnIdle { state.value = state.value.copy(packageName = "other.music", title = "下一首無封面", art = null) }
+            cover.assertDoesNotExist(); fullLabel("下一首無封面")
+            compose.runOnIdle { state.value = state.value.copy(art = art); repo.setCoverFallback(context, false) }
+            cover.assertDoesNotExist()
+        } finally { repo.setEnabled(context, oldEnabled); repo.setCoverFallback(context, oldCover) }
+    }
+    @Test fun albumFallbackDayAt125Percent() = albumFallback(false)
+    @Test fun albumFallbackNightAt125Percent() = albumFallback(true)
+    @Test fun albumFallbackDrivingAt125Percent() = albumFallback(false, true)
+    @Test fun albumFallbackSettingPersistsWithoutEnablingLyrics() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repo = tw.fitcar.launcher.lyrics.LyricsRepository
+        repo.initialize(context)
+        val oldEnabled = repo.enabled.value; val oldCover = repo.coverFallback.value
+        repo.setEnabled(context, false); repo.setCoverFallback(context, true)
+        try {
+            compose.setContent { FitTheme(DayPalette) { Column(Modifier.padding(24.dp)) { LyricsSetting() } } }
+            compose.onNodeWithContentDescription("無歌詞時顯示專輯封面").performClick()
+            repo.initialize(context)
+            assertFalse(repo.coverFallback.value); assertFalse(repo.enabled.value)
+            compose.onNodeWithContentDescription("無歌詞時顯示專輯封面").performClick()
+            repo.initialize(context)
+            assertTrue(repo.coverFallback.value); assertFalse(repo.enabled.value)
+        } finally { repo.setEnabled(context, oldEnabled); repo.setCoverFallback(context, oldCover) }
+    }
+
 }

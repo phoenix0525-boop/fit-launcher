@@ -258,7 +258,12 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
 @Composable
 private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapContent: @Composable (GpsState, Modifier) -> Unit, hasHome: Boolean, hasWork: Boolean, modifier: Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
+    val coverFallback by tw.fitcar.launcher.lyrics.LyricsRepository.coverFallback.collectAsState()
+    val lyricResult = lyricsResultOverride ?: if (lyricsEnabled && media.hasSession && media.permissionGranted && lyricsContent == null) rememberLyricsResult(media) else null
+    val showCover = tw.fitcar.launcher.lyrics.shouldShowLyricsCover(coverFallback, lyricsEnabled,
+        media.hasSession && media.permissionGranted, media.art != null, lyricResult)
+    FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+        backgroundContent = if (showCover) ({ PlayerCoverBackground(media.art!!) }) else null) {
         if (nav?.component?.packageName == tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE) {
             val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
             val mediaState by tw.fitcar.launcher.media.MediaRepository.state.collectAsState()
@@ -389,7 +394,7 @@ private fun formatMs(ms: Long): String {
 }
 
 @Composable
-internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null) {
+internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null, lyricsResultOverride: tw.fitcar.launcher.lyrics.LyricsResult? = null) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -436,7 +441,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
-            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (showCover) 0f else 1f)).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
             verticalArrangement = Arrangement.spacedBy(if (lyricsEnabled) 4.dp else 6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -461,7 +466,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     }
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     if (!lyricsEnabled) Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving || lyricsEnabled) 1 else 2, overflow = TextOverflow.Ellipsis)
-                    if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else DesktopLyrics(media) }
+                    if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else LyricsLines(requireNotNull(lyricResult), media) }
                     else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
                 }
             }
@@ -493,7 +498,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 @Composable
 private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp)) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp).background(p.surface, CircleShape)) {
         GlyphIcon(glyph, size = 24.dp, tint = if (enabled) p.text else p.disabledContent)
     }
 }

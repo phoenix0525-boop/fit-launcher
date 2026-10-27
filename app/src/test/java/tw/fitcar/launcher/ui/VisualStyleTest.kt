@@ -86,4 +86,15 @@ class VisualStyleTest {
         } }
     }
 
+    @Test fun albumCoverKeepsPrimaryTextReadable() {
+        VisualStyle.entries.forEach { style -> ThemeChoice.entries.forEach { theme ->
+            val p = paletteFor(theme, AccentTheme.HERO_RED, style)
+            listOf(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.graphics.Color.White).forEach { image ->
+                val surface = image.copy(alpha = PLAYER_COVER_ALPHA).compositeOver(p.surface)
+                assertTrue("$style $theme album primary", Contrast.ratio(p.text.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+                if (style != VisualStyle.ORIGINAL) assertTrue("$style $theme album secondary", Contrast.ratio(p.textSoft.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+            }
+        } }
+    }
+
 }
