@@ -105,6 +105,12 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
 
 val LocalPalette = staticCompositionLocalOf { DayPalette }
 
+/**
+ * 停用但仍需看得見的圖示／文字（例如播放器不支援的上一首）。
+ * 原本用分隔線色，對比只有 1.3–1.7；改為次要文字色 80%，各風格對比約 3.2–5.6（啟用文字約 11–14，停用仍明顯較淡）。
+ */
+val Palette.disabledContent: Color get() = textSoft.copy(alpha = 0.8f)
+
 fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE, style: VisualStyle = VisualStyle.ORIGINAL): Palette {
     val base = styledBase(theme == ThemeChoice.NIGHT, style)
     val c = if (theme == ThemeChoice.NIGHT) accent.night else accent.day

@@ -30,6 +30,11 @@ data class LauncherState(
     /** 主題強調色 id（見 ui.AccentTheme）。 */
     val accentTheme: String = "mist",
     val visualStyle: String = "original",
+    /** 常用地點（回家／去公司），交給導航 App 的地址文字。 */
+    val homeAddress: String? = null,
+    val workAddress: String? = null,
+    /** 自訂超速提醒門檻（km/h），0 = 關閉。只比對 GPS 車速。 */
+    val speedAlertKmh: Int = 0,
 )
 
 /**
@@ -86,6 +91,9 @@ class Prefs private constructor(context: Context) {
             shortcutPages = ShortcutSlots.clampPages(sp.getInt("shortcut_pages", ShortcutSlots.DEFAULT_PAGES)),
             accentTheme = sp.getString("accent_theme", "mist") ?: "mist",
             visualStyle = sp.getString("visual_style", "original") ?: "original",
+            homeAddress = sp.getString("home_address", null),
+            workAddress = sp.getString("work_address", null),
+            speedAlertKmh = tw.fitcar.launcher.system.SpeedAlert.clampThreshold(sp.getInt("speed_alert_kmh", 0)),
         )
     }
 
@@ -112,6 +120,9 @@ class Prefs private constructor(context: Context) {
             putInt("shortcut_pages", ShortcutSlots.clampPages(s.shortcutPages))
             putString("accent_theme", s.accentTheme)
             putString("visual_style", s.visualStyle)
+            putOrRemove("home_address", s.homeAddress)
+            putOrRemove("work_address", s.workAddress)
+            putInt("speed_alert_kmh", tw.fitcar.launcher.system.SpeedAlert.clampThreshold(s.speedAlertKmh))
         }.apply()
     }
 

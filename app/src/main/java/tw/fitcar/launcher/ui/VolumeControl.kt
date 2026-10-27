@@ -38,12 +38,23 @@ internal fun VolumeControl() {
             if (volume != value.coerceIn(0, maximum)) error = "系統未套用音量，請使用車機音量鍵確認。"
         } catch (_: SecurityException) { error = "車機限制音量控制，請使用車機音量鍵。" }
     }
-    LaunchedEffect(audio) { while (true) { refresh(); delay(500) } }
+    // 音量改變時系統會送 VOLUME_CHANGED_ACTION；部分車機不送，保留 3 秒輪詢備援（原本每 0.5 秒）
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: android.content.Intent?) { refresh() }
+        }
+        val registered = runCatching {
+            androidx.core.content.ContextCompat.registerReceiver(context, receiver,
+                android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION"), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        }.isSuccess
+        onDispose { if (registered) runCatching { context.unregisterReceiver(receiver) } }
+    }
+    LaunchedEffect(audio, open) { while (true) { refresh(); delay(if (open) 500 else 3_000) } }
     IconButton(onClick = { open = true }, modifier = Modifier.size(56.dp)
         .semantics { contentDescription = "媒體音量 $volume／$maximum" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("音量", color = p.text, fontSize = 12.sp, maxLines = 1)
-            Text("$volume", color = p.text, fontSize = 17.sp, maxLines = 1)
+            Text("$volume", color = p.text, fontSize = 18.sp, maxLines = 1)
         }
     }
     if (open) AlertDialog(

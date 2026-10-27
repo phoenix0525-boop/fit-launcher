@@ -140,7 +140,7 @@ class CompanionActivity : ComponentActivity() {
                     Clock(Modifier.weight(1f), big = false)
                     SecondaryButton("桌面", { goHome() }, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) })
                 }
-                MusicCard(music, media, actions, Modifier.fillMaxWidth().weight(1.2f))
+                MusicCard(music, media, actions, emptyList(), Modifier.fillMaxWidth().weight(1.2f))
                 ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(0.8f))
             }
         }

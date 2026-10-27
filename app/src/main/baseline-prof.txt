@@ -1,0 +1,12 @@
+# 車機桌面 Baseline Profile（手寫萬用規則）：主畫面、音樂卡、地圖卡、設定頁在安裝後預先編譯。
+# Compose 函式庫自帶的 profile 會由 AGP 合併；profileinstaller 讓側載安裝也能套用。
+HSPLtw/fitcar/launcher/MainActivity;->**(**)**
+HSPLtw/fitcar/launcher/ui/**;->**(**)**
+HSPLtw/fitcar/launcher/media/**;->**(**)**
+HSPLtw/fitcar/launcher/system/**;->**(**)**
+HSPLtw/fitcar/launcher/data/**;->**(**)**
+Ltw/fitcar/launcher/MainActivity;
+Ltw/fitcar/launcher/ui/**;
+Ltw/fitcar/launcher/media/**;
+Ltw/fitcar/launcher/system/**;
+Ltw/fitcar/launcher/data/**;

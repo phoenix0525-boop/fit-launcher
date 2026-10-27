@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -356,51 +357,74 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 主畫面動作只建立一次（裡面讀的都是最新狀態），GPS／播放狀態更新時音樂卡與捷徑卡可以跳過重組
+        val homeActions = remember {
+            HomeActions(
+                openAllApps = { screen = Screen.AllApps },
+                openSettings = { screen = Screen.Settings },
+                openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
+                openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
+                bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
+                openMusicApp = {
+                    val active = MediaRepository.resumePackage(this@MainActivity)
+                    val intent = active?.let { packageManager.getLaunchIntentForPackage(it) }
+                    if (intent != null) startActivity(intent)
+                    else launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
+                },
+                bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
+                grantNotificationAccess = { openNotificationAccess() },
+                playPause = {
+                    if (MediaRepository.state.value.hasSession) MediaRepository.playPause()
+                    else {
+                        val target = MediaRepository.resumePackage(this@MainActivity)
+                        val intent = target?.let { packageManager.getLaunchIntentForPackage(it) }
+                        if (intent != null) safeStart(intent, "無法開啟上次播放器")
+                        else screen = Screen.PickForBinding(BindingTarget.MUSIC, false)
+                    }
+                },
+                next = { MediaRepository.next() },
+                previous = { MediaRepository.previous() },
+                seekTo = { MediaRepository.seekTo(it) },
+                openShield = { launchKey(state.bindings.shield) { screen = Screen.PickForBinding(BindingTarget.SHIELD, false) } },
+                launchSlot = { i -> launchKey(state.shortcuts.getOrNull(i)) { screen = Screen.PickForSlot(i) } },
+                pickSlot = { i -> screen = Screen.PickForSlot(i) },
+                editSlot = { i -> editing = i },
+                voice = { startVoice() },
+                openGoogleNav = { selectGoogleNavigation() },
+                goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.homeAddress)) },
+                goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.workAddress)) },
+                openPlayer = { pkg ->
+                    val intent = packageManager.getLaunchIntentForPackage(pkg)
+                    if (intent != null) safeStart(intent, "無法開啟播放器") else Toast.makeText(this@MainActivity, "找不到這個播放器", Toast.LENGTH_SHORT).show()
+                },
+            )
+        }
+        // 最近播放器（跟隨模式才提供快速切換）
+        val recentPlayers = remember(media.packageName, state.mediaMode, tick) {
+            if (state.mediaMode == tw.fitcar.launcher.data.MediaMode.FIXED) emptyList()
+            else MediaRepository.recentPlayers(this).mapNotNull { pkg ->
+                runCatching { pkg to packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull()
+            }
+        }
         FitTheme(palette) {
             tw.fitcar.launcher.ui.AutoUpdateNotice()
             Box(Modifier.fillMaxSize()) {
                 val overlayOpen = screen != Screen.Home
                 // 主畫面常駐：切到設定／所有 App 時不銷毀地圖與播放卡，返回時不必重新載入
                 Box(if (overlayOpen) Modifier.fillMaxSize().clearAndSetSemantics {} else Modifier.fillMaxSize()) {
+                    CompositionLocalProvider(tw.fitcar.launcher.ui.LocalHomeVisible provides !overlayOpen) {
                     HomeScreen(
                         nav = nav,
                         navModeLabel = if (state.navOpenMode == tw.fitcar.launcher.data.NavOpenMode.SPLIT_FIRST) "分割畫面優先" else "全螢幕",
                         splitResult = state.lastSplitResult,
                         music = music, shield = shield, media = media, gps = gps, slots = slots,
-                        actions = HomeActions(
-                            openAllApps = { screen = Screen.AllApps },
-                            openSettings = { screen = Screen.Settings },
-                            openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
-                            openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
-                            bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
-                            openMusicApp = {
-                                val active = MediaRepository.resumePackage(this@MainActivity)
-                                val intent = active?.let { packageManager.getLaunchIntentForPackage(it) }
-                                if (intent != null) startActivity(intent)
-                                else launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
-                            },
-                            bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
-                            grantNotificationAccess = { openNotificationAccess() },
-                            playPause = {
-                                if (MediaRepository.state.value.hasSession) MediaRepository.playPause()
-                                else {
-                                    val target = MediaRepository.resumePackage(this@MainActivity)
-                                    val intent = target?.let { packageManager.getLaunchIntentForPackage(it) }
-                                    if (intent != null) safeStart(intent, "無法開啟上次播放器")
-                                    else screen = Screen.PickForBinding(BindingTarget.MUSIC, false)
-                                }
-                            },
-                            next = { MediaRepository.next() },
-                            previous = { MediaRepository.previous() },
-                            seekTo = { MediaRepository.seekTo(it) },
-                            openShield = { launchKey(state.bindings.shield) { screen = Screen.PickForBinding(BindingTarget.SHIELD, false) } },
-                            launchSlot = { i -> launchKey(state.shortcuts.getOrNull(i)) { screen = Screen.PickForSlot(i) } },
-                            pickSlot = { i -> screen = Screen.PickForSlot(i) },
-                            editSlot = { i -> editing = i },
-                            voice = { startVoice() },
-                            openGoogleNav = { selectGoogleNavigation() },
-                        ),
+                        actions = homeActions,
+                        recentPlayers = recentPlayers,
+                        hasHome = state.homeAddress != null,
+                        hasWork = state.workAddress != null,
+                        speedAlertKmh = state.speedAlertKmh,
                     )
+                    }
                 }
                 AnimatedContent(
                     targetState = screen,
@@ -522,6 +546,11 @@ class MainActivity : ComponentActivity() {
                                     safeStart(i, "無法開啟 ${home.label}")
                                 },
                                 openChecker = { screen = Screen.Checker },
+                                savePlaces = { home, work ->
+                                    prefs.update { st -> st.copy(homeAddress = tw.fitcar.launcher.nav.Places.clean(home), workAddress = tw.fitcar.launcher.nav.Places.clean(work)) }
+                                    Toast.makeText(this@MainActivity, "已儲存常用地點", Toast.LENGTH_SHORT).show()
+                                },
+                                setSpeedAlert = { v -> prefs.update { st -> st.copy(speedAlertKmh = tw.fitcar.launcher.system.SpeedAlert.clampThreshold(v)) } },
                                 openHomeSettings = {
                                     try { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
                                     catch (e: Exception) { safeStart(Intent(Settings.ACTION_SETTINGS), "無法開啟系統設定") }

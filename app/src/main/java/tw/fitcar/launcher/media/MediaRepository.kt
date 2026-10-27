@@ -69,8 +69,14 @@ object MediaRepository {
         val selected = prefs.bindings.music?.let { ComponentName.unflattenFromString(it)?.packageName }
         return if (prefs.mediaMode == MediaMode.FIXED) selected else state.value.packageName ?: rememberedPackage(context) ?: selected
     }
+    /** 最近實際播放過的播放器（最多 3 個），供音樂卡快速切換。 */
+    fun recentPlayers(context: Context): List<String> =
+        tw.fitcar.launcher.system.RecentPlayers.decode(context.getSharedPreferences("last_player", Context.MODE_PRIVATE).getString("recent", null))
     private fun rememberPlayer(context: Context, packageName: String) {
-        if (rememberedPackage(context) != packageName) context.getSharedPreferences("last_player", Context.MODE_PRIVATE).edit().putString("package", packageName).apply()
+        val sp = context.getSharedPreferences("last_player", Context.MODE_PRIVATE)
+        val recent = tw.fitcar.launcher.system.RecentPlayers.push(recentPlayers(context), packageName)
+        if (rememberedPackage(context) != packageName || recentPlayers(context) != recent)
+            sp.edit().putString("package", packageName).putString("recent", tw.fitcar.launcher.system.RecentPlayers.encode(recent)).apply()
     }
 
 

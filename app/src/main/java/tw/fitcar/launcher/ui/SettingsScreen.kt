@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
@@ -86,6 +87,9 @@ class SettingsActions(
     val openOtherHome: (AppEntry) -> Unit,
     val openHomeSettings: () -> Unit,
     val openChecker: () -> Unit,
+    /** 儲存回家／公司地址（null = 不提供此設定）。 */
+    val savePlaces: ((String, String) -> Unit)? = null,
+    val setSpeedAlert: ((Int) -> Unit)? = null,
 )
 
 private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "更新", "關於")
@@ -348,7 +352,9 @@ private fun BindingSection(data: SettingsData, actions: SettingsActions) {
                 Text("$pages 頁（${pages * tw.fitcar.launcher.data.ShortcutSlots.PER_PAGE} 格）", color = LocalPalette.current.text, fontSize = 18.sp)
                 SecondaryButton("＋", { setPages(pages + 1) }, enabled = pages < tw.fitcar.launcher.data.ShortcutSlots.MAX_PAGES)
             }
-            Hint("最多 6 頁 24 格，在主畫面左右滑動換頁。減少頁數時，後面的捷徑只是隱藏，不會刪除。", size = 13)
+            Hint("最多 6 頁 24 格，在主畫面左右滑動換頁。減少頁數時，後面的捷徑只是隱藏，不會刪除。長按捷徑可更換、移除或調整順序。", size = 13)
+            if (tw.fitcar.launcher.system.ShortcutPagesAdvice.warn(pages))
+                Hint("超過 3 頁時行車中要多次滑動，建議把常用 App 放前 2 頁。", color = LocalPalette.current.danger, size = 14)
         }
     }
 }
@@ -356,6 +362,33 @@ private fun BindingSection(data: SettingsData, actions: SettingsActions) {
 @Composable
 private fun NavSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
+    actions.savePlaces?.let { save ->
+        Section("常用地點（回家／去公司）") {
+            Hint("填好後主畫面導航區會出現「回家」「去公司」，按下把地址交給綁定的導航 App。導航 App 是否接受地址需實機確認；不接受時會讓你選其他 App。地址只存在車機。", size = 13)
+            var home by remember(data.state.homeAddress) { mutableStateOf(data.state.homeAddress.orEmpty()) }
+            var work by remember(data.state.workAddress) { mutableStateOf(data.state.workAddress.orEmpty()) }
+            OutlinedTextField(home, { home = it }, Modifier.fillMaxWidth(), label = { Text("住家地址") }, singleLine = true)
+            OutlinedTextField(work, { work = it }, Modifier.fillMaxWidth(), label = { Text("公司地址") }, singleLine = true)
+            PrimaryButton("儲存", { save(home, work) })
+        }
+    }
+    actions.setSpeedAlert?.let { setAlert ->
+        val kmh = data.state.speedAlertKmh
+        Section("自訂超速提醒") {
+            Hint("只比對 GPS 車速與你自訂的門檻，超過時主畫面車速變警示色。不是測速照相或道路速限資料。", size = 13)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SecondaryButton("－10", { setAlert(if (kmh <= tw.fitcar.launcher.system.SpeedAlert.MIN) 0 else kmh - 10) }, enabled = kmh > 0)
+                Text(if (kmh <= 0) "關閉" else "$kmh km/h", color = p.text, fontSize = 18.sp)
+                SecondaryButton("＋10", { setAlert(if (kmh <= 0) 100 else kmh + 10) }, enabled = kmh < tw.fitcar.launcher.system.SpeedAlert.MAX)
+            }
+        }
+    }
+    Section("本次行程") {
+        val trip by tw.fitcar.launcher.system.TripMeter.state.collectAsState()
+        Text(tw.fitcar.launcher.system.Trip.format(trip), color = p.text, fontSize = 18.sp)
+        Hint("以 GPS 估算行駛里程與時間，只存在記憶體；停車超過 30 分鐘後再出發會自動重新計算。主畫面地圖上方在里程超過 0.1 km 後顯示。", size = 13)
+        SecondaryButton("歸零", { tw.fitcar.launcher.system.TripMeter.reset() })
+    }
     Section("導航全螢幕／實驗功能") {
         NavOpenMode.entries.forEach { mode ->
             Row(
@@ -455,9 +488,10 @@ private fun AboutSection(data: SettingsData) {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
         Hint("改版內容", size = 18, color = LocalPalette.current.text)
-        Hint("• 加入自動檢查新版、下載驗證與確認安裝流程。", size = 14)
-        Hint("• 附近地址優先顯示服務提供的完整門牌，無資料時保留路段。", size = 14)
-        Hint("• 記住最後使用的播放器，喚醒時優先連接其工作階段。", size = 14)
-        Hint("• 保留平滑地圖、車速縮放、圖示捷徑、音量及系統分割入口。", size = 14)
+        Hint("• 夜間深色地圖；行車中自動大字並隱藏次要說明。", size = 14)
+        Hint("• 歌詞大字與全螢幕歌詞；倒退／快進 15 秒。", size = 14)
+        Hint("• 回家／去公司、最近播放器切換、自訂超速提醒、本次行程。", size = 14)
+        Hint("• 減少畫面重算與耗電，首次開啟更順。", size = 14)
+        Hint("• 延續 0.4.6：自動檢查新版、附近門牌、記住播放器、桌面歌詞。", size = 14)
     }
 }
