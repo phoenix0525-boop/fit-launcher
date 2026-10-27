@@ -31,11 +31,11 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState()) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
-                FitTheme(DayPalette) {
+                FitTheme(palette) {
                     HomeScreen(
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
@@ -181,4 +181,20 @@ class LargeFontLayoutTest {
         listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
+    private fun pompompurin(night: Boolean, driving: Boolean = false) {
+        val fix = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
+            latitude = 24.95, longitude = 121.29, accuracyM = 5f,
+            fixElapsed = android.os.SystemClock.elapsedRealtime()) else GpsState()
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX",
+            title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
+            actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
+            gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN))
+        listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
+        compose.onNodeWithContentDescription("布丁狗主題插畫").assertIsDisplayed()
+        screenshot("home-pompompurin-${if (night) "night" else "day"}${if (driving) "-driving" else ""}-125")
+    }
+    @Test fun pompompurinDayAt125Percent() = pompompurin(false)
+    @Test fun pompompurinNightAt125Percent() = pompompurin(true)
+    @Test fun pompompurinDrivingAt125Percent() = pompompurin(false, true)
 }

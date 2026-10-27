@@ -536,6 +536,7 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork()
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
                     Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))

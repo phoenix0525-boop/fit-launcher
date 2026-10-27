@@ -27,6 +27,7 @@ data class Palette(
     val accentSoft: Color,
     val success: Color,
     val danger: Color,
+    val characterArt: Boolean = false,
 )
 
 val DayPalette = Palette(
@@ -67,7 +68,8 @@ val NightPalette = Palette(
 enum class VisualStyle(val id: String, val label: String, val description: String) {
     ORIGINAL("original", "原有", "暖灰底色，保留目前配色"),
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
-    WHITE("white", "白色", "清爽白底、灰白分層與深灰文字");
+    WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
+    POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫");
 
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
@@ -78,6 +80,17 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
     val base = if (night) NightPalette else DayPalette
     return when (style) {
         VisualStyle.ORIGINAL -> base
+        VisualStyle.POMPOMPURIN -> if (night) base.copy(
+            bg = Color(0xFF241A14), bgDeep = Color(0xFF17110D),
+            surface = Color(0xFF30231A), surfaceStrong = Color(0xFF3B2A1F),
+            surfaceMuted = Color(0xFF211812), text = Color(0xFFFFF0CB),
+            textSoft = Color(0xFFD9BE8D), line = Color(0xFF65482D), characterArt = true,
+        ) else base.copy(
+            bg = Color(0xFFFFF6D7), bgDeep = Color(0xFFEAD49F),
+            surface = Color(0xFFFFF9E5), surfaceStrong = Color(0xFFFFFEF6),
+            surfaceMuted = Color(0xFFEFDEB5), text = Color(0xFF4B2C20),
+            textSoft = Color(0xFF6E5437), line = Color(0xFFDCC28C), characterArt = true,
+        )
         VisualStyle.JAPANESE -> if (night) base.copy(
             bg = Color(0xFF24221F), bgDeep = Color(0xFF191815),
             surface = Color(0xFF302D28), surfaceStrong = Color(0xFF3B3731),

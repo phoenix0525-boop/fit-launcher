@@ -27,6 +27,9 @@ class VisualStyleTest {
         assertEquals(VisualStyle.ORIGINAL, VisualStyle.fromId("future"))
         assertEquals(VisualStyle.JAPANESE, VisualStyle.fromId("japanese"))
         assertEquals(VisualStyle.WHITE, VisualStyle.fromId("white"))
+        assertEquals(VisualStyle.POMPOMPURIN, VisualStyle.fromId("pompompurin"))
+        assertTrue(styledBase(false, VisualStyle.POMPOMPURIN).characterArt)
+        assertFalse(DayPalette.characterArt)
         assertEquals(DayPalette, paletteFor(ThemeChoice.DAY))
         assertEquals(NightPalette, paletteFor(ThemeChoice.NIGHT))
     }
@@ -45,7 +48,7 @@ class VisualStyleTest {
     }
 
     @Test fun newStylesKeepBodyAndButtonTextReadable() {
-        listOf(VisualStyle.JAPANESE, VisualStyle.WHITE).forEach { style ->
+        listOf(VisualStyle.JAPANESE, VisualStyle.WHITE, VisualStyle.POMPOMPURIN).forEach { style ->
             ThemeChoice.entries.forEach { theme ->
                 AccentTheme.entries.forEach { accent ->
                     val p = paletteFor(theme, accent, style)
