@@ -508,7 +508,11 @@ class LargeFontLayoutTest {
         fullLabel("通知權限")
         compose.runOnIdle { google.value = false }
         compose.onNodeWithText("Google 地圖導航通知").assertDoesNotExist()
-        fullLabel("免費底圖測試"); fullLabel("自動縮放"); fullLabel("回到目前位置")
+        fullLabel("免費底圖測試")
+        // Switching providers must preserve the same driving-safe controls as a fresh map.
+        if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist()
+        else fullLabel("自動縮放")
+        fullLabel("回到目前位置")
     }
     @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
     @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
