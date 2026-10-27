@@ -23,6 +23,7 @@ jobs:
       - name: Signing policy check
         run: |
           python scripts/check_signing_policy.py
+          python scripts/check_test_signing.py
           python scripts/check_version_progression.py
           python scripts/check_release_configuration.py
           python scripts/check_ui_workflow.py
@@ -30,7 +31,31 @@ jobs:
       - name: Unit tests
         run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug --stacktrace
+        env:
+          FIT_TEST_KEYSTORE_BASE64: ${{ secrets.FIT_TEST_KEYSTORE_BASE64 }}
+          FIT_TEST_KEYSTORE_PASSWORD: ${{ secrets.FIT_TEST_KEYSTORE_PASSWORD }}
+          FIT_TEST_KEY_ALIAS: ${{ secrets.FIT_TEST_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set +x
+          export FIT_TEST_KEYSTORE_PATH="$RUNNER_TEMP/vehicle-test.p12"
+          trap 'rm -f "$FIT_TEST_KEYSTORE_PATH"' EXIT
+          if [ -n "$FIT_TEST_KEYSTORE_BASE64" ] && [ -n "$FIT_TEST_KEYSTORE_PASSWORD" ] && [ -n "$FIT_TEST_KEY_ALIAS" ]; then
+            python - <<'PYKEY'
+          import os, base64
+          from pathlib import Path
+          path=Path(os.environ['FIT_TEST_KEYSTORE_PATH'])
+          path.write_bytes(base64.b64decode(os.environ['FIT_TEST_KEYSTORE_BASE64'],validate=True))
+          path.chmod(0o600)
+          PYKEY
+            ./gradlew --no-daemon assembleDebug
+            python scripts/verify_test_certificate.py app/build/outputs/apk/debug/app-debug.apk
+            echo 'Debug 測試版：已驗證固定測試憑證；不是正式版。' >> "$GITHUB_STEP_SUMMARY"
+          else
+            unset FIT_TEST_KEYSTORE_PATH FIT_TEST_KEYSTORE_PASSWORD FIT_TEST_KEY_ALIAS
+            ./gradlew --no-daemon assembleDebug
+            echo '未使用固定測試金鑰，無法覆蓋安裝' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: fit-launcher-debug-apk
