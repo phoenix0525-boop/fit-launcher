@@ -54,7 +54,7 @@ internal fun VolumeControl() {
         .semantics { contentDescription = "媒體音量 $volume／$maximum" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("音量", color = p.text, fontSize = 12.sp, maxLines = 1)
-            Text("$volume", color = p.text, fontSize = 18.sp, maxLines = 1)
+            Text("$volume", color = p.text, fontSize = if (LocalDriving.current) DriveText.BODY.sp else 18.sp, maxLines = 1)
         }
     }
     if (open) AlertDialog(

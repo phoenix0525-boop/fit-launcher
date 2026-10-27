@@ -155,6 +155,23 @@ class LargeFontLayoutTest {
         assertTrue("行車中應隱藏「GPS km/h」完整標籤", compose.onAllNodesWithText("GPS km/h").fetchSemanticsNodes().isEmpty())
         screenshot("home-driving-125")
     }
+    @Test fun drivingVolumeValueAt125PercentKeepsMinimumFont() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val value = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString()
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f), LocalDriving provides true) {
+                FitTheme(DayPalette) { VolumeControl() }
+            }
+        }
+        fullLabel(value)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(value, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertTrue("行車音量數值不得小於 19.2 sp", layouts.isNotEmpty() &&
+            layouts.all { it.layoutInput.style.fontSize.value >= 19.2f })
+    }
     @Test fun playingCardAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "app.morphe.android.apps.youtube.music", playerName = "Morphe Music", title = "晴天", artist = "周杰倫",
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
