@@ -34,6 +34,7 @@ fun SectionNavLayout(
     items: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
+    footer: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
@@ -60,6 +61,7 @@ fun SectionNavLayout(
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }
+                    footer?.invoke()
                 }
                 Column(
                     Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),

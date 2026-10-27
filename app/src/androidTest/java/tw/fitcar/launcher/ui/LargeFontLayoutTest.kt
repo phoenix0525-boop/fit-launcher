@@ -195,9 +195,10 @@ class LargeFontLayoutTest {
             gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
                 if (spider) AccentTheme.HERO_RED else AccentTheme.CARAMEL, if (spider) VisualStyle.SPIDERMAN else VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
-        compose.onNodeWithContentDescription(if (spider) "蜘蛛人蹲姿插畫" else "布丁狗主題插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人全版背景" else "布丁狗全版背景").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人蹲姿插畫" else "布丁狗主題插畫").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
-        compose.onNodeWithContentDescription(if (spider) "蜘蛛人飛躍插畫" else "布丁狗趴睡插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人飛躍插畫" else "布丁狗趴睡插畫").assertDoesNotExist()
         compose.onNodeWithContentDescription(if (spider) "蜘蛛人伸手插畫" else "布丁狗感謝插畫").assertIsDisplayed()
         fullLabel(java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.TAIWAN).format(java.util.Date()))
         screenshot("home-${if (spider) "spiderman" else "pompompurin"}-${if (night) "night" else "day"}${if (driving) "-driving" else ""}-125")
@@ -481,5 +482,52 @@ class LargeFontLayoutTest {
     @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
     @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
     @Test fun googleNotificationPanelDrivingAt125Percent() = googleNotificationPanel(false, true)
+
+    @Test fun fullThemeOptionsKeepLyricsAndPersistChoiceAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        ThemeAppearanceStore.initialize(context)
+        val old = ThemeAppearanceStore.state.value
+        try {
+            ThemeAppearanceStore.save(context, ThemeAppearanceOptions())
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                        ThemePageFrame(ThemePage.SETTINGS) { Column(Modifier.fillMaxSize().padding(24.dp)) { ThemeAppearanceSettings() } }
+                    }
+                }
+            }
+            listOf("全版角色主題", "顯示小插畫", "清楚", "✓ 均衡", "通透").forEach(::fullLabel)
+            compose.onNodeWithContentDescription("全版角色主題").performClick()
+            compose.onNodeWithContentDescription("蜘蛛人全版背景").assertDoesNotExist()
+            compose.onNodeWithContentDescription("顯示小插畫").performClick()
+            compose.onNodeWithText("通透").performClick()
+            ThemeAppearanceStore.initialize(context)
+            assertFalse(ThemeAppearanceStore.state.value.fullTheme)
+            assertFalse(ThemeAppearanceStore.state.value.smallArt)
+            assertTrue(ThemeAppearanceStore.state.value.clarity == ThemeClarity.AIRY)
+            screenshot("theme-options-light-night-125")
+        } finally { ThemeAppearanceStore.save(context, old) }
+    }
+    private fun settingsFixture(): SettingsData = SettingsData(tw.fitcar.launcher.data.LauncherState(), null, null, null, true, 50, true, true,
+        otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.14")
+    private fun settingsActionsFixture() = SettingsActions(back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
+        pickTime = { _, _ -> }, requestWriteSettings = {}, requestNotificationAccess = {}, requestLocation = {}, bind = {}, clearBinding = {},
+        setNavMode = {}, setMediaMode = {}, testSplit = {}, openOtherHome = {}, openHomeSettings = {}, openChecker = {})
+    @Test fun lightSpiderSettingsAndAboutAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN), appearanceOverride = ThemeAppearanceOptions()) {
+                    SettingsScreen(settingsFixture(), settingsActionsFixture())
+                }
+            }
+        }
+        fullLabel("設定"); fullLabel("返回桌面")
+        compose.onNodeWithText("關於").performClick()
+        fullLabel("個人化啟動器"); fullLabel("版本 0.4.14")
+        compose.onNodeWithContentDescription("蜘蛛人蹲姿插畫").assertIsDisplayed()
+        screenshot("settings-about-spiderman-light-night-125")
+    }
 
 }

@@ -8,6 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.*
 import tw.fitcar.launcher.data.ThemeChoice
 
 /** 色票沿用第一階段原型 styles.css（日系原廠風：暖白／炭灰＋低飽和霧藍）。 */
@@ -71,7 +73,7 @@ enum class VisualStyle(val id: String, val label: String, val description: Strin
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
     WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
     POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫"),
-    SPIDERMAN("spiderman", "蜘蛛人", "英雄紅、深海軍藍與蜘蛛人插畫");
+    SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、淺暖灰夜間與全版插畫");
 
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
@@ -94,15 +96,15 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             textSoft = Color(0xFF6E5437), line = Color(0xFFDCC28C), characterArt = true, artworkStyle = VisualStyle.POMPOMPURIN,
         )
         VisualStyle.SPIDERMAN -> if (night) base.copy(
-            bg = Color(0xFF101B2C), bgDeep = Color(0xFF091321),
-            surface = Color(0xFF19283C), surfaceStrong = Color(0xFF22344C),
-            surfaceMuted = Color(0xFF142235), text = Color(0xFFEAF1FF),
-            textSoft = Color(0xFFB7C6DC), line = Color(0xFF4A6282),
+            bg = Color(0xFFD5DCE4), bgDeep = Color(0xFFC5CFDB),
+            surface = Color(0xFFE9EDF3), surfaceStrong = Color(0xFFF2F4F7),
+            surfaceMuted = Color(0xFFD7DEE7), text = Color(0xFF182B44),
+            textSoft = Color(0xFF3B506B), line = Color(0xFF8196AD),
             characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
         ) else base.copy(
-            bg = Color(0xFFEAF0F8), bgDeep = Color(0xFFD7E2F0),
-            surface = Color(0xFFF4F7FC), surfaceStrong = Color(0xFFFFFFFF),
-            surfaceMuted = Color(0xFFDFE7F2), text = Color(0xFF13263E),
+            bg = Color(0xFFF1F5FA), bgDeep = Color(0xFFDCE6F2),
+            surface = Color(0xFFFAFCFF), surfaceStrong = Color(0xFFFFFFFF),
+            surfaceMuted = Color(0xFFE2EBF5), text = Color(0xFF13263E),
             textSoft = Color(0xFF435D7B), line = Color(0xFFA8BAD2),
             characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
         )
@@ -145,11 +147,21 @@ fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE, 
     return base.copy(accent = Color(c.accent), accentStrong = Color(c.accentStrong), accentSoft = Color(c.accentSoft))
 }
 
+fun contrastInk(background: Color): Color {
+    val dark = Color(0xFF172333)
+    return if (Contrast.ratio(Color.White.toArgb().toLong(), background.toArgb().toLong()) >=
+        Contrast.ratio(dark.toArgb().toLong(), background.toArgb().toLong())) Color.White else dark
+}
+val Palette.onAccent: Color get() = contrastInk(accent)
+
 @Composable
-fun FitTheme(palette: Palette, content: @Composable () -> Unit) {
-    val scheme = if (palette.isNight) {
+fun FitTheme(palette: Palette, appearanceOverride: ThemeAppearanceOptions? = null, content: @Composable () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appearance by ThemeAppearanceStore.state.collectAsState()
+    LaunchedEffect(context) { ThemeAppearanceStore.initialize(context) }
+    val scheme = if (palette.isNight && palette.artworkStyle != VisualStyle.SPIDERMAN) {
         darkColorScheme(
-            primary = palette.accent, onPrimary = palette.bgDeep,
+            primary = palette.accent, onPrimary = palette.onAccent,
             background = palette.bg, onBackground = palette.text,
             surface = palette.surface, onSurface = palette.text,
             surfaceVariant = palette.surfaceMuted, onSurfaceVariant = palette.textSoft,
@@ -157,14 +169,14 @@ fun FitTheme(palette: Palette, content: @Composable () -> Unit) {
         )
     } else {
         lightColorScheme(
-            primary = palette.accent, onPrimary = Color.White,
+            primary = palette.accent, onPrimary = palette.onAccent,
             background = palette.bg, onBackground = palette.text,
             surface = palette.surface, onSurface = palette.text,
             surfaceVariant = palette.surfaceMuted, onSurfaceVariant = palette.textSoft,
             outline = palette.line, error = palette.danger,
         )
     }
-    CompositionLocalProvider(LocalPalette provides palette) {
+    CompositionLocalProvider(LocalPalette provides palette, LocalThemeAppearance provides (appearanceOverride ?: appearance)) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
 }
