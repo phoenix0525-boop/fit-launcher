@@ -6,6 +6,6 @@ assert re.fullmatch('[0-9A-F]{64}',expected), 'Set and review the public test fi
 assert expected!='52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6', 'Test and production certificates must differ'
 tool=sorted((Path(__import__('os').environ['ANDROID_HOME'])/'build-tools').glob('*/apksigner'))[-1]
 r=subprocess.run([str(tool),'verify','--verbose','--print-certs',sys.argv[1]],capture_output=True,text=True,check=True)
-actual=re.findall(r'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]+)',r.stdout)
-assert len(actual)==1 and actual[0].upper()==expected, 'Test certificate mismatch'
+actual=re.findall(r'certificate SHA-256 digest:\s*([a-fA-F0-9:]+)',r.stdout)
+assert len(actual)==1 and actual[0].replace(':','').upper()==expected, 'Test certificate mismatch'
 print('Verified test certificate SHA-256: '+expected)

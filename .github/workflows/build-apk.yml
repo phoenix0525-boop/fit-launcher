@@ -66,9 +66,11 @@ jobs:
           apk = folder / 'app-debug.apk'
           signer = sorted((Path(os.environ['ANDROID_HOME']) / 'build-tools').glob('*/apksigner'))[-1]
           verified = subprocess.run([str(signer), 'verify', '--verbose', '--print-certs', str(apk)], capture_output=True, text=True, check=True)
-          certificates = re.findall(r'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]+)', verified.stdout)
+          print(verified.stdout)
+          certificates = re.findall(r'certificate SHA-256 digest:\s*([a-fA-F0-9:]+)', verified.stdout)
           assert len(certificates) == 1, 'Expected one verified APK signing certificate'
-          certificate = certificates[0].upper()
+          certificate = certificates[0].replace(':', '').upper()
+          assert re.fullmatch('[0-9A-F]{64}', certificate), 'Invalid certificate fingerprint'
           expected = Path('docs/test-certificate.sha256').read_text().strip().replace(':', '').upper()
           digest = hashlib.sha256(apk.read_bytes()).hexdigest()
           config = Path('app/build.gradle.kts').read_text()
