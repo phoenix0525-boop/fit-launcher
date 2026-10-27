@@ -28,7 +28,7 @@ internal fun BackupSection() {
         if (uri != null) scope.launch {
             busy=true
             message=runCatching { withContext(Dispatchers.IO) {
-                val raw=SettingsBackup.encode(BackupStore.snapshot(context), tw.fitcar.launcher.BuildConfig.VERSION_NAME, java.time.Instant.now().toString())
+                val raw=SettingsBackup.encode(BackupStore.snapshot(context), tw.fitcar.launcher.BuildInfo.versionName(context), java.time.Instant.now().toString())
                 context.contentResolver.openOutputStream(uri,"wt")?.use { it.write(raw.toByteArray(Charsets.UTF_8)) } ?: error("無法寫入所選檔案")
             }; "設定已匯出" }.getOrElse { "匯出失敗：${it.message}" }
             busy=false

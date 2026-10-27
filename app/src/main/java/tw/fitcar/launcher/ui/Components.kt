@@ -59,8 +59,8 @@ internal enum class ThemeArtPose(val drawable: Int, val description: String, val
 @Composable
 internal fun ThemeArtwork(size: Dp = 64.dp, pose: ThemeArtPose = ThemeArtPose.SHORTCUTS) {
     val spider = LocalPalette.current.artworkStyle == VisualStyle.SPIDERMAN
-    Image(painter = androidx.compose.ui.res.painterResource(if (spider) pose.spiderDrawable else pose.drawable),
-        contentDescription = if (spider) pose.spiderDescription else pose.description, modifier = Modifier.size(size).clip(RadiusSm))
+    LimitedThemeImage(if (spider) pose.spiderDrawable else pose.drawable,
+        if (spider) pose.spiderDescription else pose.description, Modifier.size(size).clip(RadiusSm))
 }
 
 /** 原型的卡片：細分隔線、適度圓角、無陰影特效。 */
