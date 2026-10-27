@@ -20,6 +20,15 @@
 
     <!-- 套件可見性：只查詢可啟動 App 與其他桌面，不使用 QUERY_ALL_PACKAGES -->
     <queries>
+        <!-- Scoped visibility for the documented map-search/navigation protocols. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
