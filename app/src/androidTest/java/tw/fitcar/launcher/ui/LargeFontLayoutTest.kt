@@ -436,4 +436,48 @@ class LargeFontLayoutTest {
         } finally { repo.setEnabled(context, oldEnabled); repo.setCoverFallback(context, oldCover) }
     }
 
+    private fun googleNotificationPanel(night: Boolean, driving: Boolean = false) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val guidance = androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true,
+            activeNavigation = true, guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("300 公尺後右轉", "進入中山路", "預計 12:40 抵達"), receivedElapsed = now))
+        val permission = androidx.compose.runtime.mutableStateOf(true)
+        val google = androidx.compose.runtime.mutableStateOf(true)
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                    AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                    HomeScreen(nav = AppEntry("導航", ComponentName(if (google.value) "com.google.android.apps.maps" else "test.nav", "Main"), null),
+                        navModeLabel = "全螢幕", splitResult = false, music = musicApp, shield = null,
+                        media = MediaUiState(permissionGranted = permission.value),
+                        gps = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
+                            latitude = 24.95, longitude = 121.29, fixElapsed = now) else GpsState(),
+                        slots = emptyList(), actions = actions, googleGuidanceOverride = guidance.value, googleGuidanceNow = now,
+                        mapContent = { _, m -> Box(m) { Text("免費底圖測試") } })
+                }
+            }
+        }
+        compose.onNodeWithText("免費底圖測試").assertDoesNotExist()
+        compose.onNodeWithText("自動縮放").assertDoesNotExist()
+        compose.onNodeWithText("回到目前位置").assertDoesNotExist()
+        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "分割／多工").forEach(::fullLabel)
+        screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
+        compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
+        compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
+        fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true) }
+        fullLabel("請在 Google 地圖開始導航")
+        compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState() }
+        fullLabel("導航通知服務未連線")
+        compose.runOnIdle { permission.value = false }
+        fullLabel("請開啟通知存取以顯示導航提示")
+        fullLabel("通知權限")
+        compose.runOnIdle { google.value = false }
+        compose.onNodeWithText("Google 地圖導航通知").assertDoesNotExist()
+        fullLabel("免費底圖測試"); fullLabel("自動縮放"); fullLabel("回到目前位置")
+    }
+    @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
+    @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
+    @Test fun googleNotificationPanelDrivingAt125Percent() = googleNotificationPanel(false, true)
+
 }
