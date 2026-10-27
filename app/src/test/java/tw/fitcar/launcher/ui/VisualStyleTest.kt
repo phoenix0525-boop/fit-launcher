@@ -1,11 +1,27 @@
 package tw.fitcar.launcher.ui
 
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.compositeOver
 import org.junit.Assert.*
 import org.junit.Test
 import tw.fitcar.launcher.data.ThemeChoice
 
 class VisualStyleTest {
+    @Test fun disabledContentKeepsThreeToOneContrastOnCardSurfaces() {
+        VisualStyle.entries.forEach { style ->
+            ThemeChoice.entries.forEach { theme ->
+                AccentTheme.entries.forEach { accent ->
+                    val p = paletteFor(theme, accent, style)
+                    listOf(p.surface, p.surfaceStrong, p.surfaceMuted).forEach { background ->
+                        val painted = p.disabledContent.compositeOver(background)
+                        assertTrue("$style $theme disabled content on $background",
+                            Contrast.ratio(painted.toArgb().toLong(), background.toArgb().toLong()) >= 3.0)
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun oldOrUnknownSettingsKeepOriginalStyle() {
         assertEquals(VisualStyle.ORIGINAL, VisualStyle.fromId(null))
         assertEquals(VisualStyle.ORIGINAL, VisualStyle.fromId("future"))
