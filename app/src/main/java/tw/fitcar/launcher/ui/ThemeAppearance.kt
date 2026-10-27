@@ -66,6 +66,7 @@ internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
                 style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
         }
     }
+    if (page == ThemePage.APPS) return // The dedicated corner image keeps the app list free of repeated characters.
     Image(painterResource(drawable), (if (spider) "蜘蛛人" else "布丁狗") + "全版背景",
         Modifier.align(Alignment.BottomEnd).fillMaxHeight(if (page == ThemePage.HOME) .88f else .70f).aspectRatio(1.1f), alpha = .85f)
 }

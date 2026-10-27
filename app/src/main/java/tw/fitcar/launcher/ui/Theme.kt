@@ -143,7 +143,7 @@ val Palette.disabledContent: Color get() = textSoft.copy(alpha = 0.85f)
 
 fun paletteFor(theme: ThemeChoice, accent: AccentTheme = AccentTheme.MIST_BLUE, style: VisualStyle = VisualStyle.ORIGINAL): Palette {
     val base = styledBase(theme == ThemeChoice.NIGHT, style)
-    val c = if (theme == ThemeChoice.NIGHT) accent.night else accent.day
+    val c = if (theme == ThemeChoice.NIGHT && style != VisualStyle.SPIDERMAN) accent.night else accent.day
     return base.copy(accent = Color(c.accent), accentStrong = Color(c.accentStrong), accentSoft = Color(c.accentSoft))
 }
 

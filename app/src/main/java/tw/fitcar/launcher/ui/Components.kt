@@ -253,7 +253,7 @@ fun Pill(text: String, modifier: Modifier = Modifier, color: Color? = null) {
 fun Section(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPalette.current
     Column(
-        modifier.clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(18.dp),
+        modifier.clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else 1f)).border(1.dp, p.line, RadiusMd).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
