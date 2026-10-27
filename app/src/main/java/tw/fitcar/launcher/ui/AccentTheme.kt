@@ -18,6 +18,8 @@ enum class AccentTheme(val id: String, val label: String, val day: AccentColors,
         AccentColors(0xFF8E4A4FL, 0xFF733A3FL, 0xFFEFDCDDL), AccentColors(0xFFC4868BL, 0xFFD49EA2L, 0xFF4A2C2FL)),
     FOREST("forest", "森林綠",
         AccentColors(0xFF4F7360L, 0xFF3B5A4AL, 0xFFDCE7E0L), AccentColors(0xFF86AE98L, 0xFF9EC1ADL, 0xFF2C4237L)),
+    CARAMEL("caramel", "焦糖棕（布丁狗）",
+        AccentColors(0xFF7A4234L, 0xFF602E24L, 0xFFF4DEC4L), AccentColors(0xFFE9BA75L, 0xFFF4D19AL, 0xFF4D3423L)),
     SAND("sand", "沙棕",
         AccentColors(0xFF8A6A3FL, 0xFF6F5430L, 0xFFF0E5D5L), AccentColors(0xFFC9A877L, 0xFFD8BC92L, 0xFF4A3B26L));
 

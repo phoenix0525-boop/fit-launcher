@@ -182,7 +182,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     }
     actions.setStyle?.let { setStyle ->
         Section("畫面風格") {
-            Hint("風格與強調色可分別搭配。白色風格在夜間仍切換深色，沿用原有日夜排程。", size = 13)
+            Hint("風格與強調色可分別搭配。布丁狗會先套用焦糖棕，之後仍可自訂；各風格沿用日夜排程。", size = 13)
             val current = VisualStyle.fromId(data.state.visualStyle)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 VisualStyle.entries.forEach { style ->
@@ -190,8 +190,12 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                     Column(
                         Modifier.clip(RadiusMd).background(preview.surface)
                             .border(if (style == current) 2.dp else 1.dp, if (style == current) p.accent else p.line, RadiusMd)
-                            .clickable { setStyle(style) }.padding(16.dp),
+                            .clickable {
+                                setStyle(style)
+                                if (style == VisualStyle.POMPOMPURIN) actions.setAccent?.invoke(AccentTheme.CARAMEL)
+                            }.padding(16.dp),
                     ) {
+                        if (preview.characterArt) PompompurinArtwork(56.dp)
                         Text((if (style == current) "✓ " else "") + style.label, color = preview.text, fontSize = 18.sp)
                         Text(style.description, color = preview.textSoft, fontSize = 14.sp)
                     }
@@ -487,6 +491,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
+        Hint("• 0.4.8：新增布丁狗日夜主題與焦糖棕強調色；保留125%可讀性。", size = 14)
         Hint("改版內容", size = 18, color = LocalPalette.current.text)
         Hint("• 夜間深色地圖；行車中自動大字並隱藏次要說明。", size = 14)
         Hint("• 歌詞大字與全螢幕歌詞；倒退／快進 15 秒。", size = 14)

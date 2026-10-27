@@ -46,6 +46,13 @@ val RadiusLg = RoundedCornerShape(24.dp)
 val RadiusMd = RoundedCornerShape(16.dp)
 val RadiusSm = RoundedCornerShape(10.dp)
 
+/** 使用者提供的靜態主題插畫；不蓋住地圖、文字或觸控區域。 */
+@Composable
+internal fun PompompurinArtwork(size: Dp = 40.dp) {
+    Image(painter = androidx.compose.ui.res.painterResource(tw.fitcar.launcher.R.drawable.pompompurin),
+        contentDescription = "布丁狗主題插畫", modifier = Modifier.size(size).clip(RadiusSm))
+}
+
 /** 原型的卡片：細分隔線、適度圓角、無陰影特效。 */
 @Composable
 fun FitCard(
