@@ -251,9 +251,40 @@ class MainActivity : ComponentActivity() {
         safeStart(AppRepository.launchIntent(entry.component), "無法啟動 ${entry.label}")
     }
 
+    private fun showPlaceChoice(place: LaunchResult.PlaceChoice) {
+        val label = place.packageName?.let { pkg ->
+            runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull()
+        } ?: "導航 App"
+        val capability = if (place.acceptsGeo) "有宣告接收地圖搜尋，但尚未驗證會設定目的地。" else "沒有可接收通用地址的入口。"
+        val choices = mutableListOf("複製地址並開啟 $label", "使用 Google 導航", "選擇其他地圖 App")
+        if (place.acceptsGeo) choices += "測試傳送地址給 $label"
+        android.app.AlertDialog.Builder(this)
+            .setTitle("回家／公司地址")
+            .setItems(choices.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> {
+                        val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("導航地址", place.address))
+                        toast("已複製地址；請在導航 App 內搜尋，或使用它的回家／公司快捷鍵。")
+                        handleNav(NavLauncher.open(this, forceFullscreen = true))
+                    }
+                    1 -> safeStart(GoogleNavigation.destinationIntent(place.address), "找不到 Google 地圖，請安裝或選其他 App。")
+                    2 -> safeStart(Intent.createChooser(NavLauncher.placeIntent(place.address), "選擇地圖搜尋 App"), "沒有可以接收地址的地圖 App。")
+                    3 -> safeStart(NavLauncher.placeIntent(place.address, place.packageName), "導航 App 未接受這個地址。")
+                }
+            }
+            .setNegativeButton("取消", null)
+            .setNeutralButton("原因") { _, _ ->
+                android.app.AlertDialog.Builder(this).setTitle("地址傳送檢查")
+                    .setMessage("$label：$capability\n車機桌面與導航王的常用地點各自儲存，不會自動同步。請在導航王的選單 → 設定 → 樂客會員內設定住家／公司。\n檢查套件：${place.packageName ?: "尚未綁定"}\n通用 geo 接收：${place.acceptsGeo}\n此檢查只確認入口，不能證明已開始導航。")
+                    .setPositiveButton("知道了", null).show()
+            }.show()
+    }
+
     private fun handleNav(result: LaunchResult) {
         when (result) {
             LaunchResult.Ok -> Unit
+            is LaunchResult.PlaceChoice -> showPlaceChoice(result)
             LaunchResult.NotBound -> screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false)
             is LaunchResult.Failed -> toast(result.reason)
         }

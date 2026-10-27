@@ -55,7 +55,7 @@ internal enum class PompompurinPose(val drawable: Int, val description: String) 
 }
 
 @Composable
-internal fun PompompurinArtwork(size: Dp = 40.dp, pose: PompompurinPose = PompompurinPose.HUG) {
+internal fun PompompurinArtwork(size: Dp = 64.dp, pose: PompompurinPose = PompompurinPose.HUG) {
     Image(painter = androidx.compose.ui.res.painterResource(pose.drawable),
         contentDescription = pose.description, modifier = Modifier.size(size).clip(RadiusSm))
 }
@@ -162,7 +162,7 @@ fun AppIcon(drawable: Drawable?, size: Dp, modifier: Modifier = Modifier) {
 
 /* ---------- 線條圖示（與原型 SVG 同風格：1.8 粗細、圓端點） ---------- */
 
-enum class Glyph { PLAY, PAUSE, PREV, NEXT, GRID, GEAR, HOME, PLUS, EXPAND, NAV, MUSIC, SHIELD, BACK }
+enum class Glyph { PLAY, PAUSE, PREV, NEXT, GRID, GEAR, HOME, PLUS, EXPAND, NAV, MUSIC, SHIELD, BACK, VOLUME }
 
 @Composable
 fun GlyphIcon(glyph: Glyph, modifier: Modifier = Modifier, size: Dp = 26.dp, tint: Color = LocalPalette.current.text) {
@@ -172,6 +172,11 @@ fun GlyphIcon(glyph: Glyph, modifier: Modifier = Modifier, size: Dp = 26.dp, tin
         val stroke = Stroke(width = 1.9f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
         fun path(block: Path.() -> Unit) = Path().apply(block)
         when (glyph) {
+            Glyph.VOLUME -> {
+                drawPath(path { moveTo(4 * u, 9 * u); lineTo(8 * u, 9 * u); lineTo(13 * u, 5 * u)
+                    lineTo(13 * u, 19 * u); lineTo(8 * u, 15 * u); lineTo(4 * u, 15 * u); close() }, tint, style = stroke)
+                drawPath(path { moveTo(17 * u, 8 * u); quadraticBezierTo(21 * u, 12 * u, 17 * u, 16 * u) }, tint, style = stroke)
+            }
             Glyph.PLAY -> drawPath(path { moveTo(8 * u, 5 * u); lineTo(19 * u, 12 * u); lineTo(8 * u, 19 * u); close() }, tint)
             Glyph.PAUSE -> {
                 drawLine(tint, o(8f, 5f), o(8f, 19f), 3f * u, StrokeCap.Round)

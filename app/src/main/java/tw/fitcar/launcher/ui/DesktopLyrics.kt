@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.delay
 import tw.fitcar.launcher.lyrics.Lrc
 import tw.fitcar.launcher.lyrics.LyricsRepository
@@ -32,11 +34,27 @@ internal fun LyricsSetting() {
         Switch(checked = enabled, onCheckedChange = { if (it) consent = true else LyricsRepository.setEnabled(context, false) })
     }
     Hint("顯示於右上播放卡原歌詞區；未收錄或無法比對時保留歌曲資訊。", size = 13)
-    if (consent) AlertDialog(onDismissRequest = { consent = false },
+    LyricsConsent(consent) { consent = false }
+}
+
+@Composable
+internal fun LyricsEnableButton() {
+    var open by remember { mutableStateOf(false) }
+    androidx.compose.material3.IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)
+        .semantics { contentDescription = "啟用桌面歌詞" }) {
+        Text("詞", color = LocalPalette.current.accent, fontSize = 20.sp)
+    }
+    LyricsConsent(open) { open = false }
+}
+
+@Composable
+private fun LyricsConsent(open: Boolean, onClose: () -> Unit) {
+    val context = LocalContext.current
+    if (open) AlertDialog(onDismissRequest = { onClose() },
         title = { Text("啟用桌面歌詞") },
         text = { Text("啟用後會將目前歌曲的歌名、歌手、專輯與時長送到 LRCLIB 查詢。這是獨立歌詞來源，不是讀取 KKBOX／YT Music 內的歌詞。收錄與版本可能不同；有時間碼才同步，無時間碼則顯示文字。可隨時關閉。") },
-        confirmButton = { TextButton(onClick = { LyricsRepository.setEnabled(context, true); consent = false }) { Text("同意並啟用") } },
-        dismissButton = { TextButton(onClick = { consent = false }) { Text("取消") } })
+        confirmButton = { TextButton(onClick = { LyricsRepository.setEnabled(context, true); onClose() }) { Text("同意並啟用") } },
+        dismissButton = { TextButton(onClick = { onClose() }) { Text("取消") } })
 }
 
 @Composable
@@ -50,7 +68,7 @@ internal fun DesktopLyrics(media: MediaUiState) {
 }
 
 /**
- * 歌詞大字顯示：目前行 28 sp（行車 30 sp），上一行與下一行淡色 18 sp。
+ * 歌詞大字顯示：目前行 28 sp（行車 30 sp），下一行 20 sp；省略上一行以保留預覽高度。
  * 位置每 250 ms 取樣，但只有「目前行號」改變時才重組畫面（derivedStateOf）。
  * 無時間碼時只顯示前 4 行；點歌詞區可開全螢幕歌詞。
  */
@@ -72,13 +90,10 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
     ) {
         if (canSync) {
             val i = index
-            result.lines.getOrNull(i - 1)?.text?.takeIf { it.isNotBlank() && !driving }?.let {
-                Text(it, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            }
             Text(if (i < 0) "♪" else result.lines[i].text.ifBlank { "♪" }, modifier = Modifier.fillMaxWidth(), color = p.text,
                 fontSize = if (driving) 30.sp else 28.sp, lineHeight = if (driving) 36.sp else 34.sp,
                 fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            result.lines.getOrNull(i + 1)?.let { Text(it.text, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
+            result.lines.getOrNull(i + 1)?.let { Text(it.text, modifier = Modifier.fillMaxWidth(), color = p.textSoft, fontSize = 20.sp, lineHeight = 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
         } else (result.plain ?: result.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { it.text })?.let { text ->
             val (shown, more) = Lrc.preview(text, if (driving) 2 else 4)
             Text(shown, modifier = Modifier.fillMaxWidth(), color = p.text, fontSize = if (driving) 22.sp else 20.sp, lineHeight = if (driving) 30.sp else 28.sp, textAlign = TextAlign.Center)

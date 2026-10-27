@@ -196,7 +196,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                             }.padding(16.dp),
                     ) {
                         if (preview.characterArt) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            PompompurinPose.entries.forEach { pose -> PompompurinArtwork(40.dp, pose) }
+                            PompompurinPose.entries.forEach { pose -> PompompurinArtwork(56.dp, pose) }
                         }
                         Text((if (style == current) "✓ " else "") + style.label, color = preview.text, fontSize = 18.sp)
                         Text(style.description, color = preview.textSoft, fontSize = 14.sp)
@@ -370,7 +370,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
     actions.savePlaces?.let { save ->
         Section("常用地點（回家／去公司）") {
-            Hint("填好後主畫面導航區會出現「回家」「去公司」，按下把地址交給綁定的導航 App。導航 App 是否接受地址需實機確認；不接受時會讓你選其他 App。地址只存在車機。", size = 13)
+            Hint("常用地址只存在車機。Google 地圖可直接導航；導航王的住家／公司需另外在導航王內設定，兩邊不會自動同步。不支援時可複製地址開啟導航王，或改用其他地圖。", size = 13)
             var home by remember(data.state.homeAddress) { mutableStateOf(data.state.homeAddress.orEmpty()) }
             var work by remember(data.state.workAddress) { mutableStateOf(data.state.workAddress.orEmpty()) }
             OutlinedTextField(home, { home = it }, Modifier.fillMaxWidth(), label = { Text("住家地址") }, singleLine = true)
@@ -493,6 +493,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
+        Hint("• 0.4.10：放大布丁狗、增加歌詞預覽空間、精簡控制鈕，加入導航地址接收檢查與替代入口。", size = 14)
         Hint("• 0.4.9：四款布丁狗插畫分別搭配時鐘、播放卡、App清單與捷徑。", size = 14)
         Hint("• 0.4.8：新增布丁狗日夜主題與焦糖棕強調色；保留125%可讀性。", size = 14)
         Hint("改版內容", size = 18, color = LocalPalette.current.text)

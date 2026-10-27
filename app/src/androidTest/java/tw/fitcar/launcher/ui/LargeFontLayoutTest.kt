@@ -31,7 +31,7 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
@@ -40,6 +40,7 @@ class LargeFontLayoutTest {
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = gps,
+                        lyricsContent = lyricsContent,
                         slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
@@ -118,9 +119,11 @@ class LargeFontLayoutTest {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertIsDisplayed()
         compose.onAllNodesWithText("這是一個很長的應用程式捷徑名稱").assertCountEquals(0)
+        val audio = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        fullLabel(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString())
         compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
         compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
-        listOf("降低", "提高", "關閉").forEach(::fullLabel)
+        listOf("降低", "提高", "系統音量", "關閉").forEach(::fullLabel)
         screenshot("home-volume-125", dialog = true)
     }
     @Test fun permissionCardButtonAt125Percent() {
@@ -192,6 +195,7 @@ class LargeFontLayoutTest {
                 AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
         compose.onNodeWithContentDescription("布丁狗主題插畫").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription("布丁狗趴睡插畫").assertIsDisplayed()
         compose.onNodeWithContentDescription("布丁狗感謝插畫").assertIsDisplayed()
         fullLabel(java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.TAIWAN).format(java.util.Date()))
@@ -213,4 +217,77 @@ class LargeFontLayoutTest {
         listOf("所有 App", "返回桌面").forEach(::fullLabel)
         screenshot("apps-pompompurin-125")
     }
+    private fun lyricsCard(driving: Boolean, night: Boolean) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
+        tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, true)
+        try {
+            val fix = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
+                latitude = 24.95, longitude = 121.29, fixElapsed = android.os.SystemClock.elapsedRealtime()) else GpsState()
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX",
+                title = "自製歌曲測試", artist = "測試歌手", playbackState = PlaybackState.STATE_PAUSED,
+                positionMs = 10000, positionUpdateElapsed = android.os.SystemClock.elapsedRealtime(), durationMs = 240000,
+                actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
+                gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                    AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN),
+                lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB", listOf(
+                    tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
+                    tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行比較長也要完整顯示不能裁切"),
+                    tw.fitcar.launcher.lyrics.LyricLine(20000, "下一行也要完整顯示"))), state) })
+            listOf("自製歌曲測試", "測試歌手", "目前這一行比較長也要完整顯示不能裁切", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
+            val current = compose.onNodeWithText("目前這一行比較長也要完整顯示不能裁切", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("下一行必須位於目前行下方", next.top >= current.bottom)
+            compose.onNodeWithContentDescription("播放／暫停").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+            compose.onNodeWithContentDescription("布丁狗感謝插畫").assertWidthIsAtLeast(64.dp)
+            compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
+            screenshot("home-lyrics-${if (driving) "driving" else if (night) "night" else "day"}-125")
+            if (!driving) {
+                compose.onNodeWithContentDescription("播放進度，點擊調整").performClick()
+                compose.onNodeWithContentDescription("調整播放進度滑桿").assertIsDisplayed()
+                fullLabel("調整播放進度")
+                compose.onNodeWithText("關閉").performClick()
+            }
+        } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
+    }
+    @Test fun lyricsCurrentAndNextOnHomeAt125Percent() = lyricsCard(false, false)
+    @Test fun lyricsCurrentAndNextDrivingAt125Percent() = lyricsCard(true, false)
+    @Test fun lyricsCurrentAndNextNightAt125Percent() = lyricsCard(false, true)
+    @Test fun homeLyricsEntryRequiresConsentAndPersistsChoice() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
+        tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, false)
+        try {
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲", artist = "測試歌手"), lyricsContent = {})
+            compose.onNodeWithContentDescription("啟用桌面歌詞").performClick()
+            fullLabel("啟用桌面歌詞")
+            assertFalse(tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value)
+            compose.onNodeWithText("同意並啟用").performClick()
+            tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context)
+            assertTrue(tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value)
+        } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
+    }
+
+    @Test fun relativeVolumeReportsOnlyAndroidReadback() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+        val before = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+        val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        val initial = (max / 2).coerceAtLeast(2)
+        try {
+            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, initial, 0)
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲"))
+            compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
+            compose.onNodeWithText("降低").performClick()
+            compose.waitUntil(5000) { audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == initial - 1 }
+            val message = tw.fitcar.launcher.system.VolumeReadback.NUMERIC_ONLY.message
+            compose.waitUntil(5000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(message).performScrollTo()
+            fullLabel(message)
+            assertTrue(context.getSharedPreferences("volume_diagnostics", android.content.Context.MODE_PRIVATE)
+                .getString("last_readback", "")!!.startsWith("相對增減"))
+            screenshot("volume-readback-125", dialog = true)
+        } finally { audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, before, 0) }
+    }
+
 }

@@ -112,6 +112,8 @@ fun HomeScreen(
     hasHome: Boolean = false,
     hasWork: Boolean = false,
     speedAlertKmh: Int = 0,
+    /** Test seam for deterministic lyric layout; production uses DesktopLyrics. */
+    lyricsContent: (@Composable (MediaUiState) -> Unit)? = null,
 ) {
     val p = LocalPalette.current
     val driving = rememberDriving(gps)
@@ -125,21 +127,21 @@ fun HomeScreen(
                     HomeArrangement.TWO_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                         NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
                         Column(Modifier.weight(spec.sideWeight).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
-                            MusicCard(music, media, actions, recentPlayers, Modifier.fillMaxWidth().weight(1.5f))
+                            MusicCard(music, media, actions, recentPlayers, Modifier.fillMaxWidth().weight(if (spec.shortHeight) 1.5f else 2.2f), lyricsContent)
                             ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(1f))
                         }
                     }
                     // 超寬螢幕：三欄，音樂與捷徑各自有完整高度
                     HomeArrangement.THREE_COLUMN -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                         NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.weight(spec.mapWeight).fillMaxHeight())
-                        MusicCard(music, media, actions, recentPlayers, Modifier.weight(spec.sideWeight).fillMaxHeight())
+                        MusicCard(music, media, actions, recentPlayers, Modifier.weight(spec.sideWeight).fillMaxHeight(), lyricsContent)
                         ShortcutsCard(slots, actions, Modifier.weight(spec.sideWeight * 0.8f).fillMaxHeight())
                     }
                     // 直向／正方形：地圖在上，音樂與捷徑並排在下
                     HomeArrangement.STACKED -> {
                         NavPanel(nav, gps, actions, mapContent, hasHome, hasWork, Modifier.fillMaxWidth().weight(spec.mapWeight))
                         Row(Modifier.fillMaxWidth().weight(spec.sideWeight), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            MusicCard(music, media, actions, recentPlayers, Modifier.weight(1f).fillMaxHeight())
+                            MusicCard(music, media, actions, recentPlayers, Modifier.weight(1f).fillMaxHeight(), lyricsContent)
                             ShortcutsCard(slots, actions, Modifier.weight(1f).fillMaxHeight())
                         }
                     }
@@ -164,14 +166,13 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
     val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.TAIWAN) }
     val date = Date(now)
     val large = big && !LocalLayoutSpec.current.compactChrome
-    Column(modifier) {
-        Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
-        if (p.characterArt && large) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(dateFormat.format(date), modifier = Modifier.weight(1f), color = p.textSoft, fontSize = 15.sp, maxLines = 1)
-                PompompurinArtwork(40.dp, PompompurinPose.THANKS)
-            }
-        } else Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
+    val hasArt = p.characterArt && large
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(if (hasArt) Modifier.weight(1f) else Modifier) {
+            Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
+            Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
+        }
+        if (hasArt) PompompurinArtwork(64.dp, PompompurinPose.THANKS)
     }
 }
 
@@ -186,7 +187,7 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions, s
         horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp),
     ) {
         // 時鐘下方放狀態小標籤，不另外佔用狀態列寬度
-        Column(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(240.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(264.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Clock()
             StatusIndicatorRow()
         }
@@ -375,7 +376,7 @@ private fun formatMs(ms: Long): String {
 }
 
 @Composable
-internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier) {
+internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -388,19 +389,22 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         if (compactTitle) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f)) {
-                    Text(media.playerName ?: music?.label ?: "音樂", color = p.textSoft, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (!lyricsEnabled) Text(media.playerName ?: music?.label ?: "音樂", color = p.textSoft, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (lyricsEnabled) Text(media.artist ?: "（App 未提供歌手）", color = p.textSoft, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                if (!lyricsEnabled) LyricsEnableButton()
                 SecondaryButton("開啟", actions.openMusicApp)
             }
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(40.dp, PompompurinPose.REST)
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(64.dp, PompompurinPose.REST)
+            if (!lyricsEnabled) LyricsEnableButton()
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
         }
         // 快速切換最近播放器（跟隨模式，至少兩個時才顯示）
         val switchable = recentPlayers.filter { it.first != media.packageName }
-        if (recentPlayers.size >= 2 && switchable.isNotEmpty() && !LocalLayoutSpec.current.shortHeight) actions.openPlayer?.let { open ->
+        if (recentPlayers.size >= 2 && switchable.isNotEmpty() && !LocalLayoutSpec.current.shortHeight && !lyricsEnabled) actions.openPlayer?.let { open ->
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 switchable.take(2).forEach { (pkg, label) ->
@@ -419,8 +423,8 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
         Column(
-            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = if (lyricsEnabled) 3.dp else 6.dp),
+            verticalArrangement = Arrangement.spacedBy(if (lyricsEnabled) 4.dp else 6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
@@ -443,8 +447,8 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                         Image(img, null, Modifier.size(88.dp).clip(RadiusMd), contentScale = ContentScale.Crop)
                     }
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
-                    Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving) 1 else 2, overflow = TextOverflow.Ellipsis)
-                    if (lyricsEnabled) DesktopLyrics(media)
+                    if (!lyricsEnabled) Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving || lyricsEnabled) 1 else 2, overflow = TextOverflow.Ellipsis)
+                    if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else DesktopLyrics(media) }
                     else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
                 }
             }
@@ -452,17 +456,18 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         }
         if (media.hasSession) {
             Spacer(Modifier.height(8.dp))
-            Progress(media, actions)
+            Progress(media, actions, compact = lyricsEnabled)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
                 val next = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)
                 ControlButton(Glyph.PREV, prev, actions.previous)
                 if (media.canSeek) SeekButton("−15", -tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
                 Box(
-                    Modifier.size(56.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause),
+                    Modifier.size(48.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause)
+                        .semantics { contentDescription = "播放／暫停" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 30.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
+                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 24.dp, tint = if (p.isNight) p.bgDeep else androidx.compose.ui.graphics.Color.White)
                 }
                 if (media.canSeek) SeekButton("+15", tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
                 ControlButton(Glyph.NEXT, next, actions.next)
@@ -475,8 +480,8 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 @Composable
 private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(56.dp)) {
-        GlyphIcon(glyph, size = 30.dp, tint = if (enabled) p.text else p.disabledContent)
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp)) {
+        GlyphIcon(glyph, size = 24.dp, tint = if (enabled) p.text else p.disabledContent)
     }
 }
 
@@ -486,14 +491,14 @@ private fun SeekButton(label: String, deltaMs: Long, media: MediaUiState, action
     val p = LocalPalette.current
     IconButton(
         onClick = { actions.seekTo(tw.fitcar.launcher.system.SeekStep.target(media.livePosition(), deltaMs, media.durationMs)) },
-        modifier = Modifier.size(56.dp).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
+        modifier = Modifier.size(48.dp).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
     ) {
         Text(label, color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
 }
 
 @Composable
-private fun Progress(media: MediaUiState, actions: HomeActions) {
+private fun Progress(media: MediaUiState, actions: HomeActions, compact: Boolean = false) {
     val p = LocalPalette.current
     var position by remember { mutableLongStateOf(media.livePosition()) }
     LaunchedEffect(media) {
@@ -506,7 +511,19 @@ private fun Progress(media: MediaUiState, actions: HomeActions) {
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
     val duration = media.durationMs
-    Column(Modifier.fillMaxWidth()) {
+    var adjust by remember { mutableStateOf(false) }
+    val driving = LocalDriving.current
+    if (compact && duration > 0) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .combinedClickableCompat(onClick = { if (media.canSeek && !driving) adjust = true })
+            .semantics { contentDescription = "播放進度，點擊調整" },
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Hint(formatMs(position), size = 13)
+            LinearProgressIndicator(progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
+                modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape), color = p.accent, trackColor = p.surfaceMuted)
+            Hint(formatMs(duration), size = 13)
+        }
+    } else Column(Modifier.fillMaxWidth()) {
         if (media.canSeek) {
             Slider(
                 // 行車中不可拖曳（容易誤觸），改用 ±15 秒按鈕
@@ -532,6 +549,14 @@ private fun Progress(media: MediaUiState, actions: HomeActions) {
             }
         }
     }
+    if (adjust) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { adjust = false }, title = { Text("調整播放進度") },
+        text = { Slider(value = if (dragging) dragValue else (position.toFloat() / duration).coerceIn(0f, 1f),
+            onValueChange = { dragging = true; dragValue = it },
+            onValueChangeFinished = { actions.seekTo((dragValue * duration).toLong()); dragging = false },
+            modifier = Modifier.semantics { contentDescription = "調整播放進度滑桿" }) },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { adjust = false }) { Text("關閉") } })
+
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -542,7 +567,7 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {
-            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork()
+            if (p.characterArt && !LocalLayoutSpec.current.shortHeight) PompompurinArtwork(64.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
                     Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))
@@ -550,13 +575,18 @@ internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier
             }
         }
         Spacer(Modifier.height(8.dp))
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { page ->
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (row in 0 until 2) {
-                    Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        for (col in 0 until 2) {
-                            val index = page * ShortcutSlots.PER_PAGE + row * 2 + col
-                            ShortcutTile(slots.getOrNull(index) ?: SlotView(null, null), index, actions, Modifier.weight(1f).fillMaxHeight())
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val oneRow = maxHeight < 106.dp && maxWidth >= 240.dp
+            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val columns = if (oneRow) 4 else 2
+                    val rows = if (oneRow) 1 else 2
+                    for (row in 0 until rows) {
+                        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            for (col in 0 until columns) {
+                                val index = page * ShortcutSlots.PER_PAGE + row * columns + col
+                                ShortcutTile(slots.getOrNull(index) ?: SlotView(null, null), index, actions, Modifier.weight(1f).fillMaxHeight())
+                            }
                         }
                     }
                 }
