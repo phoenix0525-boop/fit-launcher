@@ -53,7 +53,7 @@ internal fun VolumeControl() {
     IconButton(onClick = { open = true }, modifier = Modifier.size(56.dp)
         .semantics { contentDescription = "媒體音量 $volume／$maximum" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("音量", color = p.text, fontSize = 12.sp, maxLines = 1)
+            if (!LocalDriving.current) Text("音量", color = p.text, fontSize = 12.sp, maxLines = 1)
             Text("$volume", color = p.text, fontSize = if (LocalDriving.current) DriveText.BODY.sp else 18.sp, maxLines = 1)
         }
     }

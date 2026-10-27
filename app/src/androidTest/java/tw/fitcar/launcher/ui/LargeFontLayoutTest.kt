@@ -165,6 +165,7 @@ class LargeFontLayoutTest {
                 FitTheme(DayPalette) { VolumeControl() }
             }
         }
+        compose.onAllNodesWithText("音量", useUnmergedTree = true).assertCountEquals(0)
         fullLabel(value)
         val layouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(value, useUnmergedTree = true)
