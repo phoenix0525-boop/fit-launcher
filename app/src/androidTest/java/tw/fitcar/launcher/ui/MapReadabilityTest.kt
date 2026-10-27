@@ -30,6 +30,7 @@ class MapReadabilityTest {
             assertFalse(labels.textAllowOverlap.value!!)
             assertEquals(12f, labels.minZoom, .001f)
             assertEquals("{ref}", shield.textField.value)
+            assertTrue(shield.textSize.value!! >= 18f)
             assertTrue(poi.minZoom >= 16f)
         }
     }
