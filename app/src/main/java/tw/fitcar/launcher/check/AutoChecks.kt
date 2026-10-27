@@ -218,7 +218,7 @@ object AutoChecks {
         val prefs = Prefs.get(context).state.value
         val selected = AppRepository.resolve(context, prefs.bindings.music)
         val bind = CheckResult("bind_music", "音樂", "播放器選擇", if (selected == null) Status.INFO else Status.PASS,
-            "模式=${prefs.mediaMode}；指定=${selected?.label ?: "未指定"}（${selected?.component?.packageName ?: "無"}）。固定模式只控制指定 App；跟隨模式優先指定的播放中來源，否則跟隨其他播放中的 App。",
+            "模式=${prefs.mediaMode}；指定=${selected?.label ?: "未指定"}（${selected?.component?.packageName ?: "無"}）。固定模式只控制指定 App；跟隨模式優先記住的最後播放來源，否則跟隨其他播放中的 App。記憶來源=${MediaRepository.rememberedPackage(context) ?: "無"}。",
             "官方 YT Music 與 Morphe Music 使用不同套件，請從實際安裝清單分別選擇。")
         MediaRepository.refresh(context)
         val media = MediaRepository.state.value
@@ -233,7 +233,7 @@ object AutoChecks {
             else -> CheckResult("media", "音樂", "目前播放器工作階段", Status.PASS, source,
                 "報告、卡片與播放控制共用同一工作階段；未提供的控制按鈕停用。仍需實機確認控制結果。")
         }
-        return listOf(bind, check, CheckResult("lyrics", "音樂", "歌詞", Status.NA, "歌詞功能尚未提供"))
+        return listOf(bind, check, CheckResult("lyrics", "音樂", "歌詞", Status.INFO, if (context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).getBoolean("lrclib", false)) "LRCLIB 桌面歌詞已啟用，實際收錄與同步需逐曲確認" else "桌面歌詞未啟用，可至 App 綁定開啟"))
     }
 
     private fun brightness(context: Context): CheckResult {

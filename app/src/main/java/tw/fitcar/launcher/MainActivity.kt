@@ -129,7 +129,7 @@ class MainActivity : ComponentActivity() {
             }
             VoiceAction.OPEN_GOOGLE -> selectGoogleNavigation()
             VoiceAction.OPEN_MUSIC -> {
-                val active = MediaRepository.state.value.packageName?.let { packageManager.getLaunchIntentForPackage(it) }
+                val active = MediaRepository.resumePackage(this@MainActivity)?.let { packageManager.getLaunchIntentForPackage(it) }
                 if (active != null) safeStart(active, "無法開啟目前播放器")
                 else launchKey(prefs.state.value.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
             }
@@ -357,6 +357,7 @@ class MainActivity : ComponentActivity() {
         }
 
         FitTheme(palette) {
+            tw.fitcar.launcher.ui.AutoUpdateNotice()
             Box(Modifier.fillMaxSize()) {
                 val overlayOpen = screen != Screen.Home
                 // 主畫面常駐：切到設定／所有 App 時不銷毀地圖與播放卡，返回時不必重新載入
@@ -373,14 +374,22 @@ class MainActivity : ComponentActivity() {
                             openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
                             bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
                             openMusicApp = {
-                                val active = MediaRepository.state.value.packageName
+                                val active = MediaRepository.resumePackage(this@MainActivity)
                                 val intent = active?.let { packageManager.getLaunchIntentForPackage(it) }
                                 if (intent != null) startActivity(intent)
                                 else launchKey(state.bindings.music) { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) }
                             },
                             bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
                             grantNotificationAccess = { openNotificationAccess() },
-                            playPause = { MediaRepository.playPause() },
+                            playPause = {
+                                if (MediaRepository.state.value.hasSession) MediaRepository.playPause()
+                                else {
+                                    val target = MediaRepository.resumePackage(this@MainActivity)
+                                    val intent = target?.let { packageManager.getLaunchIntentForPackage(it) }
+                                    if (intent != null) safeStart(intent, "無法開啟上次播放器")
+                                    else screen = Screen.PickForBinding(BindingTarget.MUSIC, false)
+                                }
+                            },
                             next = { MediaRepository.next() },
                             previous = { MediaRepository.previous() },
                             seekTo = { MediaRepository.seekTo(it) },

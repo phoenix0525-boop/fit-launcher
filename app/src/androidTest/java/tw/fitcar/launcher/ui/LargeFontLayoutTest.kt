@@ -77,6 +77,21 @@ class LargeFontLayoutTest {
         shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
+    @Test fun updateAndLyricsTextAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    Column(Modifier.fillMaxSize().padding(20.dp)) {
+                        UpdateSection()
+                        LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB", listOf(tw.fitcar.launcher.lyrics.LyricLine(0, "自製測試文字"))), MediaUiState(positionUpdateElapsed = 1))
+                    }
+                }
+            }
+        }
+        listOf("程式更新", "立即檢查", "自製測試文字").forEach(::fullLabel)
+        screenshot("updates-lyrics-125")
+    }
     @Test fun splitShortcutExplainsOptionalPermissionAt125Percent() {
         show(MediaUiState())
         compose.onNodeWithText("分割／多工").performClick()

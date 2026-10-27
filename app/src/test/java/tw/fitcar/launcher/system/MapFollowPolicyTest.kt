@@ -23,6 +23,8 @@ class MapFollowPolicyTest {
     @Test fun addressPrefersChineseAndDoesNotInventARoad() {
         assertEquals("桃園市 八德區", RoadGeocoder.chineseLabel(listOf("桃園市", "八德區", "桃園市"), null))
         assertNull(RoadGeocoder.chineseLabel(listOf("Taiwan", "Taoyuan"), null))
+        assertEquals("桃園市八德區介壽路一段123號", RoadGeocoder.chineseLabel(listOf("桃園市", "八德區", "介壽路一段"), "桃園市八德區介壽路一段123號"))
+        assertEquals("桃園市八德區介壽路10之2號", RoadGeocoder.chineseLabel(listOf("桃園市"), "桃園市八德區介壽路10之2號"))
         assertEquals("國道一號", RoadGeocoder.chineseLabel(emptyList(), "國道一號"))
     }
 }

@@ -88,7 +88,7 @@ class SettingsActions(
     val openChecker: () -> Unit,
 )
 
-private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "關於")
+private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "更新", "關於")
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
@@ -111,6 +111,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     4 -> PermissionSection(data, actions)
                     5 -> FactoryHomeSection(data, actions)
                     6 -> DiagnosticsSection(data)
+                    7 -> UpdateSection()
                     else -> AboutSection(data)
                 }
             }
@@ -328,7 +329,7 @@ private fun BindingSection(data: SettingsData, actions: SettingsActions) {
     Section("從車機實際安裝的 App 綁定") {
         Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 13)
         BindingRow(BindingTarget.NAVIGATION, data.nav, b.navigation, actions, "左側導航區的開啟對象")
-        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式優先此 App 的播放中來源")
+        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式記住最後實際播放的 App")
         BindingRow(BindingTarget.SHIELD, data.shield, b.shield, actions, "狀態列入口；警示由神盾官方浮動窗顯示")
         tw.fitcar.launcher.data.MediaMode.entries.forEach { mode ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -336,7 +337,8 @@ private fun BindingSection(data: SettingsData, actions: SettingsActions) {
                 Text(if (mode == tw.fitcar.launcher.data.MediaMode.FIXED) "固定播放器" else "跟隨目前播放", color = LocalPalette.current.text, fontSize = 17.sp)
             }
         }
-        Hint("跟隨模式：指定來源沒有播放時，跟隨其他正在播放的 App；不會選取其他 App 暫停中的舊工作階段。", size = 13)
+        LyricsSetting()
+        Hint("跟隨模式：記住最後實際播放的 App，喚醒或重開桌面時優先連接；其他 App 開始播放時可跟隨切換。若播放器已被系統關閉，可用「連接上次播放器」重新開啟。", size = 13)
     }
     actions.setShortcutPages?.let { setPages ->
         val pages = data.state.shortcutPages
@@ -453,11 +455,9 @@ private fun AboutSection(data: SettingsData) {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
         Hint("改版內容", size = 18, color = LocalPalette.current.text)
-        Hint("• 捷徑改用 App 圖示，保留點擊啟動與長按更換。", size = 14)
-        Hint("• 播放欄增加媒體音量控制與實際音量顯示。", size = 14)
-        Hint("• 地圖平滑跟隨、車速自動縮放，訊號短暫中斷保留上次位置。", size = 14)
-        Hint("• 中文地址更新時保留舊文字；過期位置明確標示，無資料時不再顯示座標。", size = 14)
-        Hint("• 修正車燈調光與方向盤按鍵的檢測說明。", size = 14)
-        Hint("• 增加可選的系統分割／多工快捷入口。", size = 14)
+        Hint("• 加入自動檢查新版、下載驗證與確認安裝流程。", size = 14)
+        Hint("• 附近地址優先顯示服務提供的完整門牌，無資料時保留路段。", size = 14)
+        Hint("• 記住最後使用的播放器，喚醒時優先連接其工作階段。", size = 14)
+        Hint("• 保留平滑地圖、車速縮放、圖示捷徑、音量及系統分割入口。", size = 14)
     }
 }
