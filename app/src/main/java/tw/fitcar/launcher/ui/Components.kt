@@ -72,8 +72,11 @@ fun FitCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
+    val effectiveOpacity = effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha)
+    val wallpaperOpacity = effectiveCardOpacity(.96f)
     val frame = modifier.clip(RadiusLg)
-        .background(p.surface.copy(alpha = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha) else if (LocalWallpaperActive.current) effectiveCardOpacity(.96f) else 1f))
+         .semantics { this[CardOpacityKey] = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f }
+        .background(p.surface.copy(alpha = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f))
         .border(1.dp, p.line, RadiusLg)
     if (backgroundContent == null) Column(frame.padding(padding), content = content)
     else Box(frame) {
@@ -260,3 +263,5 @@ fun Section(title: String, modifier: Modifier = Modifier, content: @Composable C
         content()
     }
 }
+
+internal val CardOpacityKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("CardOpacity")

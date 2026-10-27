@@ -548,4 +548,64 @@ class LargeFontLayoutTest {
         screenshot("apps-spiderman-light-night-grid-125")
     }
 
+    @Test fun backupRestoreAt125Percent() {
+        var exports=0; var imports=0
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,VisualStyle.SPIDERMAN)) {
+                    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        BackupPage(false,null,{ exports++ },{ imports++ })
+                    }
+                }
+            }
+        }
+        listOf("備份與還原","匯出設定","匯入設定").forEach(::fullLabel)
+        compose.onNodeWithText("匯出設定").performClick(); compose.onNodeWithText("匯入設定").performClick()
+        compose.runOnIdle { assertTrue(exports==1 && imports==1) }
+        screenshot("backup-restore-125")
+    }
+    @Test fun desktopDimmingAt125Percent() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        DesktopDimStore.initialize(context)
+        val before=DesktopDimStore.state.value
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(DayPalette) {
+                    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        DesktopDimShortcut(); DesktopDimSettings()
+                    }
+                }
+            }
+        }
+        listOf("桌面自己調暗","夜間自動調暗","桌面調暗").forEach(::fullLabel)
+        compose.onNodeWithText("桌面調暗").performClick()
+        compose.runOnIdle { assertTrue(DesktopDimStore.manual.value==true) }
+        compose.onNodeWithContentDescription("夜間自動調暗").performClick()
+        compose.runOnIdle { assertTrue(DesktopDimStore.state.value.auto!=before.auto) }
+        screenshot("desktop-dimming-125")
+        compose.runOnIdle { DesktopDimStore.save(context,before); DesktopDimStore.manual.value=null }
+    }
+    @Test fun movingCardClarityAt125Percent() {
+        val appearance=ThemeAppearanceOptions(clarity=ThemeClarity.AIRY)
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,VisualStyle.SPIDERMAN),appearanceOverride=appearance) {
+                    CompositionLocalProvider(LocalDriving provides true, LocalFullThemeActive provides true) {
+                        Box(Modifier.fillMaxSize().background(Color.Black).padding(30.dp)) {
+                            FitCard { Text("行車卡片清楚顯示",color=LocalPalette.current.text,fontSize=androidx.compose.ui.unit.TextUnit(20f, androidx.compose.ui.unit.TextUnitType.Sp)) }
+                        }
+                    }
+                }
+            }
+        }
+        fullLabel("行車卡片清楚顯示")
+        val nodes=compose.onAllNodes(SemanticsMatcher.expectValue(CardOpacityKey,.98f),useUnmergedTree=true).fetchSemanticsNodes()
+        assertTrue(nodes.isNotEmpty())
+        assertTrue(appearance.clarity==ThemeClarity.AIRY)
+        screenshot("moving-card-clarity-125")
+    }
+
 }
