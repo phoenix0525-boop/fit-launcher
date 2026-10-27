@@ -1,0 +1,17 @@
+{
+  "message": "0.4.16: fix review findings and UI/UX polish\n\nLogic\n- Re-apply desktop dimming on resume (was racy after returning from nav apps)\n- Night map: offline failures no longer disable the dark style for the session;\n  retry/day-night switch/network recovery reset it and auto-retry\n- Backup whitelist built from AccentTheme/VisualStyle enums\n- manual_override is never exported and is cleared on import\n- Dim slider saves on release; import preview computed off the main thread\n- About test reads the real versionName\n\nUI/UX\n- Map toolbar: one row (open nav, home/work, More); zoom/recenter float on the map\n- Bigger playback targets (64/56 dp, 48 dp on short screens)\n- Drop occluded home background art; keep clock artwork\n- Spider-Man night palette mid grey-blue (still light, ~25% dimmer cards)\n- \"Lyrics\" button text, slim progress track without stop dot (tap to adjust when parked)\n- Dashed empty shortcut tiles; generic icon instead of grey block\n- Hide status chips while driving; one-line tappable location permission prompt\n- All apps: no package names, larger labels, search (parked), recent apps\n- About: last three versions in plain language, older collapsed; settings ordered by use\n- Orange speed warning; TypeScale constants and min 14 sp notes on home\n\nTests: new unit (AppUsagePolicy, backup enums/override) and UI tests\n(more tools, location prompt, app search); updated toolbar/background expectations.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_0124s7wY1PMsxtRmZaRxx5d2\n",
+  "tree": "7965950311a8b9be2350afad9233659ed883aa10",
+  "parents": [
+    "8c0d425ae3bfff27f473e27e11a1395ee0b86faf"
+  ],
+  "author": {
+    "name": "Claude",
+    "email": "noreply@anthropic.com",
+    "date": "2026-10-28T01:37:20+08:00"
+  },
+  "committer": {
+    "name": "Claude",
+    "email": "noreply@anthropic.com",
+    "date": "2026-10-28T01:37:20+08:00"
+  }
+}

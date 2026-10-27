@@ -1,0 +1,19 @@
+name: Import original 0.4.16 commit
+on:
+  push:
+    branches: [codex/import-v0416-124ac40]
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Register original reviewed commit without changing metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          actual="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/commits" --input ci-import/original-commit.json --jq .sha)"
+          echo "Original commit: $actual" >> "$GITHUB_STEP_SUMMARY"
+          test "$actual" = "124ac40f4bc9754b6bbdbc59ebe57ddcf196f9c7"
