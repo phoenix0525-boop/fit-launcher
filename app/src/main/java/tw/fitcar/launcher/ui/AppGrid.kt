@@ -53,7 +53,7 @@ fun FullScreenAppList(
                 Hint(subtitle, size = 15)
             }
             if (p.characterArt) {
-                PompompurinArtwork(56.dp, PompompurinPose.CHEER)
+                PompompurinArtwork(80.dp, PompompurinPose.CHEER)
                 Spacer(Modifier.padding(horizontal = 8.dp))
             }
             PrimaryButton(backLabel, onBack, Modifier.heightIn(min = 72.dp), icon = {

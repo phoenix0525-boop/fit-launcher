@@ -55,7 +55,7 @@ internal enum class PompompurinPose(val drawable: Int, val description: String) 
 }
 
 @Composable
-internal fun PompompurinArtwork(size: Dp = 40.dp, pose: PompompurinPose = PompompurinPose.HUG) {
+internal fun PompompurinArtwork(size: Dp = 64.dp, pose: PompompurinPose = PompompurinPose.HUG) {
     Image(painter = androidx.compose.ui.res.painterResource(pose.drawable),
         contentDescription = pose.description, modifier = Modifier.size(size).clip(RadiusSm))
 }

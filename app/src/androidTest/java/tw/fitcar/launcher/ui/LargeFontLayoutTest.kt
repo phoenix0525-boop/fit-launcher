@@ -31,7 +31,7 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
@@ -40,6 +40,7 @@ class LargeFontLayoutTest {
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = gps,
+                        lyricsContent = lyricsContent,
                         slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
@@ -213,4 +214,48 @@ class LargeFontLayoutTest {
         listOf("所有 App", "返回桌面").forEach(::fullLabel)
         screenshot("apps-pompompurin-125")
     }
+    private fun lyricsCard(driving: Boolean, night: Boolean) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
+        tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, true)
+        try {
+            val fix = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
+                latitude = 24.95, longitude = 121.29, fixElapsed = android.os.SystemClock.elapsedRealtime()) else GpsState()
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX",
+                title = "自製歌曲測試", artist = "測試歌手", playbackState = PlaybackState.STATE_PAUSED,
+                positionMs = 10000, positionUpdateElapsed = android.os.SystemClock.elapsedRealtime(), durationMs = 240000,
+                actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
+                gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                    AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN),
+                lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("同步歌詞 · LRCLIB", listOf(
+                    tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
+                    tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行完整顯示"),
+                    tw.fitcar.launcher.lyrics.LyricLine(20000, "下一行也要完整顯示"))), state) })
+            listOf("自製歌曲測試", "測試歌手", "目前這一行完整顯示", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
+            val current = compose.onNodeWithText("目前這一行完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("下一行必須位於目前行下方", next.top >= current.bottom)
+            compose.onNodeWithContentDescription("播放／暫停").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+            compose.onNodeWithContentDescription("布丁狗感謝插畫").assertWidthIsAtLeast(64.dp)
+            screenshot("home-lyrics-${if (driving) "driving" else if (night) "night" else "day"}-125")
+        } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
+    }
+    @Test fun lyricsCurrentAndNextOnHomeAt125Percent() = lyricsCard(false, false)
+    @Test fun lyricsCurrentAndNextDrivingAt125Percent() = lyricsCard(true, false)
+    @Test fun lyricsCurrentAndNextNightAt125Percent() = lyricsCard(false, true)
+    @Test fun homeLyricsEntryRequiresConsentAndPersistsChoice() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
+        tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, false)
+        try {
+            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲", artist = "測試歌手"), lyricsContent = {})
+            compose.onNodeWithContentDescription("啟用桌面歌詞").performClick()
+            fullLabel("啟用桌面歌詞")
+            assertFalse(tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value)
+            compose.onNodeWithText("同意並啟用").performClick()
+            tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context)
+            assertTrue(tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value)
+        } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
+    }
+
 }

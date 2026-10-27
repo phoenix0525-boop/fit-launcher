@@ -50,7 +50,7 @@ internal fun VolumeControl() {
         onDispose { if (registered) runCatching { context.unregisterReceiver(receiver) } }
     }
     LaunchedEffect(audio, open) { while (true) { refresh(); delay(if (open) 500 else 3_000) } }
-    IconButton(onClick = { open = true }, modifier = Modifier.size(56.dp)
+    IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)
         .semantics { contentDescription = "媒體音量 $volume／$maximum" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             if (!LocalDriving.current) Text("音量", color = p.text, fontSize = 12.sp, maxLines = 1)
