@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
 
     private val prefs by lazy { Prefs.get(this) }
     /** 每次 onResume 遞增，讓畫面重新讀取 App 清單與權限狀態。 */
+    private var activityResumed by mutableStateOf(false)
     private var resumeTick by mutableIntStateOf(0)
     private var screen by mutableStateOf<Screen>(Screen.Home)
 
@@ -170,12 +171,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        tw.fitcar.launcher.ui.DesktopDimStore.initialize(this)
         BrightnessController.scheduleNext(this)
         setContent { Root() }
     }
 
     override fun onResume() {
         super.onResume()
+        activityResumed=true
         resumeTick++
         AppCatalog.start(this)
         MediaRepository.refresh(this)
@@ -184,6 +187,12 @@ class MainActivity : ComponentActivity() {
         tw.fitcar.launcher.weather.WeatherRepository.refresh(this)
         CheckStore.load(this)
         MediaListenerService.rescanNavigation()
+    }
+
+    override fun onPause() {
+        activityResumed=false
+        window.attributes=window.attributes.apply { screenBrightness=-1f }
+        super.onPause()
     }
 
     override fun onStop() {
@@ -344,6 +353,19 @@ class MainActivity : ComponentActivity() {
         // 每 30 秒重新計算日／夜主題（跨日與系統時間變更都會反映）
         var minute by remember { mutableIntStateOf(BrightnessController.nowMinutes()) }
         LaunchedEffect(Unit) { while (true) { minute = BrightnessController.nowMinutes(); delay(30_000) } }
+        val dim by tw.fitcar.launcher.ui.DesktopDimStore.state.collectAsState()
+        val manualDim by tw.fitcar.launcher.ui.DesktopDimStore.manual.collectAsState()
+        val dimNight=tw.fitcar.launcher.system.DesktopDimming.night(state.display,minute)
+        var previousDimNight by remember { mutableStateOf(dimNight) }
+        LaunchedEffect(dimNight) {
+            if(previousDimNight!=dimNight) tw.fitcar.launcher.ui.DesktopDimStore.manual.value=null
+            previousDimNight=dimNight
+        }
+        val dimValue=tw.fitcar.launcher.system.DesktopDimming.window(activityResumed,dim.auto,manualDim,dimNight,dim.percent)
+        LaunchedEffect(dimValue) {
+            window.attributes=window.attributes.apply { screenBrightness=dimValue }
+            tw.fitcar.launcher.ui.DesktopDimStore.active.value=dimValue>=0f
+        }
         val palette = paletteFor(Schedule.themeFor(state.display, minute), tw.fitcar.launcher.ui.AccentTheme.fromId(state.accentTheme), tw.fitcar.launcher.ui.VisualStyle.fromId(state.visualStyle))
         LaunchedEffect(palette) {
             window.statusBarColor = palette.bg.toArgb()

@@ -286,6 +286,7 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
                 SecondaryButton(if (controls.autoZoom) "自動縮放" else "手動縮放", { controls.toggleZoom() })
                 SecondaryButton("回到目前位置", { controls.returnToPosition() })
             }
+            DesktopDimShortcut()
             UpdateIndicator()
         }
     }

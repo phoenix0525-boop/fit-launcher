@@ -186,6 +186,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
         if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
         data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
     }
+    DesktopDimSettings()
     Section("全版主題與插畫") { ThemeAppearanceSettings() }
     Section("自訂桌布") { WallpaperSettings() }
     actions.setStyle?.let { setStyle ->

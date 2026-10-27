@@ -44,6 +44,8 @@ object BackupStore {
         }
         Prefs.get(context).reload()
         ThemeAppearanceStore.initialize(context)
+        tw.fitcar.launcher.ui.DesktopDimStore.initialize(context)
+        tw.fitcar.launcher.ui.DesktopDimStore.manual.value=null
         LyricsRepository.initialize(context)
     }
 }
