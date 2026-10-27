@@ -192,9 +192,25 @@ class LargeFontLayoutTest {
                 AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
         compose.onNodeWithContentDescription("布丁狗主題插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription("布丁狗趴睡插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription("布丁狗感謝插畫").assertIsDisplayed()
+        fullLabel(java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.TAIWAN).format(java.util.Date()))
         screenshot("home-pompompurin-${if (night) "night" else "day"}${if (driving) "-driving" else ""}-125")
     }
     @Test fun pompompurinDayAt125Percent() = pompompurin(false)
     @Test fun pompompurinNightAt125Percent() = pompompurin(true)
     @Test fun pompompurinDrivingAt125Percent() = pompompurin(false, true)
+    @Test fun pompompurinAppListArtworkAt125Percent() {
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY, AccentTheme.CARAMEL, VisualStyle.POMPOMPURIN)) {
+                    FullScreenAppList("所有 App", "選擇要開啟的程式", emptyList(), "返回桌面", {}, {})
+                }
+            }
+        }
+        compose.onNodeWithContentDescription("布丁狗活力插畫").assertIsDisplayed()
+        listOf("所有 App", "返回桌面").forEach(::fullLabel)
+        screenshot("apps-pompompurin-125")
+    }
 }

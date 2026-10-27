@@ -195,7 +195,9 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                                 if (style == VisualStyle.POMPOMPURIN) actions.setAccent?.invoke(AccentTheme.CARAMEL)
                             }.padding(16.dp),
                     ) {
-                        if (preview.characterArt) PompompurinArtwork(56.dp)
+                        if (preview.characterArt) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PompompurinPose.entries.forEach { pose -> PompompurinArtwork(40.dp, pose) }
+                        }
                         Text((if (style == current) "✓ " else "") + style.label, color = preview.text, fontSize = 18.sp)
                         Text(style.description, color = preview.textSoft, fontSize = 14.sp)
                     }
@@ -491,6 +493,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
+        Hint("• 0.4.9：四款布丁狗插畫分別搭配時鐘、播放卡、App清單與捷徑。", size = 14)
         Hint("• 0.4.8：新增布丁狗日夜主題與焦糖棕強調色；保留125%可讀性。", size = 14)
         Hint("改版內容", size = 18, color = LocalPalette.current.text)
         Hint("• 夜間深色地圖；行車中自動大字並隱藏次要說明。", size = 14)
