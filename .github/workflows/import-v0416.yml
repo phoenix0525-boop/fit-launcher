@@ -9,11 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Register original reviewed commit without changing metadata
-        env:
-          GH_TOKEN: ${{ github.token }}
+        with:
+          fetch-depth: 0
+      - name: Verify and push original bundle
         run: |
           set -euo pipefail
-          actual="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/commits" --input ci-import/original-commit.json --jq .sha)"
-          echo "Original commit: $actual" >> "$GITHUB_STEP_SUMMARY"
-          test "$actual" = "124ac40f4bc9754b6bbdbc59ebe57ddcf196f9c7"
+          git bundle verify ci-import/review-fixes-v0416.bundle
+          git fetch ci-import/review-fixes-v0416.bundle claude/review-fixes-v0416
+          test "$(git rev-parse FETCH_HEAD)" = "124ac40f4bc9754b6bbdbc59ebe57ddcf196f9c7"
+          test "$(git rev-parse FETCH_HEAD^)" = "8c0d425ae3bfff27f473e27e11a1395ee0b86faf"
+          git push origin 124ac40f4bc9754b6bbdbc59ebe57ddcf196f9c7:refs/heads/claude/review-fixes-v0416
+          echo "Original reviewed commit pushed intact: 124ac40" >> "$GITHUB_STEP_SUMMARY"
