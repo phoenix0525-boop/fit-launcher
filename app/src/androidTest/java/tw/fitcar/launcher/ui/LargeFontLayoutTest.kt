@@ -31,7 +31,7 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null, wallpaper: tw.fitcar.launcher.wallpaper.WallpaperState? = null) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
@@ -40,7 +40,7 @@ class LargeFontLayoutTest {
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = gps,
-                        lyricsContent = lyricsContent,
+                        lyricsContent = lyricsContent, wallpaperOverride = wallpaper,
                         slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
@@ -309,5 +309,33 @@ class LargeFontLayoutTest {
         listOf("所有 App", "返回桌面").forEach(::fullLabel)
         screenshot("apps-spiderman-125")
     }
+
+    @Test fun mapToolsShareBottomToolbarAndKeepCameraState() {
+        show(MediaUiState())
+        val group = compose.onNodeWithContentDescription("地圖工具列", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        listOf("開啟導航", "Google 導航", "分割／多工", "自動縮放", "回到目前位置").forEach { text ->
+            fullLabel(text)
+            val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("地圖控制必須在工具列內：$text", child.top >= group.top && child.bottom <= group.bottom)
+        }
+        compose.onNodeWithText("自動縮放").performClick()
+        fullLabel("手動縮放")
+        compose.onNodeWithText("回到目前位置").performClick()
+        fullLabel("手動縮放") // Recentring must not silently re-enable automatic zoom.
+        screenshot("home-map-toolbar-125")
+    }
+    private fun wallpaperHome(night: Boolean) {
+        val bitmap = Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) }
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試歌曲", artist = "測試歌手"),
+            palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                AccentTheme.HERO_RED, VisualStyle.SPIDERMAN),
+            wallpaper = tw.fitcar.launcher.wallpaper.WallpaperState(tw.fitcar.launcher.wallpaper.WallpaperOptions(enabled = true, showArt = false), bitmap, true))
+        compose.onNodeWithContentDescription("自訂桌布").assertExists()
+        compose.onAllNodesWithContentDescription("蜘蛛人伸手插畫").assertCountEquals(0)
+        listOf("測試歌曲", "測試歌手", "自動縮放", "回到目前位置", "分割／多工").forEach(::fullLabel)
+        screenshot("home-wallpaper-${if (night) "night" else "day"}-125")
+    }
+    @Test fun customWallpaperDayAt125Percent() = wallpaperHome(false)
+    @Test fun customWallpaperNightAt125Percent() = wallpaperHome(true)
 
 }

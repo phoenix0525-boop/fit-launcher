@@ -120,15 +120,15 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     }
     var map by remember(view) { mutableStateOf<MapLibreMap?>(null) }
     var marker by remember(view) { mutableStateOf<Marker?>(null) }
-    var following by remember(view) { mutableStateOf(true) }
+    val controls = LocalMapControls.current
     var loaded by remember(view) { mutableStateOf(false) }
     var slow by remember(view) { mutableStateOf(false) }
     var failed by remember(view) { mutableStateOf(false) }
     var retry by remember(view) { mutableIntStateOf(0) }
-    var autoZoom by remember(view) { mutableStateOf(true) }
+
     var zoom by remember(view) { mutableStateOf(16.0) }
     var centered by remember(view) { mutableStateOf(false) }
-    var recenter by remember(view) { mutableIntStateOf(0) }
+    var handledRecenter by remember(view) { mutableIntStateOf(-1) }
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(view) { while (true) { now = SystemClock.elapsedRealtime(); delay(2_000) } }
     val night = LocalPalette.current.isNight
@@ -172,7 +172,7 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
                 ready.uiSettings.isAttributionEnabled = true
                 ready.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(23.7, 121.0), 7.0))
                 ready.addOnCameraMoveStartedListener { reason ->
-                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) following = false
+                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) controls.following = false
                 }
 
             }
@@ -198,16 +198,17 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         delay(20_000)
         if (!loaded) { slow = true; MapDiagnostics.base("底圖載入逾時") }
     }
-    LaunchedEffect(map, loaded, gps.fixElapsed, gps.providerEnabled, gps.permission, following, hasPosition, canHold, autoZoom, recenter) {
+    LaunchedEffect(map, loaded, gps.fixElapsed, gps.providerEnabled, gps.permission, controls.following, hasPosition, canHold, controls.autoZoom, controls.recenter) {
         val ready = map
+        if (handledRecenter != controls.recenter) { centered = false; handledRecenter = controls.recenter }
         if (ready != null && loaded && canHold) {
             val point = LatLng(gps.latitude!!, gps.longitude!!)
             if (marker == null) marker = ready.addMarker(MarkerOptions().position(point).title("目前位置"))
             else marker?.position = point
             marker?.title = if (hasPosition) "目前位置" else "上次定位（訊號較弱）"
-            if (following && hasPosition) {
-                val target = if (autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.zoom(gps.speedKmh.takeIf { gps.isFresh() }) else ready.cameraPosition.zoom
-                zoom = if (centered && autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.smoothZoom(zoom, target) else target
+            if (controls.following && hasPosition) {
+                val target = if (controls.autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.zoom(gps.speedKmh.takeIf { gps.isFresh() }) else ready.cameraPosition.zoom
+                zoom = if (centered && controls.autoZoom) tw.fitcar.launcher.system.MapFollowPolicy.smoothZoom(zoom, target) else target
                 val update = CameraUpdateFactory.newLatLngZoom(point, zoom)
                 if (!centered) { ready.moveCamera(update); centered = true }
                 else ready.animateCamera(update, 750, null)
@@ -222,14 +223,12 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
     Column(modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (following) "跟隨目前位置" else "自由瀏覽", size = 14,
+                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (controls.following) "跟隨目前位置" else "自由瀏覽", size = 14,
                     essential = !gps.permission || !gps.providerEnabled || !hasPosition)
                 // 本次行程（GPS 估算）：有里程才顯示
                 if (trip.distanceM >= 100.0) Text("本次 " + tw.fitcar.launcher.system.Trip.format(trip), color = LocalPalette.current.text,
                     fontSize = if (driving) 20.sp else 17.sp, maxLines = 1)
             }
-            if (!driving) SecondaryButton(if (autoZoom) "自動縮放" else "手動縮放", { autoZoom = !autoZoom; if (autoZoom) following = true })
-            if (!following || !driving) SecondaryButton("回到目前位置", { centered = false; following = true; recenter++ })
         }
         AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
         if (failed || slow && !loaded) {

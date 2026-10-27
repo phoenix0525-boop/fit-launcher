@@ -114,13 +114,23 @@ fun HomeScreen(
     speedAlertKmh: Int = 0,
     /** Test seam for deterministic lyric layout; production uses DesktopLyrics. */
     lyricsContent: (@Composable (MediaUiState) -> Unit)? = null,
+    wallpaperOverride: tw.fitcar.launcher.wallpaper.WallpaperState? = null,
 ) {
     val p = LocalPalette.current
     val driving = rememberDriving(gps)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val wallpaperStore = remember(context) { tw.fitcar.launcher.wallpaper.WallpaperRepository.get(context) }
+    val wallpaperState by wallpaperStore.state.collectAsState()
+    val wallpaper = wallpaperOverride ?: wallpaperState
+    val mapControls = remember { MapPanelControls() }
+    LaunchedEffect(wallpaperStore) { if (wallpaperOverride == null) wallpaperStore.load() }
     BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
         val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
         val gap = spec.gapDp.dp
-        CompositionLocalProvider(LocalLayoutSpec provides spec, LocalDriving provides driving) {
+        WallpaperLayer(wallpaper, p.isNight, Modifier.matchParentSize())
+        val contentPalette = if (wallpaper.visible && !wallpaper.options.showArt) p.copy(characterArt = false) else p
+        CompositionLocalProvider(LocalLayoutSpec provides spec, LocalDriving provides driving,
+            LocalMapControls provides mapControls, LocalWallpaperActive provides wallpaper.visible, LocalPalette provides contentPalette) {
             Column(Modifier.fillMaxSize().padding(spec.outerDp.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
                 StatusBar(shield, gps, actions, speedAlertKmh)
                 when (spec.arrangement) {
@@ -259,7 +269,7 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
         Spacer(Modifier.height(10.dp))
         mapContent(gps, Modifier.weight(1f).fillMaxWidth())
         Spacer(Modifier.height(10.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
             // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）
             if (hasHome) actions.goHome?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
@@ -267,6 +277,9 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
             // 更換導航 App 移到 設定 → App 綁定，主畫面少一顆不常用的按鈕
             SystemSplitShortcut()
+            val controls = LocalMapControls.current
+            SecondaryButton(if (controls.autoZoom) "自動縮放" else "手動縮放", { controls.toggleZoom() })
+            SecondaryButton("回到目前位置", { controls.returnToPosition() })
             UpdateIndicator()
         }
     }
