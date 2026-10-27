@@ -181,6 +181,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
         if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
         data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
     }
+    Section("自訂桌布") { WallpaperSettings() }
     actions.setStyle?.let { setStyle ->
         Section("畫面風格") {
             Hint("風格與強調色可分別搭配。布丁狗會先套用焦糖棕，之後仍可自訂；各風格沿用日夜排程。", size = 13)
@@ -497,6 +498,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
+        Hint("• 0.4.12：自訂本機桌布、夜間圖片暗化與獨立插畫開關；地圖控制整合至下方工具列。", size = 14)
         Hint("• 0.4.11：新增蜘蛛人紅藍日夜主題與四款透明插畫，保留布丁狗與歌詞版面。", size = 14)
         Hint("• 0.4.10：放大布丁狗、增加歌詞預覽空間、精簡控制鈕，加入導航地址接收檢查與替代入口。", size = 14)
         Hint("• 0.4.9：四款布丁狗插畫分別搭配時鐘、播放卡、App清單與捷徑。", size = 14)

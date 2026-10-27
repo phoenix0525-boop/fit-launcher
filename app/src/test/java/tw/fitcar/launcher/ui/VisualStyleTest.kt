@@ -74,4 +74,16 @@ class VisualStyleTest {
         assertEquals(VisualStyle.ORIGINAL, VisualStyle.fromId(null))
     }
 
+    @Test fun wallpaperCardsKeepContrastAgainstBrightAndDarkImages() {
+        VisualStyle.entries.forEach { style -> ThemeChoice.entries.forEach { theme ->
+            val p = paletteFor(theme, AccentTheme.HERO_RED, style)
+            listOf(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.graphics.Color.White).forEach { image ->
+                val surface = p.surface.copy(alpha = .96f).compositeOver(image)
+                assertTrue("$style $theme wallpaper body", Contrast.ratio(p.text.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+                assertTrue("$style $theme wallpaper disabled", Contrast.ratio(p.disabledContent.compositeOver(surface).toArgb().toLong(), surface.toArgb().toLong()) >= 3.0)
+                if (style != VisualStyle.ORIGINAL) assertTrue("$style $theme wallpaper secondary", Contrast.ratio(p.textSoft.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+            }
+        } }
+    }
+
 }

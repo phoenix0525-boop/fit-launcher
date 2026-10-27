@@ -72,7 +72,7 @@ fun FitCard(
     Column(
         modifier
             .clip(RadiusLg)
-            .background(p.surface)
+            .background(p.surface.copy(alpha = if (LocalWallpaperActive.current) .96f else 1f))
             .border(1.dp, p.line, RadiusLg)
             .padding(padding),
         content = content,

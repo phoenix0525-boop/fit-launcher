@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.graphics.Bitmap
 import android.media.session.PlaybackState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
@@ -31,7 +32,7 @@ class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
-    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null) {
+    private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null, wallpaper: tw.fitcar.launcher.wallpaper.WallpaperState? = null) {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, fontScale = 1.25f)) {
@@ -40,7 +41,7 @@ class LargeFontLayoutTest {
                         nav = if (google) AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "MapsActivity"), null) else AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
                         navModeLabel = "全螢幕", splitResult = false, music = musicApp,
                         shield = null, media = media, gps = gps,
-                        lyricsContent = lyricsContent,
+                        lyricsContent = lyricsContent, wallpaperOverride = wallpaper,
                         slots = List(8) { SlotView(musicApp.key, musicApp.copy(label = "這是一個很長的應用程式捷徑名稱")) }, actions = actions,
                         mapContent = { _, modifier ->
                             Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") }
@@ -308,6 +309,67 @@ class LargeFontLayoutTest {
         compose.onNodeWithContentDescription("蜘蛛人蓄勢插畫").assertIsDisplayed()
         listOf("所有 App", "返回桌面").forEach(::fullLabel)
         screenshot("apps-spiderman-125")
+    }
+
+    @Test fun mapToolsShareBottomToolbarAndKeepCameraState() {
+        show(MediaUiState())
+        val group = compose.onNodeWithContentDescription("地圖工具列", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        listOf("開啟導航", "Google 導航", "分割／多工", "自動縮放", "回到目前位置").forEach { text ->
+            fullLabel(text)
+            val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("地圖控制必須在工具列內：$text", child.top >= group.top && child.bottom <= group.bottom)
+        }
+        compose.onNodeWithText("自動縮放").performClick()
+        fullLabel("手動縮放")
+        compose.onNodeWithText("回到目前位置").performClick()
+        fullLabel("手動縮放") // Recentring must not silently re-enable automatic zoom.
+        screenshot("home-map-toolbar-125")
+    }
+    private fun wallpaperHome(night: Boolean) {
+        val bitmap = Bitmap.createBitmap(120, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) }
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試歌曲", artist = "測試歌手"),
+            palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
+                AccentTheme.HERO_RED, VisualStyle.SPIDERMAN),
+            wallpaper = tw.fitcar.launcher.wallpaper.WallpaperState(tw.fitcar.launcher.wallpaper.WallpaperOptions(enabled = true, showArt = false), bitmap, true))
+        compose.onNodeWithContentDescription("自訂桌布").assertExists()
+        compose.onAllNodesWithContentDescription("蜘蛛人伸手插畫").assertCountEquals(0)
+        listOf("測試歌曲", "測試歌手", "自動縮放", "回到目前位置", "分割／多工").forEach(::fullLabel)
+        screenshot("home-wallpaper-${if (night) "night" else "day"}-125")
+    }
+    @Test fun customWallpaperDayAt125Percent() = wallpaperHome(false)
+    @Test fun customWallpaperNightAt125Percent() = wallpaperHome(true)
+
+    @Test fun wallpaperSettingsAndResetAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = tw.fitcar.launcher.wallpaper.WallpaperStore(context, "wallpaper_ui_${java.util.UUID.randomUUID()}")
+        val source = File(context.cacheDir, "wallpaper_ui_${java.util.UUID.randomUUID()}.png")
+        val image = Bitmap.createBitmap(100, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLUE) }
+        source.outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }; image.recycle()
+        try {
+            kotlinx.coroutines.runBlocking { assertTrue(store.importImage(android.net.Uri.fromFile(source)).isSuccess) }
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(DayPalette) {
+                        Column(Modifier.fillMaxSize().padding(20.dp).then(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()))) {
+                            WallpaperSettings(store)
+                        }
+                    }
+                }
+            }
+            listOf("選擇桌布圖片", "使用自訂桌布", "左右位置", "上下位置", "桌布啟用時顯示主題插畫", "恢復預設桌布").forEach {
+                compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
+            }
+            compose.onNodeWithText("恢復預設桌布").performClick()
+            fullLabel("恢復預設桌布？")
+            compose.onNodeWithText("取消").performClick()
+            assertTrue(store.state.value.visible)
+            compose.onNodeWithText("恢復預設桌布").performClick()
+            compose.onNodeWithText("恢復預設").performClick()
+            compose.waitUntil(5000) { store.state.value.bitmap == null }
+            assertTrue("恢復預設不能刪原圖", source.exists())
+            screenshot("wallpaper-settings-reset-125")
+        } finally { source.delete(); kotlinx.coroutines.runBlocking { store.reset() } }
     }
 
 }
