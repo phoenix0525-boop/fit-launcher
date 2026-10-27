@@ -47,17 +47,18 @@ val RadiusMd = RoundedCornerShape(16.dp)
 val RadiusSm = RoundedCornerShape(10.dp)
 
 /** 使用者提供的靜態主題插畫；不蓋住地圖、文字或觸控區域。 */
-internal enum class PompompurinPose(val drawable: Int, val description: String) {
-    HUG(tw.fitcar.launcher.R.drawable.pompompurin, "布丁狗主題插畫"),
-    REST(tw.fitcar.launcher.R.drawable.pompompurin_sleep, "布丁狗趴睡插畫"),
-    CHEER(tw.fitcar.launcher.R.drawable.pompompurin_cheer, "布丁狗活力插畫"),
-    THANKS(tw.fitcar.launcher.R.drawable.pompompurin_thanks, "布丁狗感謝插畫"),
+internal enum class ThemeArtPose(val drawable: Int, val description: String, val spiderDrawable: Int, val spiderDescription: String) {
+    SHORTCUTS(tw.fitcar.launcher.R.drawable.pompompurin, "布丁狗主題插畫", tw.fitcar.launcher.R.drawable.spiderman_crouch, "蜘蛛人蹲姿插畫"),
+    MUSIC(tw.fitcar.launcher.R.drawable.pompompurin_sleep, "布丁狗趴睡插畫", tw.fitcar.launcher.R.drawable.spiderman_swing, "蜘蛛人飛躍插畫"),
+    APPS(tw.fitcar.launcher.R.drawable.pompompurin_cheer, "布丁狗活力插畫", tw.fitcar.launcher.R.drawable.spiderman_perch, "蜘蛛人蓄勢插畫"),
+    CLOCK(tw.fitcar.launcher.R.drawable.pompompurin_thanks, "布丁狗感謝插畫", tw.fitcar.launcher.R.drawable.spiderman_reach, "蜘蛛人伸手插畫"),
 }
 
 @Composable
-internal fun PompompurinArtwork(size: Dp = 64.dp, pose: PompompurinPose = PompompurinPose.HUG) {
-    Image(painter = androidx.compose.ui.res.painterResource(pose.drawable),
-        contentDescription = pose.description, modifier = Modifier.size(size).clip(RadiusSm))
+internal fun ThemeArtwork(size: Dp = 64.dp, pose: ThemeArtPose = ThemeArtPose.SHORTCUTS) {
+    val spider = LocalPalette.current.artworkStyle == VisualStyle.SPIDERMAN
+    Image(painter = androidx.compose.ui.res.painterResource(if (spider) pose.spiderDrawable else pose.drawable),
+        contentDescription = if (spider) pose.spiderDescription else pose.description, modifier = Modifier.size(size).clip(RadiusSm))
 }
 
 /** 原型的卡片：細分隔線、適度圓角、無陰影特效。 */

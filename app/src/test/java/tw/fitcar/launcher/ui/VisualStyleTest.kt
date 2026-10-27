@@ -48,7 +48,7 @@ class VisualStyleTest {
     }
 
     @Test fun newStylesKeepBodyAndButtonTextReadable() {
-        listOf(VisualStyle.JAPANESE, VisualStyle.WHITE, VisualStyle.POMPOMPURIN).forEach { style ->
+        listOf(VisualStyle.JAPANESE, VisualStyle.WHITE, VisualStyle.POMPOMPURIN, VisualStyle.SPIDERMAN).forEach { style ->
             ThemeChoice.entries.forEach { theme ->
                 AccentTheme.entries.forEach { accent ->
                     val p = paletteFor(theme, accent, style)
@@ -63,4 +63,15 @@ class VisualStyleTest {
             }
         }
     }
+    @Test fun spiderAndPompompurinRemainIndependentChoices() {
+        assertEquals(VisualStyle.SPIDERMAN, VisualStyle.fromId("spiderman"))
+        val spider = styledBase(false, VisualStyle.SPIDERMAN)
+        val pudding = styledBase(false, VisualStyle.POMPOMPURIN)
+        assertEquals(VisualStyle.SPIDERMAN, spider.artworkStyle)
+        assertEquals(VisualStyle.POMPOMPURIN, pudding.artworkStyle)
+        assertTrue(spider.characterArt && pudding.characterArt)
+        assertNotEquals(spider.bg, pudding.bg)
+        assertEquals(VisualStyle.ORIGINAL, VisualStyle.fromId(null))
+    }
+
 }

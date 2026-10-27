@@ -28,6 +28,7 @@ data class Palette(
     val success: Color,
     val danger: Color,
     val characterArt: Boolean = false,
+    val artworkStyle: VisualStyle = VisualStyle.ORIGINAL,
 )
 
 val DayPalette = Palette(
@@ -69,7 +70,8 @@ enum class VisualStyle(val id: String, val label: String, val description: Strin
     ORIGINAL("original", "原有", "暖灰底色，保留目前配色"),
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
     WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
-    POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫");
+    POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫"),
+    SPIDERMAN("spiderman", "蜘蛛人", "英雄紅、深海軍藍與蜘蛛人插畫");
 
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
@@ -84,12 +86,25 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             bg = Color(0xFF241A14), bgDeep = Color(0xFF17110D),
             surface = Color(0xFF30231A), surfaceStrong = Color(0xFF3B2A1F),
             surfaceMuted = Color(0xFF211812), text = Color(0xFFFFF0CB),
-            textSoft = Color(0xFFD9BE8D), line = Color(0xFF65482D), characterArt = true,
+            textSoft = Color(0xFFD9BE8D), line = Color(0xFF65482D), characterArt = true, artworkStyle = VisualStyle.POMPOMPURIN,
         ) else base.copy(
             bg = Color(0xFFFFF6D7), bgDeep = Color(0xFFEAD49F),
             surface = Color(0xFFFFF9E5), surfaceStrong = Color(0xFFFFFEF6),
             surfaceMuted = Color(0xFFEFDEB5), text = Color(0xFF4B2C20),
-            textSoft = Color(0xFF6E5437), line = Color(0xFFDCC28C), characterArt = true,
+            textSoft = Color(0xFF6E5437), line = Color(0xFFDCC28C), characterArt = true, artworkStyle = VisualStyle.POMPOMPURIN,
+        )
+        VisualStyle.SPIDERMAN -> if (night) base.copy(
+            bg = Color(0xFF101B2C), bgDeep = Color(0xFF091321),
+            surface = Color(0xFF19283C), surfaceStrong = Color(0xFF22344C),
+            surfaceMuted = Color(0xFF142235), text = Color(0xFFEAF1FF),
+            textSoft = Color(0xFFB7C6DC), line = Color(0xFF4A6282),
+            characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
+        ) else base.copy(
+            bg = Color(0xFFEAF0F8), bgDeep = Color(0xFFD7E2F0),
+            surface = Color(0xFFF4F7FC), surfaceStrong = Color(0xFFFFFFFF),
+            surfaceMuted = Color(0xFFDFE7F2), text = Color(0xFF13263E),
+            textSoft = Color(0xFF435D7B), line = Color(0xFFA8BAD2),
+            characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
         )
         VisualStyle.JAPANESE -> if (night) base.copy(
             bg = Color(0xFF24221F), bgDeep = Color(0xFF191815),
