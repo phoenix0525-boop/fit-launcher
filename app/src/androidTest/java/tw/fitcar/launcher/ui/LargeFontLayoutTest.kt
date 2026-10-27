@@ -30,6 +30,19 @@ import java.io.File
 
 class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
+    private var originalMapZoom: Boolean? = null
+    @org.junit.Before fun isolatePersistedMapPreference() {
+        val c=InstrumentationRegistry.getInstrumentation().targetContext
+        val sp=c.getSharedPreferences("map_preferences",android.content.Context.MODE_PRIVATE)
+        originalMapZoom=if(sp.contains("auto_zoom")) sp.getBoolean("auto_zoom",true) else null
+        check(sp.edit().putBoolean("auto_zoom",true).commit())
+    }
+    @org.junit.After fun restorePersistedMapPreference() {
+        val c=InstrumentationRegistry.getInstrumentation().targetContext
+        val editor=c.getSharedPreferences("map_preferences",android.content.Context.MODE_PRIVATE).edit()
+        originalMapZoom?.let { editor.putBoolean("auto_zoom",it) } ?: editor.remove("auto_zoom")
+        check(editor.commit())
+    }
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
     private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null, wallpaper: tw.fitcar.launcher.wallpaper.WallpaperState? = null) {
