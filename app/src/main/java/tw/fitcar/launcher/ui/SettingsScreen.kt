@@ -498,7 +498,7 @@ private fun AboutSection(data: SettingsData) {
     Section("關於") {
         Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
         Hint("版本 ${data.versionName}", size = 16)
-        Hint("• 0.4.13：無歌詞時可用淡化專輯封面作為整張播放器底圖；獨立開關。", size = 14)
+        Hint("• 0.4.13：無歌詞時可用淡化專輯封面作為整張播放器底圖；獨立開關；Google 導航通知取代地圖欄位。", size = 14)
         Hint("• 0.4.12：自訂本機桌布、夜間圖片暗化與獨立插畫開關；地圖控制整合至下方工具列。", size = 14)
         Hint("• 0.4.11：新增蜘蛛人紅藍日夜主題與四款透明插畫，保留布丁狗與歌詞版面。", size = 14)
         Hint("• 0.4.10：放大布丁狗、增加歌詞預覽空間、精簡控制鈕，加入導航地址接收檢查與替代入口。", size = 14)
