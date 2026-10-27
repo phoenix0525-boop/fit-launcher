@@ -41,7 +41,8 @@ class VisualStyleTest {
                     val p = paletteFor(theme, accent, style)
                     assertEquals(theme == ThemeChoice.NIGHT, p.isNight)
                     assertEquals(if (p.isNight) accent.night.accent else accent.day.accent, p.accent.toArgb().toLong() and 0xFFFFFFFFL)
-                    if (p.isNight) assertTrue(Contrast.luminance(p.bg.toArgb().toLong()) < 0.05)
+                    if (p.isNight && style != VisualStyle.SPIDERMAN) assertTrue(Contrast.luminance(p.bg.toArgb().toLong()) < 0.05)
+                    if (style == VisualStyle.SPIDERMAN) assertTrue("Spider surfaces must stay light", Contrast.luminance(p.bg.toArgb().toLong()) > .45)
                 }
             }
         }
@@ -57,7 +58,7 @@ class VisualStyleTest {
                             assertTrue("$style $theme body", Contrast.ratio(text.toArgb().toLong(), bg.toArgb().toLong()) >= 4.5)
                         }
                     }
-                    val buttonText = if (p.isNight) p.bgDeep.toArgb().toLong() else 0xFFFFFFFFL
+                    val buttonText = p.onAccent.toArgb().toLong()
                     assertTrue("$style $theme $accent button", Contrast.ratio(p.accent.toArgb().toLong(), buttonText) >= 4.5)
                 }
             }
@@ -93,6 +94,20 @@ class VisualStyleTest {
                 val surface = image.copy(alpha = PLAYER_COVER_ALPHA).compositeOver(p.surface)
                 assertTrue("$style $theme album primary", Contrast.ratio(p.text.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
                 if (style != VisualStyle.ORIGINAL) assertTrue("$style $theme album secondary", Contrast.ratio(p.textSoft.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+            }
+        } }
+    }
+
+    @Test fun fullThemeCardsRemainReadableAtEveryTransparency() {
+        listOf(VisualStyle.SPIDERMAN, VisualStyle.POMPOMPURIN).forEach { style -> ThemeChoice.entries.forEach { theme ->
+            val p = paletteFor(theme, AccentTheme.HERO_RED, style)
+            ThemeClarity.entries.forEach { clarity ->
+                listOf(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.graphics.Color.White).forEach { image ->
+                    val surface = p.surface.copy(alpha = clarity.alpha).compositeOver(image)
+                    assertTrue("$style $theme $clarity primary", Contrast.ratio(p.text.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+                    assertTrue("$style $theme $clarity secondary", Contrast.ratio(p.textSoft.toArgb().toLong(), surface.toArgb().toLong()) >= 4.5)
+                    assertTrue("$style $theme $clarity disabled", Contrast.ratio(p.disabledContent.compositeOver(surface).toArgb().toLong(), surface.toArgb().toLong()) >= 3.0)
+                }
             }
         } }
     }
