@@ -93,7 +93,8 @@ class SettingsActions(
     val setSpeedAlert: ((Int) -> Unit)? = null,
 )
 
-private val SECTIONS = listOf("實機檢測", "顯示與亮度", "App 綁定", "導航", "權限", "返回原廠桌面", "實機資訊", "更新", "關於", "備份與還原")
+// 依使用頻率排序：常用設定在前，檢測與資訊在後
+private val SECTIONS = listOf("顯示與亮度", "App 綁定", "導航", "權限", "備份與還原", "實機檢測", "返回原廠桌面", "實機資訊", "更新", "關於")
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
@@ -111,17 +112,18 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
         SectionNavLayout(SECTIONS, section, { section = it }, footer = {
             if (p.characterArt && LocalThemeAppearance.current.smallArt) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ThemeArtwork(112.dp, ThemeArtPose.MUSIC) }
         }) {
-                when (section) {
-                    0 -> CheckerEntrySection(actions)
-                    1 -> DisplaySection(data, actions)
-                    2 -> BindingSection(data, actions)
-                    3 -> NavSection(data, actions)
-                    4 -> PermissionSection(data, actions)
-                    5 -> FactoryHomeSection(data, actions)
-                    6 -> DiagnosticsSection(data)
-                    7 -> UpdateSection()
-                    8 -> AboutSection(data)
-                    else -> BackupSection()
+                // 以名稱對應，之後調整順序不會接錯頁
+                when (SECTIONS.getOrNull(section)) {
+                    "顯示與亮度" -> DisplaySection(data, actions)
+                    "App 綁定" -> BindingSection(data, actions)
+                    "導航" -> NavSection(data, actions)
+                    "權限" -> PermissionSection(data, actions)
+                    "備份與還原" -> BackupSection()
+                    "實機檢測" -> CheckerEntrySection(actions)
+                    "返回原廠桌面" -> FactoryHomeSection(data, actions)
+                    "實機資訊" -> DiagnosticsSection(data)
+                    "更新" -> UpdateSection()
+                    else -> AboutSection(data)
                 }
             }
     }
@@ -510,19 +512,19 @@ internal fun AboutSection(data: SettingsData) {
             }
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
-        Hint("• 0.4.15：設定備份與確認還原、角色原圖尺寸限制、行車卡片清楚模式與僅桌面視窗調暗；支援獨立測試簽章。", size = 14)
-        Hint("• 0.4.14：淺色蜘蛛人全版風格、各頁插畫、卡片透明度與夜間中文路名可讀性。", size = 14)
-        Hint("• 0.4.13：無歌詞時可用淡化專輯封面作為整張播放器底圖；獨立開關；Google 導航通知取代地圖欄位，免費地圖行進方向朝上。", size = 14)
-        Hint("• 0.4.12：自訂本機桌布、夜間圖片暗化與獨立插畫開關；地圖控制整合至下方工具列。", size = 14)
-        Hint("• 0.4.11：新增蜘蛛人紅藍日夜主題與四款透明插畫，保留布丁狗與歌詞版面。", size = 14)
-        Hint("• 0.4.10：放大布丁狗、增加歌詞預覽空間、精簡控制鈕，加入導航地址接收檢查與替代入口。", size = 14)
-        Hint("• 0.4.9：四款布丁狗插畫分別搭配時鐘、播放卡、App清單與捷徑。", size = 14)
-        Hint("• 0.4.8：新增布丁狗日夜主題與焦糖棕強調色；保留125%可讀性。", size = 14)
-        Hint("改版內容", size = 18, color = LocalPalette.current.text)
-        Hint("• 夜間深色地圖；行車中自動大字並隱藏次要說明。", size = 14)
-        Hint("• 歌詞大字與全螢幕歌詞；倒退／快進 15 秒。", size = 14)
-        Hint("• 回家／去公司、最近播放器切換、自訂超速提醒、本次行程。", size = 14)
-        Hint("• 減少畫面重算與耗電，首次開啟更順。", size = 14)
-        Hint("• 延續 0.4.6：自動檢查新版、附近門牌、記住播放器、桌面歌詞。", size = 14)
+        val text = LocalPalette.current.text
+        Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.16：地圖下方按鈕精簡、播放鍵加大、夜間畫面較不刺眼、所有 App 可搜尋並列出最近使用。", size = 16)
+        Hint("• 0.4.15：可以匯出／匯入設定；行車時卡片自動變清楚；夜間可只把桌面調暗。", size = 16)
+        Hint("• 0.4.14：淺色蜘蛛人主題、各頁插畫、夜間地圖路名更清楚。", size = 16)
+        var older by remember { mutableStateOf(false) }
+        SecondaryButton(if (older) "收起更早版本" else "更早版本", { older = !older })
+        if (older) {
+            Hint("• 0.4.13：沒有歌詞時以淡化專輯封面當播放卡底圖；選 Google 導航時顯示導航提示，地圖行進方向朝上。", size = 14)
+            Hint("• 0.4.12：可自訂桌布、夜間圖片變暗。", size = 14)
+            Hint("• 0.4.8–0.4.11：布丁狗、蜘蛛人主題與插畫。", size = 14)
+            Hint("• 0.4.7：夜間深色地圖、行車大字、歌詞大字、倒退／快進 15 秒、回家／去公司、超速提醒、本次行程。", size = 14)
+            Hint("• 0.4.6 以前：自動檢查新版、附近門牌、記住播放器、桌面歌詞。", size = 14)
+        }
     }
 }

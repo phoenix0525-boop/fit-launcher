@@ -36,8 +36,11 @@ object DesktopDimStore {
             Text("夜間自動調暗",Modifier.weight(1f),color=LocalPalette.current.text,fontSize=20.sp)
             Switch(options.auto,{ DesktopDimStore.save(context,options.copy(auto=it)); DesktopDimStore.manual.value=null },Modifier.semantics { contentDescription="夜間自動調暗" })
         }
-        Text("桌面亮度 ${options.percent}%",color=LocalPalette.current.text,fontSize=20.sp)
-        Slider(options.percent.toFloat(),{ DesktopDimStore.save(context,options.copy(percent=it.toInt().coerceIn(10,100))) },valueRange=10f..100f)
+        // 拖曳中只更新顯示，放開才儲存與套用，避免每一格都寫入並讓畫面閃動
+        var draft by remember(options.percent) { mutableFloatStateOf(options.percent.toFloat()) }
+        Text("桌面亮度 ${draft.toInt()}%",color=LocalPalette.current.text,fontSize=20.sp)
+        Slider(draft,{ draft=it },valueRange=10f..100f,
+            onValueChangeFinished={ DesktopDimStore.save(context,options.copy(percent=draft.toInt().coerceIn(10,100))) })
         Hint("只在車機桌面（含所有App與設定頁）有效；導航王等其他App全螢幕不受影響。這不是修好了車燈調光，也不更改系統背光。")
         Hint("使用既有夜間時段。手動切換維持到下個日夜邊界；桌面視窗調暗優先於系統亮度排程，離開後恢復跟隨系統。")
         SecondaryButton("恢復依時段",{ DesktopDimStore.manual.value=null })

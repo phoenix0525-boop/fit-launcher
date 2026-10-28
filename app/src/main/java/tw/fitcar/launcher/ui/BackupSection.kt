@@ -43,8 +43,10 @@ internal fun BackupSection() {
                     while(true) { val n=input.read(chunk); if(n<0) break; require(out.size()+n<=SettingsBackup.MAX_BYTES) { "備份超過256KB" }; out.write(chunk,0,n) }; out.toByteArray()
                 } ?: error("無法讀取檔案")
                 val raw=Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString()
-                SettingsBackup.decode(raw)
-            } }.onSuccess { plan -> changes=BackupStore.changes(context,plan); pending=plan; message=null }
+                // 變更預覽會查詢每個綁定 App，放在背景執行緒
+                val plan=SettingsBackup.decode(raw)
+                plan to BackupStore.changes(context,plan)
+            } }.onSuccess { (plan, list) -> changes=list; pending=plan; message=null }
                 .onFailure { message="拒絕匯入：${it.message}" }
             busy=false
         }

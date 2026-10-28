@@ -25,4 +25,14 @@ class SettingsBackupTest {
     @Test fun legacySchemaZeroCompatible() {
         assertEquals(sample, SettingsBackup.decode(SettingsBackup.encode(sample, "old", "now").replace("\"schemaVersion\":1", "\"schemaVersion\":0")).groups)
     }
+    @Test fun everyThemeIdExportsAndManualOverrideIsDropped() {
+        tw.fitcar.launcher.ui.AccentTheme.entries.forEach { a ->
+            tw.fitcar.launcher.ui.VisualStyle.entries.forEach { v ->
+                val m = mapOf("fit_launcher" to mapOf<String, Any>("accent_theme" to a.id, "visual_style" to v.id))
+                assertEquals(m, SettingsBackup.decode(SettingsBackup.encode(m, "t", "now")).groups)
+            }
+        }
+        val withOverride = mapOf("fit_launcher" to mapOf<String, Any>("manual_override" to true, "shortcut_pages" to 2))
+        assertFalse(SettingsBackup.encode(withOverride, "t", "now").contains("manual_override"))
+    }
 }

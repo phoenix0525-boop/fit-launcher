@@ -67,6 +67,8 @@ internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
         }
     }
     if (page == ThemePage.APPS) return // The dedicated corner image keeps the app list free of repeated characters.
+    // 主畫面大圖幾乎被地圖、音樂與捷徑卡擋住，只露出紅藍碎塊；改為只保留時鐘旁小圖與淡紋路（2026-10-28 使用者同意）
+    if (page == ThemePage.HOME) return
     LimitedThemeImage(drawable, (if (spider) "蜘蛛人" else "布丁狗") + "全版背景",
         Modifier.align(Alignment.BottomEnd).fillMaxHeight(if (page == ThemePage.HOME) .88f else .70f).aspectRatio(1.1f), alpha = .85f)
 }

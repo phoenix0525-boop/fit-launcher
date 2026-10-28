@@ -73,7 +73,7 @@ enum class VisualStyle(val id: String, val label: String, val description: Strin
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
     WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
     POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫"),
-    SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、淺暖灰夜間與全版插畫");
+    SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、中灰藍夜間與插畫");
 
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
@@ -95,11 +95,13 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             surfaceMuted = Color(0xFFEFDEB5), text = Color(0xFF4B2C20),
             textSoft = Color(0xFF6E5437), line = Color(0xFFDCC28C), characterArt = true, artworkStyle = VisualStyle.POMPOMPURIN,
         )
+        // 夜間維持淺色系（使用者不要深色），但改成中灰藍：卡片亮度比原本低約 25%，夜裡較不刺眼；
+        // 主文字對比仍 ≥ 9.8、次要文字 ≥ 6.5（各底色），背景亮度 0.55 仍符合「淺色」檢查。
         VisualStyle.SPIDERMAN -> if (night) base.copy(
-            bg = Color(0xFFD5DCE4), bgDeep = Color(0xFFC5CFDB),
-            surface = Color(0xFFE9EDF3), surfaceStrong = Color(0xFFF2F4F7),
-            surfaceMuted = Color(0xFFD7DEE7), text = Color(0xFF182B44),
-            textSoft = Color(0xFF3B506B), line = Color(0xFF8196AD),
+            bg = Color(0xFFBCC5CF), bgDeep = Color(0xFFAEB8C4),
+            surface = Color(0xFFC9D1DA), surfaceStrong = Color(0xFFD1D8E0),
+            surfaceMuted = Color(0xFFC0C9D3), text = Color(0xFF0E1C30),
+            textSoft = Color(0xFF2A3B52), line = Color(0xFF7A8CA2),
             characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
         ) else base.copy(
             bg = Color(0xFFF1F5FA), bgDeep = Color(0xFFDCE6F2),
@@ -134,6 +136,9 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
 }
 
 val LocalPalette = staticCompositionLocalOf { DayPalette }
+
+/** 警示色（超速等）：橘色，避免與主題紅色按鈕／選取混淆；文字用 contrastInk 自動挑深或白。 */
+val WarningOrange = Color(0xFFE8820C)
 
 /**
  * 停用但仍需看得見的圖示／文字（例如播放器不支援的上一首）。

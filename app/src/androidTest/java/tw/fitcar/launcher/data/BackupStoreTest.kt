@@ -21,6 +21,11 @@ class BackupStoreTest {
             assertEquals("nonexistent.test.app/.Main",Prefs.get(c).state.value.bindings.music)
             val snapshot=BackupStore.snapshot(c)
             assertTrue(snapshot.getValue("fit_launcher").containsKey("manual_brightness"))
+            // 手動亮度覆寫是暫時狀態：不匯出，匯入後一律回到排程
+            assertFalse(snapshot.getValue("fit_launcher").containsKey("manual_override"))
+            Prefs.get(c).update { it.copy(manualOverride = true) }
+            BackupStore.apply(c, BackupPlan(mapOf("fit_launcher" to mapOf("shortcut_pages" to 2))))
+            assertFalse(Prefs.get(c).state.value.manualOverride)
             assertEquals(snapshot,SettingsBackup.decode(SettingsBackup.encode(snapshot,"test","now")).groups)
         } finally {
             BackupStore.apply(c,BackupPlan(before))

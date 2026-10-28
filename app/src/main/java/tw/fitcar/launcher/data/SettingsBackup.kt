@@ -9,7 +9,7 @@ object SettingsBackup {
     private val component = Regex("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+/[A-Za-z0-9_.$]+")
     val groups = setOf("fit_launcher", "theme_appearance", "map_preferences", "desktop_dimming")
     fun known(group: String, key: String): Boolean = when (group) {
-        "fit_launcher" -> key in setOf("auto_schedule", "auto_theme", "manual_theme", "manual_brightness", "smooth_transition", "bind_navigation", "bind_music", "bind_shield", "experimental_split", "media_mode", "manual_override", "shortcut_pages", "accent_theme", "visual_style", "home_address", "work_address", "speed_alert_kmh") || Regex("shortcut_([0-9]|1[0-9]|2[0-3])").matches(key) || Regex("period_(day|dusk|night)_(start|end|brightness)").matches(key)
+        "fit_launcher" -> key in setOf("auto_schedule", "auto_theme", "manual_theme", "manual_brightness", "smooth_transition", "bind_navigation", "bind_music", "bind_shield", "experimental_split", "media_mode", "shortcut_pages", "accent_theme", "visual_style", "home_address", "work_address", "speed_alert_kmh") || Regex("shortcut_([0-9]|1[0-9]|2[0-3])").matches(key) || Regex("period_(day|dusk|night)_(start|end|brightness)").matches(key)
         "theme_appearance" -> key in setOf("full", "small", "clarity", "keep_driving_transparency")
         "map_preferences" -> key == "auto_zoom"
         "desktop_dimming" -> key in setOf("auto", "percent")
@@ -27,8 +27,9 @@ object SettingsBackup {
             k == "manual_theme" -> choice(setOf("day", "night"))
             k == "media_mode" -> choice(setOf("fixed", "follow"))
             k == "clarity" -> choice(setOf("clear", "balanced", "airy"))
-            k == "accent_theme" -> choice(setOf("mist", "graphite", "wine", "forest", "caramel", "hero_red", "sand"))
-            k == "visual_style" -> choice(setOf("original", "japanese", "white", "pompompurin", "spiderman"))
+            // 由列舉產生，之後新增主題不會讓整個匯出失敗
+            k == "accent_theme" -> choice(tw.fitcar.launcher.ui.AccentTheme.entries.map { it.id }.toSet())
+            k == "visual_style" -> choice(tw.fitcar.launcher.ui.VisualStyle.entries.map { it.id }.toSet())
             k == "home_address" || k == "work_address" -> require(v is String && v.length <= 500 && !v.contains('\u0000')) { "地址長度或格式不正確" }
             k.startsWith("bind_") || k.startsWith("shortcut_") -> require(v is String && v.length <= 500 && component.matches(v)) { "$k 不是有效 App 元件" }
             else -> require(v is Boolean) { "$g/$k 應為開關值" }

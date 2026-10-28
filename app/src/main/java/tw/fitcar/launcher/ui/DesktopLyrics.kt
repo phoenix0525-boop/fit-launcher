@@ -34,23 +34,21 @@ internal fun LyricsSetting() {
         Hint("桌面歌詞（LRCLIB）", Modifier.weight(1f))
         Switch(checked = enabled, onCheckedChange = { if (it) consent = true else LyricsRepository.setEnabled(context, false) })
     }
-    Hint("顯示於右上播放卡原歌詞區；未收錄或無法比對時保留歌曲資訊。", size = 13)
+    Hint("顯示於右上播放卡原歌詞區；未收錄或無法比對時保留歌曲資訊。", size = 14)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("無歌詞時顯示專輯封面", Modifier.weight(1f), color = LocalPalette.current.text, fontSize = 20.sp)
         Switch(checked = coverFallback, onCheckedChange = { LyricsRepository.setCoverFallback(context, it) },
             modifier = Modifier.semantics { contentDescription = "無歌詞時顯示專輯封面" })
     }
-    Hint("淡化封面作為整張播放器底圖；有歌詞時隱藏。僅使用播放器提供的封面，不另行連網下載。", size = 13)
+    Hint("淡化封面作為整張播放器底圖；有歌詞時隱藏。僅使用播放器提供的封面，不另行連網下載。", size = 14)
     LyricsConsent(consent) { consent = false }
 }
 
 @Composable
 internal fun LyricsEnableButton() {
     var open by remember { mutableStateOf(false) }
-    androidx.compose.material3.IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)
-        .semantics { contentDescription = "啟用桌面歌詞" }) {
-        Text("詞", color = LocalPalette.current.accent, fontSize = 20.sp)
-    }
+    // 原本只有一個「詞」字，意思不清楚；改成完整的「歌詞」按鈕
+    SecondaryButton("歌詞", { open = true }, Modifier.semantics { contentDescription = "啟用桌面歌詞" })
     LyricsConsent(open) { open = false }
 }
 
@@ -93,9 +91,13 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
     val canSync = result.lines.isNotEmpty() && media.positionUpdateElapsed > 0
     val index by remember(result.lines) { derivedStateOf { Lrc.current(result.lines, position) } }
     var full by remember { mutableStateOf(false) }
-    Hint(if (result.lines.isNotEmpty() && !canSync) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status, size = 13, essential = result.lines.isEmpty() && result.plain.isNullOrBlank())
+    // Valid synced lyrics use the available height for the current and next lines.
+    // Keep attribution in accessibility semantics and the full-screen view, rather than a third visual row.
+    if (!canSync) Hint(if (result.lines.isNotEmpty()) "播放進度未提供，顯示文字歌詞 · LRCLIB" else result.status,
+        size = 14, essential = result.lines.isEmpty() && result.plain.isNullOrBlank())
     Column(
-        Modifier.fillMaxWidth().clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
+        Modifier.fillMaxWidth().semantics { if (canSync) contentDescription = result.status }
+            .clickable(enabled = canSync || result.plain != null || result.lines.isNotEmpty()) { full = true },
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (canSync) {
@@ -107,7 +109,7 @@ internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
         } else (result.plain ?: result.lines.takeIf { it.isNotEmpty() }?.joinToString("\n") { it.text })?.let { text ->
             val (shown, more) = Lrc.preview(text, if (driving) 2 else 4)
             Text(shown, modifier = Modifier.fillMaxWidth(), color = p.text, fontSize = if (driving) 22.sp else 20.sp, lineHeight = if (driving) 30.sp else 28.sp, textAlign = TextAlign.Center)
-            if (more) Hint("無時間碼，只顯示前段；點一下看全文", size = 13)
+            if (more) Hint("無時間碼，只顯示前段；點一下看全文", size = 14)
         }
     }
     if (full) FullScreenLyrics(result, media, position, canSync) { full = false }
