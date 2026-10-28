@@ -1,0 +1,40 @@
+name: Import verified v0.4.19 bundle
+on:
+  push:
+    branches: [codex/import-v0419-bundle]
+    paths: [.github/workflows/import-v0419.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: import-v0419
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and push original bundle commits without rewriting
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode scripts/intake/optimize-v0419.bundle.b64 > "$RUNNER_TEMP/optimize-v0419.bundle"
+          test "$(stat -c%s "$RUNNER_TEMP/optimize-v0419.bundle")" = 8123
+          echo "da432e2c69a551b00ffa976681b4eda1d267df1a59ae0a15bfb9aa917e10e4a7  $RUNNER_TEMP/optimize-v0419.bundle" | sha256sum -c -
+          git fetch origin codex/verify-hidden-character-themes
+          git bundle verify "$RUNNER_TEMP/optimize-v0419.bundle"
+          git fetch "$RUNNER_TEMP/optimize-v0419.bundle" claude/optimize-v0419:claude/optimize-v0419
+          test "$(git rev-parse claude/optimize-v0419)" = d4def845985b3e51e586637c22cad94d2f6387cc
+          test "$(git rev-parse claude/optimize-v0419^)" = ae3e3d559485e79042547b02666955c106e042ea
+          test "$(git rev-parse claude/optimize-v0419^^)" = f8927d5fab4dfab7d6153ac5cbcb67d04269774d
+          git push origin claude/optimize-v0419:refs/heads/claude/optimize-v0419
+      - name: Start original build and UI workflows on imported branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const common = { owner: context.repo.owner, repo: context.repo.repo, ref: 'claude/optimize-v0419' };
+            await github.rest.actions.createWorkflowDispatch({ ...common, workflow_id: 'build-apk.yml' });
+            await github.rest.actions.createWorkflowDispatch({ ...common, workflow_id: 396645190 });
