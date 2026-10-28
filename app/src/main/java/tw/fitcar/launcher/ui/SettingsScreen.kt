@@ -409,6 +409,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
         Hint("以 GPS 估算行駛里程與時間，只存在記憶體；停車超過 30 分鐘後再出發會自動重新計算。主畫面地圖上方在里程超過 0.1 km 後顯示。", size = 13)
         SecondaryButton("歸零", { tw.fitcar.launcher.system.TripMeter.reset() })
     }
+    SplitArrangementSettings()
     Section("導航全螢幕／實驗功能") {
         NavOpenMode.entries.forEach { mode ->
             Row(

@@ -336,6 +336,7 @@ private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null
                 goWork?.let { go -> SecondaryButton("去公司", { open = false; go() }, Modifier.fillMaxWidth()) }
                 SecondaryButton("Google 導航", { open = false; openGoogle() }, Modifier.fillMaxWidth())
                 SystemSplitShortcut()
+                SplitArrangementEntry()
                 DesktopDimShortcut()
             }
         },

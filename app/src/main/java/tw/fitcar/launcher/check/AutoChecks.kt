@@ -47,6 +47,12 @@ object AutoChecks {
         out += defaultHome(context)
         out += navigation(context, apps)
         out += multiWindow(context)
+        val placement=tw.fitcar.launcher.nav.SplitPlacement.observation.value
+        val side=Prefs.get(context).state.value.splitNavigationSide
+        out += CheckResult("split_placement","導航","分割排列（觀察）",Status.INFO,
+            tw.fitcar.launcher.nav.SplitPlacement.describe(side,placement?.pane ?: tw.fitcar.launcher.nav.PaneSide.UNKNOWN)+
+                (placement?.let { " 最近觀察：${java.util.Date(it.at)}；不是目前畫面持續成功的保證。" } ?: ""),
+            "左右位置由原廠系統決定；選擇只記住排列目標，不會自動交換視窗。")
         out += googleAndVoice(context)
         out += music(context, apps)
         out += shield(context, apps)
@@ -207,7 +213,7 @@ object AutoChecks {
         val forceResize = Settings.Global.getInt(context.contentResolver, "force_resizable_activities", 0) == 1
         val last = Prefs.get(context).state.value.lastSplitResult
         val f = "系統多視窗：${yn(multi)}，分割畫面：${yn(split)}，自由視窗：${if (freeform) "有" else "無"}，強制可調整大小：${if (forceResize) "開" else "關"}。" +
-            "實測：${when (last) { true -> "成功"; false -> "未進入分割"; null -> "尚未測試" }}。"
+            "實測：${when (last) { true -> "已偵測左右分割，排列需目視確認"; false -> "未進入分割"; null -> "尚未測試" }}。"
         return CheckResult("split", "導航", "分割畫面（實驗功能）", if (last == false || multi == false || split == false) Status.NA else Status.INFO,
             f, "導航預設全螢幕。分割畫面僅供手動選擇的實驗測試，不影響正常導航驗收。")
     }

@@ -9,7 +9,7 @@ object SettingsBackup {
     private val component = Regex("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+/[A-Za-z0-9_.$]+")
     val groups = setOf("fit_launcher", "theme_appearance", "map_preferences", "desktop_dimming")
     fun known(group: String, key: String): Boolean = when (group) {
-        "fit_launcher" -> key in setOf("auto_schedule", "auto_theme", "manual_theme", "manual_brightness", "smooth_transition", "bind_navigation", "bind_music", "bind_shield", "experimental_split", "media_mode", "shortcut_pages", "accent_theme", "visual_style", "home_address", "work_address", "speed_alert_kmh") || Regex("shortcut_([0-9]|1[0-9]|2[0-3])").matches(key) || Regex("period_(day|dusk|night)_(start|end|brightness)").matches(key)
+        "fit_launcher" -> key in setOf("auto_schedule", "auto_theme", "manual_theme", "manual_brightness", "smooth_transition", "bind_navigation", "bind_music", "bind_shield", "experimental_split", "split_navigation_side", "media_mode", "shortcut_pages", "accent_theme", "visual_style", "home_address", "work_address", "speed_alert_kmh") || Regex("shortcut_([0-9]|1[0-9]|2[0-3])").matches(key) || Regex("period_(day|dusk|night)_(start|end|brightness)").matches(key)
         "theme_appearance" -> key in setOf("full", "small", "clarity", "keep_driving_transparency")
         "map_preferences" -> key == "auto_zoom"
         "desktop_dimming" -> key in setOf("auto", "percent")
@@ -25,6 +25,7 @@ object SettingsBackup {
             k == "percent" -> integer(10..100)
             k.endsWith("_start") || k.endsWith("_end") -> integer(0..1439)
             k == "manual_theme" -> choice(setOf("day", "night"))
+            k == "split_navigation_side" -> choice(tw.fitcar.launcher.nav.NavigationSide.entries.map { it.id }.toSet())
             k == "media_mode" -> choice(setOf("fixed", "follow"))
             k == "clarity" -> choice(setOf("clear", "balanced", "airy"))
             // 由列舉產生，之後新增主題不會讓整個匯出失敗

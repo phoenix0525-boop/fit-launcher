@@ -21,6 +21,8 @@ data class LauncherState(
     val shortcuts: List<String?> = List(ShortcutSlots.COUNT) { null },
     val bindings: Bindings = Bindings(),
     val navOpenMode: NavOpenMode = NavOpenMode.FULLSCREEN,
+    /** A manual arrangement goal, never a promise to move other apps. */
+    val splitNavigationSide: tw.fitcar.launcher.nav.NavigationSide = tw.fitcar.launcher.nav.NavigationSide.LEFT,
     val mediaMode: MediaMode = MediaMode.FOLLOW_CURRENT,
     /** 最近一次分割畫面測試結果：null = 尚未測試。 */
     val lastSplitResult: Boolean? = null,
@@ -89,6 +91,7 @@ class Prefs private constructor(context: Context) {
             navOpenMode = if (sp.getBoolean("experimental_split", false)) NavOpenMode.SPLIT_FIRST else NavOpenMode.FULLSCREEN,
             mediaMode = if (sp.getString("media_mode", "follow") == "fixed") MediaMode.FIXED else MediaMode.FOLLOW_CURRENT,
             lastSplitResult = split,
+            splitNavigationSide = tw.fitcar.launcher.nav.NavigationSide.fromId(sp.getString("split_navigation_side",null)),
             manualOverride = sp.getBoolean("manual_override", false),
             shortcutPages = ShortcutSlots.clampPages(sp.getInt("shortcut_pages", ShortcutSlots.DEFAULT_PAGES)),
             accentTheme = sp.getString("accent_theme", "mist") ?: "mist",
@@ -116,6 +119,7 @@ class Prefs private constructor(context: Context) {
             putOrRemove("bind_music", s.bindings.music)
             putOrRemove("bind_shield", s.bindings.shield)
             putBoolean("experimental_split", s.navOpenMode == NavOpenMode.SPLIT_FIRST)
+            putString("split_navigation_side",s.splitNavigationSide.id)
             putString("media_mode", if (s.mediaMode == MediaMode.FIXED) "fixed" else "follow")
             if (s.lastSplitResult == null) remove("last_split_result") else putBoolean("last_split_result", s.lastSplitResult)
             putBoolean("manual_override", s.manualOverride)
