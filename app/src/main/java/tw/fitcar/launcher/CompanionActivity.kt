@@ -108,14 +108,14 @@ class CompanionActivity : ComponentActivity() {
             android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
     }
 
-    private var lastRecorded: Pair<android.graphics.Rect, tw.fitcar.launcher.nav.NavigationSide>? = null
+    private var lastRecorded: Triple<android.graphics.Rect, android.graphics.Rect, tw.fitcar.launcher.nav.NavigationSide>? = null
 
     private fun recordPlacement() {
         val (display, pane) = bounds()
         val target = Prefs.get(this).state.value.splitNavigationSide
         // 版面重排很頻繁；視窗邊界與排列目標都沒變時不重算
-        val key = android.graphics.Rect(pane) to target
-        if (key == lastRecorded) return
+        val key = Triple(android.graphics.Rect(display), android.graphics.Rect(pane), target)
+        if (key == lastRecorded && tw.fitcar.launcher.nav.SplitPlacement.observation.value != null) return
         lastRecorded = key
         val side = tw.fitcar.launcher.nav.SplitGeometry.paneSide(isInMultiWindowMode,
             display.width(), display.height(), pane.left - display.left, pane.width(), pane.height())
