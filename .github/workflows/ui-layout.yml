@@ -1,7 +1,7 @@
 name: UI font layout
 on:
   push:
-    branches: [codex/hidden-character-themes-v0418, codex/split-guide-home-v0417, claude/review-fixes-v0416, codex/test-key-backup-v0415, codex/full-theme-light-v0414, codex/lyrics-album-fallback, codex/wallpaper-map-toolbar, codex/spiderman-theme, codex/lyrics-navigation-v0410, codex/pompompurin-artwork, codex/pompompurin-theme, claude/ux-v047, codex/vehicle-auto-update, codex/vehicle-ui-v045, codex/google-map-location, codex/player-checks-v030, codex/voice-google-navigation, claude/adaptive-smooth, claude/agama-features]
+    branches: [codex/verify-hidden-character-themes, codex/hidden-character-themes-v0418, codex/split-guide-home-v0417, claude/review-fixes-v0416, codex/test-key-backup-v0415, codex/full-theme-light-v0414, codex/lyrics-album-fallback, codex/wallpaper-map-toolbar, codex/spiderman-theme, codex/lyrics-navigation-v0410, codex/pompompurin-artwork, codex/pompompurin-theme, claude/ux-v047, codex/vehicle-auto-update, codex/vehicle-ui-v045, codex/google-map-location, codex/player-checks-v030, codex/voice-google-navigation, claude/adaptive-smooth, claude/agama-features]
   workflow_dispatch:
 permissions:
   contents: read
