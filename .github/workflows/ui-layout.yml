@@ -1,8 +1,13 @@
 name: UI font layout
 on:
   push:
-    branches: [codex/verify-hidden-character-themes, codex/hidden-character-themes-v0418, codex/split-guide-home-v0417, claude/review-fixes-v0416, codex/test-key-backup-v0415, codex/full-theme-light-v0414, codex/lyrics-album-fallback, codex/wallpaper-map-toolbar, codex/spiderman-theme, codex/lyrics-navigation-v0410, codex/pompompurin-artwork, codex/pompompurin-theme, claude/ux-v047, codex/vehicle-auto-update, codex/vehicle-ui-v045, codex/google-map-location, codex/player-checks-v030, codex/voice-google-navigation, claude/adaptive-smooth, claude/agama-features]
+    # 所有開發分支自動跑，不必每版手動把新分支名加進清單
+    branches: ['codex/**', 'claude/**']
   workflow_dispatch:
+concurrency:
+  # 同一分支有新提交時取消舊的模擬器測試，節省 CI 時間
+  group: ui-layout-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -41,5 +46,37 @@ jobs:
           name: ui-font-125-results
           path: |
             ui-screenshots/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+
+  legacy-window-bounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_c
+          disable-animations: true
+          script: |
+            chmod +x gradlew
+            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tw.fitcar.launcher.nav.CompanionPlacementLifecycleTest --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: companion-api29-results
+          path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/

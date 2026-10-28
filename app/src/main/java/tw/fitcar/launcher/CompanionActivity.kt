@@ -82,6 +82,7 @@ class CompanionActivity : ComponentActivity() {
 
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onMultiWindowModeChanged(isInMultiWindowMode,newConfig)
+        lastRecorded = null // 模式改變時一定重新判斷
         main.post { recordPlacement() }
     }
 
@@ -90,26 +91,42 @@ class CompanionActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun recordPlacement() {
-        val metrics=android.util.DisplayMetrics()
-        @Suppress("DEPRECATION")
-        windowManager.defaultDisplay.getRealMetrics(metrics)
-        val view=window.decorView
-        val location=IntArray(2)
-        view.getLocationOnScreen(location)
-        val pane=tw.fitcar.launcher.nav.SplitGeometry.paneSide(isInMultiWindowMode,
-            metrics.widthPixels,metrics.heightPixels,location[0],view.width,view.height)
-        tw.fitcar.launcher.nav.SplitPlacement.record(Prefs.get(this).state.value.splitNavigationSide,pane)
-    }
-
-    private fun checkSplit() {
-        recordPlacement()
+    /** 螢幕與本視窗的實際邊界（Android 11+ WindowMetrics，取代已棄用的 getRealMetrics／decorView 位置）。 */
+    private fun bounds(): Pair<android.graphics.Rect, android.graphics.Rect> {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            return android.graphics.Rect(windowManager.maximumWindowMetrics.bounds) to
+                android.graphics.Rect(windowManager.currentWindowMetrics.bounds)
+        }
+        // The imported build still supports API 26; retain its public-API path before Android 11.
         val metrics = android.util.DisplayMetrics()
         @Suppress("DEPRECATION")
         windowManager.defaultDisplay.getRealMetrics(metrics)
         val view = window.decorView
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels) to
+            android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
+    }
+
+    private var lastRecorded: Triple<android.graphics.Rect, android.graphics.Rect, tw.fitcar.launcher.nav.NavigationSide>? = null
+
+    private fun recordPlacement() {
+        val (display, pane) = bounds()
+        val target = Prefs.get(this).state.value.splitNavigationSide
+        // 版面重排很頻繁；視窗邊界與排列目標都沒變時不重算
+        val key = Triple(android.graphics.Rect(display), android.graphics.Rect(pane), target)
+        if (key == lastRecorded && tw.fitcar.launcher.nav.SplitPlacement.observation.value != null) return
+        lastRecorded = key
+        val side = tw.fitcar.launcher.nav.SplitGeometry.paneSide(isInMultiWindowMode,
+            display.width(), display.height(), pane.left - display.left, pane.width(), pane.height())
+        tw.fitcar.launcher.nav.SplitPlacement.record(target, side)
+    }
+
+    private fun checkSplit() {
+        recordPlacement()
+        val (display, pane) = bounds()
         val inSplit = isInMultiWindowMode && tw.fitcar.launcher.nav.SplitGeometry.isSideBySide(
-            metrics.widthPixels, metrics.heightPixels, view.width, view.height)
+            display.width(), display.height(), pane.width(), pane.height())
         // Multi-window alone could mean top/bottom or a floating window; do not call it a left/right success.
         Prefs.get(this).update { it.copy(lastSplitResult = inSplit) }
         if (!inSplit) finishAndRemoveTask()

@@ -4,6 +4,11 @@ on:
   push:
   workflow_dispatch:
 
+concurrency:
+  # 同一分支連續推送時只保留最新一次建置
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

@@ -51,7 +51,7 @@ object AutoChecks {
         val side=Prefs.get(context).state.value.splitNavigationSide
         out += CheckResult("split_placement","導航","分割排列（觀察）",Status.INFO,
             tw.fitcar.launcher.nav.SplitPlacement.describe(side,placement?.pane ?: tw.fitcar.launcher.nav.PaneSide.UNKNOWN)+
-                (placement?.let { " 最近觀察：${java.util.Date(it.at)}；不是目前畫面持續成功的保證。" } ?: ""),
+                (placement?.let { " 最近觀察：${java.text.SimpleDateFormat("M/d HH:mm:ss", java.util.Locale.TAIWAN).format(java.util.Date(it.at))}；不是目前畫面持續成功的保證。" } ?: ""),
             "左右位置由原廠系統決定；選擇只記住排列目標，不會自動交換視窗。")
         out += googleAndVoice(context)
         out += music(context, apps)

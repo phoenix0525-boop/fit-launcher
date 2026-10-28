@@ -29,7 +29,7 @@ class HiddenCharacterThemeLayoutTest {
                 FitTheme(DayPalette) {
                     SettingsScreen(
                         SettingsData(state, null, null, null, true, 50, true, true,
-                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.18"),
+                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.19"),
                         SettingsActions(back = {}, setStyle = { state = state.copy(visualStyle = it.id) },
                             setCharacterThemesUnlocked = { unlocked -> state = state.copy(
                                 characterThemesUnlocked = unlocked,
@@ -44,17 +44,20 @@ class HiddenCharacterThemeLayoutTest {
         }
     }
 
-    private fun snapshot(name: String) {
+    private fun snapshot(name: String, dialog: Boolean = false) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.getExternalFilesDir(null), "$name.png")
-        file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val capture = if (dialog) compose.onNode(isDialog()) else compose.onRoot()
+        file.outputStream().use { capture.captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
         shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
 
+    private fun styleLabel(text: String) = hasText(text) or hasText("✓ $text")
+
     private fun fullLabel(text: String) {
-        val node = compose.onNodeWithText(text, useUnmergedTree = true)
+        val node = compose.onNode(styleLabel(text), useUnmergedTree = true)
         node.assertIsDisplayed()
         val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
@@ -83,7 +86,7 @@ class HiddenCharacterThemeLayoutTest {
     @Test fun legacyCharacterThemeRemainsSelected() {
         state = LauncherState(visualStyle = "spiderman")
         screen()
-        compose.onNodeWithText("蜘蛛人").performScrollTo().assertIsDisplayed()
+        compose.onNode(styleLabel("蜘蛛人")).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("隱藏角色主題").performScrollTo().performClick()
         compose.onNodeWithText("取消").performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals("spiderman", state.visualStyle) }
@@ -92,27 +95,27 @@ class HiddenCharacterThemeLayoutTest {
     @Test fun unlockAndRehideAt125Percent() {
         state = LauncherState()
         screen()
-        compose.onNodeWithText("布丁狗").assertDoesNotExist()
-        compose.onNodeWithText("蜘蛛人").assertDoesNotExist()
+        compose.onNode(styleLabel("布丁狗")).assertDoesNotExist()
+        compose.onNode(styleLabel("蜘蛛人")).assertDoesNotExist()
         compose.onNode(hasText("實機資訊") and hasClickAction()).performScrollTo().performClick()
         repeat(4) { compose.onNode(hasText("實機資訊") and hasClickAction()).performClick() }
         compose.onNode(hasText("顯示與亮度") and hasClickAction()).performScrollTo().performClick()
-        compose.onNodeWithText("布丁狗").performScrollTo()
+        compose.onNode(styleLabel("布丁狗")).performScrollTo()
         fullLabel("布丁狗"); fullLabel("蜘蛛人")
         compose.onNodeWithText("隱藏角色主題").performScrollTo()
         fullLabel("隱藏角色主題")
         snapshot("theme-unlocked-125")
-        compose.onNodeWithText("蜘蛛人").performScrollTo().performClick()
+        compose.onNode(styleLabel("蜘蛛人")).performScrollTo().performClick()
         compose.onNodeWithText("隱藏角色主題").performClick()
         fullLabel("隱藏角色主題？")
         fullLabel("切回並隱藏")
-        snapshot("theme-rehide-confirm-125")
+        snapshot("theme-rehide-confirm-125", dialog = true)
         compose.onNodeWithText("取消").performClick()
-        compose.onNodeWithText("蜘蛛人").assertExists()
+        compose.onNode(styleLabel("蜘蛛人")).assertExists()
         compose.onNodeWithText("隱藏角色主題").performClick()
         compose.onNodeWithText("切回並隱藏").performClick()
-        compose.onNodeWithText("蜘蛛人").assertDoesNotExist()
-        compose.onNodeWithText("原有").performScrollTo()
+        compose.onNode(styleLabel("蜘蛛人")).assertDoesNotExist()
+        compose.onNode(styleLabel("原有")).performScrollTo()
         fullLabel("原有")
     }
 }

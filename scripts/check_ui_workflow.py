@@ -3,10 +3,9 @@ from pathlib import Path
 
 workflow = Path('.github/workflows/ui-layout.yml').read_text()
 tests = Path('app/src/androidTest/java/tw/fitcar/launcher/ui/LargeFontLayoutTest.kt').read_text()
-assert 'claude/ux-v047' in workflow, 'UX branch is missing from UI workflow push triggers'
-assert 'claude/review-fixes-v0416' in workflow, '0.4.16 review branch is missing from UI workflow push triggers'
-assert 'codex/split-guide-home-v0417' in workflow, 'Split guide branch missing UI trigger'
-assert 'codex/hidden-character-themes-v0418' in workflow, 'Character-theme branch missing UI trigger'
+# 0.4.19 起以萬用規則涵蓋所有開發分支，不再逐一列名
+assert "'codex/**'" in workflow and "'claude/**'" in workflow, 'UI workflow must run on all codex/** and claude/** branches'
+assert 'cancel-in-progress: true' in workflow, 'UI workflow should cancel superseded runs'
 for required in ('api-level: 33', 'wm size 2000x1200', 'wm density 240', 'font_scale 1.25',
                  'connectedDebugAndroidTest', 'ui-screenshots/'):
     assert required in workflow, f'UI workflow missing required configuration: {required}'

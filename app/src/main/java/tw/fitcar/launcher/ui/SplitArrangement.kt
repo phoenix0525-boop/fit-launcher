@@ -19,13 +19,18 @@ import tw.fitcar.launcher.nav.NavigationSide
 
 @Composable
 internal fun SplitArrangementEntry() {
+    var open by remember { mutableStateOf(false) }
+    SecondaryButton("排列",{ open=true })
+    if (open) SplitArrangementPrefsDialog { open=false }
+}
+
+/** 讀寫偏好設定的排列對話框；「更多」先關閉自己再開這個，避免三層對話框疊在一起。 */
+@Composable
+internal fun SplitArrangementPrefsDialog(close: () -> Unit) {
     val context=LocalContext.current
     val prefs=remember(context) { Prefs.get(context) }
     val state by prefs.state.collectAsState()
-    var open by remember { mutableStateOf(false) }
-    SecondaryButton("排列",{ open=true })
-    if (open) SplitArrangementDialog(state.splitNavigationSide,
-        { side -> prefs.update { it.copy(splitNavigationSide=side) } },{ open=false })
+    SplitArrangementDialog(state.splitNavigationSide, { side -> prefs.update { it.copy(splitNavigationSide=side) } }, close)
 }
 
 @Composable
@@ -61,7 +66,8 @@ internal fun SplitArrangementDialog(side: NavigationSide, select: (NavigationSid
 @Composable
 internal fun SplitArrangementSettings() {
     val context=LocalContext.current
-    val state by Prefs.get(context).state.collectAsState()
+    val prefs=remember(context) { Prefs.get(context) }
+    val state by prefs.state.collectAsState()
     Section("分割排列（手動）") {
         Text("排列目標：${state.splitNavigationSide.label}",color=LocalPalette.current.text,fontSize=20.sp)
         Hint("預設希望導航在左、控制在右。選擇只作排列指引；位置與比例仍由原廠系統控制，請目視確認。",essential=true)
