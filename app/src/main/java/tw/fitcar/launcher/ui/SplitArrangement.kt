@@ -46,6 +46,7 @@ internal fun SplitArrangementDialog(side: NavigationSide, select: (NavigationSid
             PrimaryButton("開啟車機側欄",{
                 if (openSidebar!=null) openSidebar()
                 else try {
+                    tw.fitcar.launcher.nav.SplitPlacement.begin()
                     context.startActivity(tw.fitcar.launcher.nav.CompanionEntry.intent(context))
                     close()
                 } catch (_: Exception) {

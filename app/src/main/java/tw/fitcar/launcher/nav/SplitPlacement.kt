@@ -15,6 +15,9 @@ object SplitPlacement {
     fun begin() { observation.value=null }
     fun record(target: NavigationSide, pane: PaneSide) {
         val old=observation.value
+        // Returning to the desktop must not erase the last useful split observation.
+        // Reports carry its timestamp and explicitly say it is not a current-screen guarantee.
+        if (pane==PaneSide.UNKNOWN && old!=null && old.pane!=PaneSide.UNKNOWN) return
         if (old==null || old.target!=target || old.pane!=pane) observation.value=Observation(target,pane,System.currentTimeMillis())
     }
     fun describe(target: NavigationSide, pane: PaneSide): String = target.label+"；"+when(pane) {

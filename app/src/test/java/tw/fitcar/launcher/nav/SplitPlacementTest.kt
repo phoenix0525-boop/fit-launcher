@@ -28,4 +28,16 @@ class SplitPlacementTest {
         assertTrue(text.contains("目視確認"))
         assertFalse(text.contains("導航已在左"))
     }
+    @Test fun keepsLastValidObservationAfterLeavingSplitUntilNextAttempt() {
+        val before=SplitPlacement.observation.value
+        try {
+            SplitPlacement.begin()
+            SplitPlacement.record(NavigationSide.LEFT,PaneSide.RIGHT)
+            val valid=SplitPlacement.observation.value
+            SplitPlacement.record(NavigationSide.LEFT,PaneSide.UNKNOWN)
+            assertEquals(valid,SplitPlacement.observation.value)
+            SplitPlacement.begin()
+            assertNull(SplitPlacement.observation.value)
+        } finally { SplitPlacement.observation.value=before }
+    }
 }
