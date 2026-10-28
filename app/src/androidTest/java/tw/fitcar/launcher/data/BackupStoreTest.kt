@@ -32,4 +32,19 @@ class BackupStoreTest {
             LyricsRepository.setEnabled(c,oldLyrics)
         }
     }
+    @Test fun splitTargetPersistsAndRestoresWithoutReplacingOtherSettings() {
+        val c=InstrumentationRegistry.getInstrumentation().targetContext
+        val before=BackupStore.snapshot(c)
+        try {
+            Prefs.get(c).update { it.copy(splitNavigationSide=tw.fitcar.launcher.nav.NavigationSide.RIGHT) }
+            Prefs.get(c).reload()
+            assertEquals(tw.fitcar.launcher.nav.NavigationSide.RIGHT,Prefs.get(c).state.value.splitNavigationSide)
+            val saved=BackupStore.snapshot(c)
+            val raw=SettingsBackup.encode(saved,"test","now")
+            Prefs.get(c).update { it.copy(splitNavigationSide=tw.fitcar.launcher.nav.NavigationSide.LEFT) }
+            BackupStore.apply(c,SettingsBackup.decode(raw))
+            assertEquals(tw.fitcar.launcher.nav.NavigationSide.RIGHT,Prefs.get(c).state.value.splitNavigationSide)
+            assertEquals(saved,BackupStore.snapshot(c))
+        } finally { BackupStore.apply(c,BackupPlan(before)) }
+    }
 }
