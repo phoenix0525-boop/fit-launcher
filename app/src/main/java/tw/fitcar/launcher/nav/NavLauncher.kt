@@ -35,6 +35,7 @@ object NavLauncher {
         val split = !forceFullscreen && state.navOpenMode == NavOpenMode.SPLIT_FIRST && state.lastSplitResult != false
         return try {
             if (split) {
+                SplitPlacement.begin()
                 val intent = Intent(context, CompanionActivity::class.java)
                     .putExtra(CompanionActivity.EXTRA_LAUNCH_NAV, true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

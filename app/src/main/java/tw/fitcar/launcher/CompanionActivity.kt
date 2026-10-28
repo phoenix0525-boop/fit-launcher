@@ -53,6 +53,7 @@ class CompanionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { CompanionRoot() }
+        window.decorView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> recordPlacement() }
         handleLaunch(intent)
     }
 
@@ -64,6 +65,7 @@ class CompanionActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         MediaRepository.refresh(this)
+        main.post { recordPlacement() }
     }
 
     private fun handleLaunch(intent: Intent?) {
@@ -78,7 +80,30 @@ class CompanionActivity : ComponentActivity() {
         }, 350)
     }
 
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode,newConfig)
+        main.post { recordPlacement() }
+    }
+
+    override fun onDestroy() {
+        main.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    private fun recordPlacement() {
+        val metrics=android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val view=window.decorView
+        val location=IntArray(2)
+        view.getLocationOnScreen(location)
+        val pane=tw.fitcar.launcher.nav.SplitGeometry.paneSide(isInMultiWindowMode,
+            metrics.widthPixels,metrics.heightPixels,location[0],view.width,view.height)
+        tw.fitcar.launcher.nav.SplitPlacement.record(Prefs.get(this).state.value.splitNavigationSide,pane)
+    }
+
     private fun checkSplit() {
+        recordPlacement()
         val metrics = android.util.DisplayMetrics()
         @Suppress("DEPRECATION")
         windowManager.defaultDisplay.getRealMetrics(metrics)
@@ -91,9 +116,7 @@ class CompanionActivity : ComponentActivity() {
     }
 
     private fun goHome() {
-        startActivity(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        startActivity(tw.fitcar.launcher.nav.DesktopReturn.intent(this))
         finishAndRemoveTask()
     }
 
@@ -136,10 +159,7 @@ class CompanionActivity : ComponentActivity() {
                 Modifier.fillMaxSize().background(palette.bg).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Clock(Modifier.weight(1f), big = false)
-                    SecondaryButton("桌面", { goHome() }, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) })
-                }
+                tw.fitcar.launcher.ui.CompanionHeader { goHome() }
                 MusicCard(music, media, actions, emptyList(), Modifier.fillMaxWidth().weight(1.2f))
                 ShortcutsCard(slots, actions, Modifier.fillMaxWidth().weight(0.8f))
             }

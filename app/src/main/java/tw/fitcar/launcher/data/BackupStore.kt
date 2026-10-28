@@ -14,7 +14,7 @@ object BackupStore {
             "manual_theme" to (if(s.display.manualTheme==ThemeChoice.NIGHT) "night" else "day"),
             "manual_brightness" to s.display.manualBrightness, "smooth_transition" to s.display.smoothTransition,
             "experimental_split" to (s.navOpenMode==NavOpenMode.SPLIT_FIRST), "media_mode" to (if(s.mediaMode==MediaMode.FIXED) "fixed" else "follow"),
-            "shortcut_pages" to s.shortcutPages,
+            "shortcut_pages" to s.shortcutPages, "split_navigation_side" to s.splitNavigationSide.id,
             "accent_theme" to s.accentTheme, "visual_style" to s.visualStyle, "speed_alert_kmh" to s.speedAlertKmh)
         listOf("bind_navigation" to s.bindings.navigation,"bind_music" to s.bindings.music,"bind_shield" to s.bindings.shield,"home_address" to s.homeAddress,"work_address" to s.workAddress).forEach { (k,v) -> if(v!=null) main[k]=v }
         s.shortcuts.forEachIndexed { i,v -> if(v!=null) main["shortcut_$i"]=v }
@@ -37,7 +37,7 @@ object BackupStore {
             }
         } + "歌詞：關閉，需重新同意" + "亮度：回到依時段排程"
     }
-    private fun label(k: String) = mapOf("bind_navigation" to "導航App", "bind_music" to "播放器", "bind_shield" to "測速App", "home_address" to "回家地址", "work_address" to "公司地址", "shortcut_pages" to "捷徑頁數", "clarity" to "卡片透明度")[k] ?: k
+    private fun label(k: String) = mapOf("bind_navigation" to "導航App", "bind_music" to "播放器", "bind_shield" to "測速App", "home_address" to "回家地址", "work_address" to "公司地址", "shortcut_pages" to "捷徑頁數", "clarity" to "卡片透明度", "split_navigation_side" to "分割排列目標")[k] ?: k
     private fun SharedPreferences.Editor.putValue(k: String, v: Any) { when (v) {
         is Boolean -> putBoolean(k,v); is Int -> putInt(k,v); is String -> putString(k,v)
         else -> error("不支援的設定型別")

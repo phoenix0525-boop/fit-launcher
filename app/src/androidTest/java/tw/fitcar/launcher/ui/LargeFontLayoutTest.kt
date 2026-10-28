@@ -706,4 +706,37 @@ class LargeFontLayoutTest {
         compose.onNodeWithText("工具程式3").assertDoesNotExist()
         screenshot("apps-search-125")
     }
+    @Test fun splitArrangementChoicesAndWarningAt125Percent() {
+        val side=androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.nav.NavigationSide.LEFT)
+        var opened=0
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(DayPalette) { SplitArrangementDialog(side.value,{ side.value=it },{}, { opened++ }) }
+            }
+        }
+        listOf("分割排列指引","導航在左／控制在右","導航在右／控制在左","開啟車機側欄","分割／多工","完成").forEach(::fullLabel)
+        fullLabel("只記住排列目標，不會自動搬移視窗。")
+        compose.onNodeWithText("開啟車機側欄").performClick()
+        compose.runOnIdle { assertTrue(opened==1) }
+        compose.onNodeWithText("導航在右／控制在左").performClick()
+        compose.runOnIdle { assertTrue(side.value==tw.fitcar.launcher.nav.NavigationSide.RIGHT) }
+        compose.onNodeWithText("導航在左／控制在右").performClick()
+        screenshot("split-arrangement-125",dialog=true)
+    }
+    @Test fun narrowCompanionHeaderReturnsDirectlyAt125Percent() {
+        var returned=0
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f),LocalDriving provides true) {
+                FitTheme(DayPalette) {
+                    Column(Modifier.width(320.dp).padding(12.dp)) { CompanionHeader { returned++ } }
+                }
+            }
+        }
+        listOf("排列","桌面").forEach(::fullLabel)
+        compose.onNodeWithText("桌面").performClick()
+        compose.runOnIdle { assertTrue(returned==1) }
+        screenshot("companion-header-125")
+    }
 }

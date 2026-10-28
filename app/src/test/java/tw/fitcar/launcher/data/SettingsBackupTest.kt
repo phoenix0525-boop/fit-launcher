@@ -35,4 +35,11 @@ class SettingsBackupTest {
         val withOverride = mapOf("fit_launcher" to mapOf<String, Any>("manual_override" to true, "shortcut_pages" to 2))
         assertFalse(SettingsBackup.encode(withOverride, "t", "now").contains("manual_override"))
     }
+    @Test fun splitTargetRoundTripsAndRejectsUnknownSides() {
+        listOf("left","right").forEach { side ->
+            val m=mapOf("fit_launcher" to mapOf<String,Any>("split_navigation_side" to side))
+            assertEquals(m,SettingsBackup.decode(SettingsBackup.encode(m,"t","now")).groups)
+        }
+        assertTrue(runCatching { SettingsBackup.encode(mapOf("fit_launcher" to mapOf("split_navigation_side" to "top")),"t","now") }.isFailure)
+    }
 }
