@@ -354,6 +354,8 @@ class LargeFontLayoutTest {
         compose.onNodeWithText("排列").performClick()
         fullLabel("分割排列指引")
         compose.onNodeWithText("更多工具").assertDoesNotExist()
+        compose.onAllNodes(isDialog()).assertCountEquals(1)
+        screenshot("home-split-arrangement-125", dialog = true)
         compose.onNodeWithText("完成").performClick()
         compose.onNodeWithText("自動縮放").performClick()
         fullLabel("手動縮放")
