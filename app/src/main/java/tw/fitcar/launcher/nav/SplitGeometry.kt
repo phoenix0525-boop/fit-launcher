@@ -8,7 +8,7 @@ object SplitGeometry {
     /** Anchor our pane to a display edge; a tall floating window or invalid geometry is not a side. */
     fun paneSide(inMultiWindow: Boolean, displayWidth: Int, displayHeight: Int, left: Int, paneWidth: Int, paneHeight: Int): PaneSide {
         if (!inMultiWindow || !isSideBySide(displayWidth,displayHeight,paneWidth,paneHeight)) return PaneSide.UNKNOWN
-        val tolerance=maxOf(24,displayWidth*0.03).toInt()
+        val tolerance=maxOf(24.0,displayWidth*0.03).toInt()
         val right=left.toLong()+paneWidth
         if (left < -tolerance || right > displayWidth+tolerance) return PaneSide.UNKNOWN
         return when {

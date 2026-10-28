@@ -15,7 +15,7 @@ object SplitPlacement {
     fun begin() { observation.value=null }
     fun record(target: NavigationSide, pane: PaneSide) {
         val old=observation.value
-        if (old?.target!=target || old.pane!=pane) observation.value=Observation(target,pane,System.currentTimeMillis())
+        if (old==null || old.target!=target || old.pane!=pane) observation.value=Observation(target,pane,System.currentTimeMillis())
     }
     fun describe(target: NavigationSide, pane: PaneSide): String = target.label+"；"+when(pane) {
         PaneSide.LEFT -> "觀察到本程式側欄在左；導航位置仍需目視確認。"

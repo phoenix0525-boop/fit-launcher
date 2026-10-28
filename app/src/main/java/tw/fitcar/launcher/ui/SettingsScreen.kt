@@ -515,12 +515,13 @@ internal fun AboutSection(data: SettingsData) {
         }
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.17：側欄直接回車機桌面、左右排列指引與側欄位置觀察；實體 Home 及原廠音量仍未解。", size = 16)
         Hint("• 0.4.16：地圖下方按鈕精簡、播放鍵加大、夜間畫面較不刺眼、所有 App 可搜尋並列出最近使用。", size = 16)
         Hint("• 0.4.15：可以匯出／匯入設定；行車時卡片自動變清楚；夜間可只把桌面調暗。", size = 16)
-        Hint("• 0.4.14：淺色蜘蛛人主題、各頁插畫、夜間地圖路名更清楚。", size = 16)
         var older by remember { mutableStateOf(false) }
         SecondaryButton(if (older) "收起更早版本" else "更早版本", { older = !older })
         if (older) {
+            Hint("• 0.4.14：淺色蜘蛛人主題、各頁插畫、夜間地圖路名更清楚。", size = 14)
             Hint("• 0.4.13：沒有歌詞時以淡化專輯封面當播放卡底圖；選 Google 導航時顯示導航提示，地圖行進方向朝上。", size = 14)
             Hint("• 0.4.12：可自訂桌布、夜間圖片變暗。", size = 14)
             Hint("• 0.4.8–0.4.11：布丁狗、蜘蛛人主題與插畫。", size = 14)
