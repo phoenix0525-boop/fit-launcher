@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 26
         targetSdk = 34
-        versionCode = 21
-        versionName = "0.4.14"
+        versionCode = 23
+        versionName = "0.4.16"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -23,7 +23,18 @@ android {
     val fitPassword = System.getenv("FIT_KEYSTORE_PASSWORD")
     val fitAlias = System.getenv("FIT_KEY_ALIAS")
     val hasFitSigning = !fitStorePath.isNullOrBlank() && !fitPassword.isNullOrBlank() && !fitAlias.isNullOrBlank()
+    val testPath = System.getenv("FIT_TEST_KEYSTORE_PATH")
+    val testPassword = System.getenv("FIT_TEST_KEYSTORE_PASSWORD")
+    val testAlias = System.getenv("FIT_TEST_KEY_ALIAS")
+    val hasTestSigning = !testPath.isNullOrBlank() && !testPassword.isNullOrBlank() && !testAlias.isNullOrBlank()
     signingConfigs {
+        if (hasTestSigning) create("fitTest") {
+            storeFile = file(testPath!!)
+            storePassword = testPassword
+            keyAlias = testAlias
+            keyPassword = testPassword
+            storeType = "PKCS12"
+        }
         if (hasFitSigning) create("fitRelease") {
             storeFile = file(fitStorePath!!)
             storePassword = fitPassword
@@ -33,6 +44,7 @@ android {
         }
     }
     buildTypes {
+        debug { if (hasTestSigning) signingConfig = signingConfigs.getByName("fitTest") }
         release {
             // Production vehicle head unit is arm64. Debug keeps x86/x86_64 for emulator tests.
             ndk {
@@ -82,6 +94,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:runner:1.6.2")

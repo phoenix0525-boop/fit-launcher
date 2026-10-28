@@ -13,6 +13,12 @@ class UpdatePolicyTest {
         assertFalse(UpdatePolicy.valid(13, 12, UpdatePolicy.MAX_BYTES + 1, hash, UpdatePolicy.CERTIFICATE, url))
         assertFalse(UpdatePolicy.valid(13, 12, 1000, "wrong", UpdatePolicy.CERTIFICATE, url))
     }
+    @Test fun nonProductionCertificatesNeverQualifyForAutomaticUpdates() {
+        // Includes the delivered 0.4.14 Debug certificate. No test-certificate allowlist.
+        listOf("945997E4EB8E3D19A79D5CAB2E841762DF5D9B0AB57AEF320BE0591BDC693917", "310A8779E7E321D3187FBBED280725BFBB36A7EB7FDD39A9D39F487221961108", "41715EE27F2DBEAA947273DF74F2C458BF950A79E59187F768A957B0DEA3ED99", "0C367B3CB11B164EA1CC77C03551D75FC8E8DE817CF801D8C2788F5671191984", "F".repeat(64)).forEach {
+            assertFalse(UpdatePolicy.valid(22, 21, 1000, hash, it, url))
+        }
+    }
     @Test fun lookalikeHostsOtherReposAndTraversalAreRejected() {
         listOf(url.replace("https:", "http:"), url.replace("github.com", "github.com.attacker.test"), url.replace("phoenix0525-boop", "another-owner"), url.replace("releases/download/", "releases/download/../"), "$url?token=untrusted", url.replace("github.com", "user@github.com"), url.replace("vehicle-launcher.apk", "%2e%2e/file.apk")).forEach { assertFalse(it, UpdatePolicy.trustedAsset(it)) }
     }

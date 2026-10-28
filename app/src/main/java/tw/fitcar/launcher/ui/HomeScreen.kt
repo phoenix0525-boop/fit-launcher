@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,6 +94,8 @@ class HomeActions(
     val goWork: (() -> Unit)? = null,
     /** 音樂卡快速切換：開啟指定套件的播放器。 */
     val openPlayer: ((String) -> Unit)? = null,
+    /** 狀態列「目前位置」在未授權時可直接請求定位。 */
+    val requestLocation: (() -> Unit)? = null,
 )
 
 @Composable
@@ -124,7 +127,9 @@ fun HomeScreen(
     val wallpaperStore = remember(context) { tw.fitcar.launcher.wallpaper.WallpaperRepository.get(context) }
     val wallpaperState by wallpaperStore.state.collectAsState()
     val wallpaper = wallpaperOverride ?: wallpaperState
-    val mapControls = remember { MapPanelControls() }
+    val mapPrefs = context.getSharedPreferences("map_preferences", android.content.Context.MODE_PRIVATE)
+    val backupRevision by tw.fitcar.launcher.data.BackupStore.revision.collectAsState()
+    val mapControls = remember(backupRevision) { MapPanelControls(mapPrefs.getBoolean("auto_zoom",true)) { mapPrefs.edit().putBoolean("auto_zoom",it).apply() } }
     LaunchedEffect(wallpaperStore) { if (wallpaperOverride == null) wallpaperStore.load() }
     BoxWithConstraints(Modifier.fillMaxSize().background(p.bg)) {
         val spec = remember(maxWidth, maxHeight) { AdaptiveLayout.of(maxWidth.value, maxHeight.value) }
@@ -202,10 +207,11 @@ internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions, s
         // 時鐘下方放狀態小標籤，不另外佔用狀態列寬度
         Column(if (spec.compactChrome) Modifier.widthIn(min = 120.dp) else Modifier.width(264.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Clock()
-            StatusIndicatorRow()
+            // 行車中隱藏狀態小標籤（離線、藍牙等），減少一瞥要看的東西
+            if (!LocalDriving.current) StatusIndicatorRow()
         }
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
-            if (spec.showLocationCard) CurrentLocationCard(gps, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
+            if (spec.showLocationCard) CurrentLocationCard(gps, Modifier.weight(1f), actions.requestLocation) else Spacer(Modifier.weight(1f))
             SpeedChip(gps, speedAlertKmh)
         }
         WeatherChip()
@@ -229,8 +235,9 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
     val fresh = remember(tick, gps) { gps.isFresh() }
     var alert by remember { mutableStateOf(false) }
     LaunchedEffect(gps, fresh, alertKmh) { alert = tw.fitcar.launcher.system.SpeedAlert.next(alert, gps.speedKmh, fresh, alertKmh) }
-    val bg = if (alert) p.danger else p.surfaceStrong
-    val fg = if (alert) contrastInk(p.danger) else p.text
+    // 超速改用橘色警示，與品牌紅（主要按鈕、選取）區分
+    val bg = if (alert) WarningOrange else p.surfaceStrong
+    val fg = if (alert) contrastInk(WarningOrange) else p.text
     Row(
         Modifier.clip(RadiusMd).background(bg).border(1.dp, p.line, RadiusMd).padding(horizontal = 14.dp, vertical = 6.dp)
             .semantics { contentDescription = if (alert) "GPS 車速超過 $alertKmh 公里" else "GPS 車速" },
@@ -251,7 +258,7 @@ private fun SpeedChip(gps: GpsState, alertKmh: Int) {
                     fresh -> gps.accuracyM?.let { "精度 ±%.0f m".format(it) } ?: "已定位"
                     else -> "GPS 尚未定位"
                 },
-                color = if (alert) fg else p.textSoft, fontSize = 13.sp, maxLines = 1,
+                color = if (alert) fg else p.textSoft, fontSize = TypeScale.NOTE.sp, maxLines = 1,
             )
         }
     }
@@ -270,26 +277,70 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
             LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
             GoogleGuidanceCard(guidanceOverride ?: guidance, notificationAccess, guidanceNow ?: now,
                 actions.grantNotificationAccess, Modifier.weight(1f).fillMaxWidth())
-        } else mapContent(gps, Modifier.weight(1f).fillMaxWidth())
+        } else Box(Modifier.weight(1f).fillMaxWidth()) {
+            mapContent(gps, Modifier.fillMaxSize())
+            // 縮放與回到定位改成浮在地圖右下角，不再佔用下方工具列與地圖高度
+            MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))
+        }
         Spacer(Modifier.height(10.dp))
-        FlowRow(Modifier.semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // 下方只留最常用的動作；其餘收進「更多」，避免換成兩排吃掉地圖高度
+        Row(Modifier.fillMaxWidth().semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
-            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）
-            if (hasHome) actions.goHome?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
-            if (hasWork) actions.goWork?.let { SecondaryButton("去公司", it) }
-            SecondaryButton("Google 導航", actions.openGoogleNav ?: { openGoogleNavigation(context) })
-            // 更換導航 App 移到 設定 → App 綁定，主畫面少一顆不常用的按鈕
-            SystemSplitShortcut()
-            if (!googleSelected) {
-                val controls = LocalMapControls.current
-                SecondaryButton(if (controls.autoZoom) "自動縮放" else "手動縮放", { controls.toggleZoom() })
-                SecondaryButton("回到目前位置", { controls.returnToPosition() })
-            }
+            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）；小螢幕放進「更多」避免擠壓
+            val inline = !LocalLayoutSpec.current.compactChrome
+            val home = actions.goHome.takeIf { hasHome }
+            val work = actions.goWork.takeIf { hasWork }
+            if (inline) home?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
+            if (inline) work?.let { SecondaryButton("去公司", it) }
+            Spacer(Modifier.weight(1f))
             UpdateIndicator()
+            MoreToolsButton(actions.openGoogleNav ?: { openGoogleNavigation(context) }, if (inline) null else home, if (inline) null else work)
         }
     }
 }
 
+}
+
+/** 地圖右下角的浮動控制：行車中只留「回到目前位置」，停車時才可切換縮放模式。 */
+@Composable
+private fun MapFloatingControls(modifier: Modifier) {
+    val controls = LocalMapControls.current
+    val driving = LocalDriving.current
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!driving) MapPill(if (controls.autoZoom) "自動縮放" else "手動縮放") { controls.toggleZoom() }
+        MapPill("回到目前位置") { controls.returnToPosition() }
+    }
+}
+
+@Composable
+private fun MapPill(text: String, onClick: () -> Unit) {
+    val p = LocalPalette.current
+    Text(text,
+        Modifier.heightIn(min = 56.dp).clip(RadiusMd).background(p.surfaceStrong.copy(alpha = .94f)).border(1.dp, p.line, RadiusMd)
+            .combinedClickableCompat(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp),
+        color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 17.sp, maxLines = 1)
+}
+
+/** 不常用的工具集中在「更多」：Google 導航、系統分割、桌面調暗。 */
+@Composable
+private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
+    var open by remember { mutableStateOf(false) }
+    val p = LocalPalette.current
+    SecondaryButton("更多", { open = true })
+    if (open) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { open = false }, containerColor = p.surface,
+        title = { Text("更多工具", color = p.text, fontSize = 22.sp) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                goHome?.let { go -> SecondaryButton("回家", { open = false; go() }, Modifier.fillMaxWidth()) }
+                goWork?.let { go -> SecondaryButton("去公司", { open = false; go() }, Modifier.fillMaxWidth()) }
+                SecondaryButton("Google 導航", { open = false; openGoogle() }, Modifier.fillMaxWidth())
+                SystemSplitShortcut()
+                DesktopDimShortcut()
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = { open = false }) { Text("關閉", color = p.accent, fontSize = 18.sp) } },
+    )
 }
 
 /** 天氣（中央氣象署最近測站），點擊看 5 天紀錄；未啟用時不顯示。 */
@@ -317,7 +368,7 @@ private fun WeatherChip() {
                 compact -> cur.weather ?: cur.name
                 else -> listOfNotNull(cur.weather, cur.name).joinToString(" · ")
             },
-            color = p.textSoft, fontSize = 12.sp, maxLines = 1,
+            color = p.textSoft, fontSize = TypeScale.NOTE.sp, maxLines = 1,
         )
     }
     if (open) {
@@ -332,7 +383,7 @@ private fun WeatherChip() {
                             "${cur.name} 測站" + (w.current?.distanceKm?.let { "（距離約 %.0f 公里）".format(it) } ?: "（未定位，使用桃園測站）"),
                             color = p.text, fontSize = 16.sp,
                         )
-                        Hint("觀測時間 ${cur.obsTime.replace('T', ' ').take(16)}", size = 13)
+                        Hint("觀測時間 ${cur.obsTime.replace('T', ' ').take(16)}", size = 14)
                     }
                     w.error?.let { Text(it, color = p.danger, fontSize = 14.sp) }
                     Text("近 5 天紀錄", color = p.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
@@ -345,7 +396,7 @@ private fun WeatherChip() {
                             color = p.text, fontSize = 15.sp,
                         )
                     }
-                    Hint("資料來源：中央氣象署開放資料平臺", size = 12)
+                    Hint("資料來源：中央氣象署開放資料平臺", size = 14)
                 }
             },
             confirmButton = { androidx.compose.material3.TextButton(onClick = { open = false }) { Text("關閉", color = p.accent, fontSize = 17.sp) } },
@@ -384,7 +435,7 @@ private fun StatusIndicatorRow() {
                 item.label,
                 Modifier.clip(RadiusSm).background(if (item.active) p.accentSoft else p.surfaceMuted).padding(horizontal = 6.dp, vertical = 2.dp),
                 color = when { item.warning -> p.danger; item.active -> p.accentStrong; else -> p.textSoft },
-                fontSize = 11.sp, maxLines = 1,
+                fontSize = TypeScale.NOTE.sp, maxLines = 1,
             )
         }
     }
@@ -414,7 +465,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         if (compactTitle) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f)) {
-                    if (!lyricsEnabled) Text(media.playerName ?: music?.label ?: "音樂", color = p.textSoft, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (!lyricsEnabled) Text(media.playerName ?: music?.label ?: "音樂", color = p.textSoft, fontSize = TypeScale.NOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (lyricsEnabled) Text(media.artist ?: "（App 未提供歌手）", color = p.textSoft, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -474,7 +525,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     if (!lyricsEnabled) Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving || lyricsEnabled) 1 else 2, overflow = TextOverflow.Ellipsis)
                     if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else LyricsLines(requireNotNull(lyricResult), media) }
-                    else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 13)
+                    else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 14)
                 }
             }
         }
@@ -485,38 +536,41 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
                 val next = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_NEXT)
-                ControlButton(Glyph.PREV, prev, actions.previous)
-                if (media.canSeek) SeekButton("−15", -tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
+                // 車用觸控目標：一般畫面播放鍵 64 dp、其他 56 dp；高度不足的小螢幕維持 48 dp
+                val roomy = !LocalLayoutSpec.current.shortHeight
+                val ctl = if (roomy) 56.dp else 48.dp
+                ControlButton(Glyph.PREV, prev, actions.previous, ctl)
+                if (media.canSeek) SeekButton("−15", -tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions, ctl)
                 Box(
-                    Modifier.size(48.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause)
+                    Modifier.size(if (roomy) 64.dp else 48.dp).clip(CircleShape).background(p.accent).combinedClickableCompat(onClick = actions.playPause)
                         .semantics { contentDescription = "播放／暫停" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = 24.dp, tint = p.onAccent)
+                    GlyphIcon(if (media.isPlaying) Glyph.PAUSE else Glyph.PLAY, size = if (roomy) 32.dp else 24.dp, tint = p.onAccent)
                 }
-                if (media.canSeek) SeekButton("+15", tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions)
-                ControlButton(Glyph.NEXT, next, actions.next)
-                VolumeControl()
+                if (media.canSeek) SeekButton("+15", tw.fitcar.launcher.system.SeekStep.STEP_MS, media, actions, ctl)
+                ControlButton(Glyph.NEXT, next, actions.next, ctl)
+                VolumeControl(ctl)
             }
         } else VolumeControl()
     }
 }
 
 @Composable
-private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit) {
+private fun ControlButton(glyph: Glyph, enabled: Boolean, onClick: () -> Unit, size: androidx.compose.ui.unit.Dp = 48.dp) {
     val p = LocalPalette.current
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp).background(p.surface, CircleShape)) {
-        GlyphIcon(glyph, size = 24.dp, tint = if (enabled) p.text else p.disabledContent)
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(size).background(p.surface, CircleShape)) {
+        GlyphIcon(glyph, size = if (size > 48.dp) 28.dp else 24.dp, tint = if (enabled) p.text else p.disabledContent)
     }
 }
 
 /** 倒退／快進 15 秒：行車中比拖曳進度條好按。 */
 @Composable
-private fun SeekButton(label: String, deltaMs: Long, media: MediaUiState, actions: HomeActions) {
+private fun SeekButton(label: String, deltaMs: Long, media: MediaUiState, actions: HomeActions, size: androidx.compose.ui.unit.Dp = 48.dp) {
     val p = LocalPalette.current
     IconButton(
         onClick = { actions.seekTo(tw.fitcar.launcher.system.SeekStep.target(media.livePosition(), deltaMs, media.durationMs)) },
-        modifier = Modifier.size(48.dp).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
+        modifier = Modifier.size(size).semantics { contentDescription = if (deltaMs < 0) "倒退 15 秒" else "快進 15 秒" },
     ) {
         Text(label, color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
     }
@@ -538,40 +592,18 @@ private fun Progress(media: MediaUiState, actions: HomeActions, compact: Boolean
     val duration = media.durationMs
     var adjust by remember { mutableStateOf(false) }
     val driving = LocalDriving.current
-    if (compact && duration > 0) {
+    // 進度條改成單純細條：不再出現 Material 滑桿的直條把手與尾端紅點（容易被看成錯誤標記）。
+    // 可拖曳的播放器停車時點一下進度條開「調整播放進度」；行車中用 ±15 秒按鈕。
+    val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+    val adjustable = media.canSeek && !driving
+    if (duration > 0) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .combinedClickableCompat(onClick = { if (media.canSeek && !driving) adjust = true })
-            .semantics { contentDescription = "播放進度，點擊調整" },
+            .combinedClickableCompat(onClick = { if (adjustable) adjust = true })
+            .semantics { contentDescription = if (adjustable) "播放進度，點擊調整" else "播放進度" },
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Hint(formatMs(position), size = 13)
-            LinearProgressIndicator(progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
-                modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape), color = p.accent, trackColor = p.surfaceMuted)
-            Hint(formatMs(duration), size = 13)
-        }
-    } else Column(Modifier.fillMaxWidth()) {
-        if (media.canSeek) {
-            Slider(
-                // 行車中不可拖曳（容易誤觸），改用 ±15 秒按鈕
-                enabled = !LocalDriving.current,
-                value = if (dragging) dragValue else (position.toFloat() / duration).coerceIn(0f, 1f),
-                onValueChange = { dragging = true; dragValue = it },
-                onValueChangeFinished = { actions.seekTo((dragValue * duration).toLong()); dragging = false },
-                colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent, inactiveTrackColor = p.surfaceMuted,
-                    disabledThumbColor = p.accent, disabledActiveTrackColor = p.accent, disabledInactiveTrackColor = p.surfaceMuted),
-            )
-        } else if (duration > 0) {
-            LinearProgressIndicator(
-                progress = { (position.toFloat() / duration).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp).height(6.dp).clip(CircleShape),
-                color = p.accent, trackColor = p.surfaceMuted,
-            )
-        }
-        if (duration > 0) {
-            Row(Modifier.fillMaxWidth()) {
-                Hint(formatMs(position), size = 13)
-                Spacer(Modifier.weight(1f))
-                Hint(if (media.canSeek) formatMs(duration) else "${formatMs(duration)}（不支援拖曳）", size = 13)
-            }
+            if (!compact) Hint(formatMs(position), size = 14)
+            SimpleTrack(fraction, Modifier.weight(1f))
+            if (!compact) Hint(if (media.canSeek) formatMs(duration) else "${formatMs(duration)}（不支援拖曳）", size = 14)
         }
     }
     if (adjust) androidx.compose.material3.AlertDialog(
@@ -582,6 +614,15 @@ private fun Progress(media: MediaUiState, actions: HomeActions, compact: Boolean
             modifier = Modifier.semantics { contentDescription = "調整播放進度滑桿" }) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = { adjust = false }) { Text("關閉") } })
 
+}
+
+/** 無把手、無尾端停止點的細進度條。 */
+@Composable
+private fun SimpleTrack(fraction: Float, modifier: Modifier) {
+    val p = LocalPalette.current
+    Box(modifier.height(6.dp).clip(CircleShape).background(p.surfaceMuted)) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).clip(CircleShape).background(p.accent))
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -626,7 +667,8 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
     BoxWithConstraints(modifier) {
     val iconSize = (maxHeight - 12.dp).coerceIn(24.dp, 52.dp)
     Column(
-        Modifier.fillMaxSize().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd)
+        Modifier.fillMaxSize().clip(RadiusMd).background(if (slot.isEmpty) p.surfaceStrong.copy(alpha = .6f) else p.surfaceStrong)
+            .then(if (slot.isEmpty) Modifier.dashedBorder(p.disabledContent, 16.dp) else Modifier.border(1.dp, p.line, RadiusMd))
             .semantics { contentDescription = when { slot.isEmpty -> "新增捷徑"; slot.isMissing -> "App 已移除，點擊重新選擇"; else -> slot.entry?.label.orEmpty() } }
             .combinedClickableCompat(
                 onClick = {
@@ -643,7 +685,8 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
     ) {
         when {
             slot.isEmpty -> {
-                GlyphIcon(Glyph.PLUS, size = iconSize, tint = p.textSoft)
+                // 空格：虛線框＋「＋」，一看就知道可以新增
+                GlyphIcon(Glyph.PLUS, size = (iconSize * 0.7f), tint = p.disabledContent)
             }
             slot.isMissing -> {
                 GlyphIcon(Glyph.PLUS, size = iconSize, tint = p.danger)
@@ -660,3 +703,10 @@ private fun ShortcutTile(slot: SlotView, index: Int, actions: HomeActions, modif
 @OptIn(ExperimentalFoundationApi::class)
 fun Modifier.combinedClickableCompat(onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
     this.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+
+/** 虛線外框（空捷徑格用）。 */
+private fun Modifier.dashedBorder(color: androidx.compose.ui.graphics.Color, radius: androidx.compose.ui.unit.Dp): Modifier = this.drawBehind {
+    val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx(),
+        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx())))
+    drawRoundRect(color = color, style = stroke, cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx(), radius.toPx()))
+}

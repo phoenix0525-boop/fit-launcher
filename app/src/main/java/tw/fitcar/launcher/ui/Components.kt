@@ -43,6 +43,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.semantics.semantics
+
+/**
+ * 統一字級（sp，125% 字體時再乘 1.25）：標題 28、主要 22、內文 20、次要 16、註記 14。
+ * 新畫面一律從這五級挑選；行車中的主要文字不得低於 19.2 sp。
+ */
+object TypeScale {
+    const val TITLE = 28
+    const val MAIN = 22
+    const val BODY = 20
+    const val SECONDARY = 16
+    const val NOTE = 14
+}
 
 val RadiusLg = RoundedCornerShape(24.dp)
 val RadiusMd = RoundedCornerShape(16.dp)
@@ -59,8 +72,8 @@ internal enum class ThemeArtPose(val drawable: Int, val description: String, val
 @Composable
 internal fun ThemeArtwork(size: Dp = 64.dp, pose: ThemeArtPose = ThemeArtPose.SHORTCUTS) {
     val spider = LocalPalette.current.artworkStyle == VisualStyle.SPIDERMAN
-    Image(painter = androidx.compose.ui.res.painterResource(if (spider) pose.spiderDrawable else pose.drawable),
-        contentDescription = if (spider) pose.spiderDescription else pose.description, modifier = Modifier.size(size).clip(RadiusSm))
+    LimitedThemeImage(if (spider) pose.spiderDrawable else pose.drawable,
+        if (spider) pose.spiderDescription else pose.description, Modifier.size(size).clip(RadiusSm))
 }
 
 /** 原型的卡片：細分隔線、適度圓角、無陰影特效。 */
@@ -72,8 +85,12 @@ fun FitCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
+    val effectiveOpacity = effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha)
+    val wallpaperOpacity = effectiveCardOpacity(.96f)
+    val actualOpacity = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f
     val frame = modifier.clip(RadiusLg)
-        .background(p.surface.copy(alpha = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else if (LocalWallpaperActive.current) .96f else 1f))
+         .semantics { this[CardOpacityKey] = actualOpacity }
+        .background(p.surface.copy(alpha = actualOpacity))
         .border(1.dp, p.line, RadiusLg)
     if (backgroundContent == null) Column(frame.padding(padding), content = content)
     else Box(frame) {
@@ -86,7 +103,7 @@ fun FitCard(
 fun CardTitle(text: String, modifier: Modifier = Modifier, trailing: @Composable RowScope.() -> Unit = {}) {
     val p = LocalPalette.current
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(text, color = p.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(text, color = p.text, fontSize = TypeScale.MAIN.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         trailing()
     }
 }
@@ -158,9 +175,15 @@ fun AppIcon(drawable: Drawable?, size: Dp, modifier: Modifier = Modifier) {
     val renderedBitmap = bitmap
     if (renderedBitmap != null) {
         Image(bitmap = renderedBitmap, contentDescription = null, modifier = modifier.size(size))
+    } else if (drawable != null) {
+        // 背景轉換中：保留空白位置，不畫灰色方塊（看起來像還在載入或壞掉）
+        Box(modifier.size(size))
     } else {
+        // 沒有圖示或轉換失敗：通用 App 圖示
         val p = LocalPalette.current
-        Box(modifier.size(size).clip(RadiusMd).background(p.surfaceMuted))
+        Box(modifier.size(size).clip(RadiusMd).background(p.surfaceMuted), contentAlignment = Alignment.Center) {
+            GlyphIcon(Glyph.GRID, size = size * 0.5f, tint = p.textSoft)
+        }
     }
 }
 
@@ -253,10 +276,12 @@ fun Pill(text: String, modifier: Modifier = Modifier, color: Color? = null) {
 fun Section(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val p = LocalPalette.current
     Column(
-        modifier.clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (LocalFullThemeActive.current) LocalThemeAppearance.current.clarity.alpha else 1f)).border(1.dp, p.line, RadiusMd).padding(18.dp),
+        modifier.clip(RadiusMd).background(p.surfaceStrong.copy(alpha = if (LocalFullThemeActive.current) effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha) else 1f)).border(1.dp, p.line, RadiusMd).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(title, color = p.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         content()
     }
 }
+
+internal val CardOpacityKey = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("CardOpacity")

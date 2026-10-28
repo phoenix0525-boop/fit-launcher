@@ -1,0 +1,49 @@
+name: Windows PowerShell script checks
+on:
+  push:
+    branches: [codex/test-key-backup-v0415]
+    paths:
+      - 'scripts/*.ps1'
+      - 'docs/test-certificate.sha256'
+      - '.github/workflows/powershell-syntax.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-powershell-syntax:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check helper scripts with Windows PowerShell 5.1 parser
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($PSVersionTable.PSVersion.Major -ne 5) { throw 'Expected Windows PowerShell 5.1' }
+          foreach ($file in Get-ChildItem -LiteralPath scripts -Filter '*.ps1' -File) {
+            $source = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8)
+            $tokens = $null
+            $parseErrors = $null
+            [void][Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) {
+              $parseErrors | ForEach-Object { Write-Host $_.Message }
+              throw ('PowerShell parse failed: ' + $file.Name)
+            }
+            Write-Host ('PASS syntax: ' + $file.Name)
+          }
+      - name: Check confirmed pin and no key generation in retry helper
+        shell: powershell
+        run: |
+          $source = [IO.File]::ReadAllText((Join-Path $PWD 'scripts/upload-existing-test-key.ps1'), [Text.Encoding]::UTF8)
+          $assignment = [regex]::Match($source, "(?m)^\x24expected\s*=\s*'([0-9A-F]{64})'\s*$")
+          if (-not $assignment.Success) { throw 'Retry helper must contain one explicit confirmed public pin' }
+          $pin = [IO.File]::ReadAllText((Join-Path $PWD 'docs/test-certificate.sha256')).Trim().Replace(':','').ToUpperInvariant()
+          if ($assignment.Groups[1].Value -ne $pin) { throw 'Retry helper pin differs from candidate certificate pin' }
+          if ($pin -eq '52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6') { throw 'Production certificate cannot be the test pin' }
+          if ($source.Contains('-genkeypair')) { throw 'Retry helper must never create another private key' }
+          $tokens = $null
+          $parseErrors = $null
+          $ast = [Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$parseErrors)
+          $tryBlocks = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.TryStatementAst] }, $true))
+          if ($tryBlocks.Count -ne 1) { throw 'Expected one try/finally cleanup block; possible duplicated helper source' }
+          Write-Host 'PASS pin matches; production pin rejected; no key generation; no duplicated cleanup block'

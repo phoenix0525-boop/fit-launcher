@@ -30,6 +30,19 @@ import java.io.File
 
 class LargeFontLayoutTest {
     @get:Rule val compose = createComposeRule()
+    private var originalMapZoom: Boolean? = null
+    @org.junit.Before fun isolatePersistedMapPreference() {
+        val c=InstrumentationRegistry.getInstrumentation().targetContext
+        val sp=c.getSharedPreferences("map_preferences",android.content.Context.MODE_PRIVATE)
+        originalMapZoom=if(sp.contains("auto_zoom")) sp.getBoolean("auto_zoom",true) else null
+        check(sp.edit().putBoolean("auto_zoom",true).commit())
+    }
+    @org.junit.After fun restorePersistedMapPreference() {
+        val c=InstrumentationRegistry.getInstrumentation().targetContext
+        val editor=c.getSharedPreferences("map_preferences",android.content.Context.MODE_PRIVATE).edit()
+        originalMapZoom?.let { editor.putBoolean("auto_zoom",it) } ?: editor.remove("auto_zoom")
+        check(editor.commit())
+    }
     private val actions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {})
     private val musicApp = AppEntry("YouTube Music", ComponentName("test.music", "Player"), null)
     private fun show(media: MediaUiState, google: Boolean = false, gps: GpsState = GpsState(), palette: Palette = DayPalette, lyricsContent: (@androidx.compose.runtime.Composable (MediaUiState) -> Unit)? = null, wallpaper: tw.fitcar.launcher.wallpaper.WallpaperState? = null) {
@@ -73,7 +86,8 @@ class LargeFontLayoutTest {
     private fun screenshot(name: String, dialog: Boolean = false) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.getExternalFilesDir(null), "$name.png")
-        val capture = if (dialog) compose.onNode(isDialog()) else compose.onRoot()
+        // 「更多」對話框內再開說明對話框時會有兩層，截最上層
+        val capture = if (dialog) compose.onAllNodes(isDialog()).onLast() else compose.onRoot()
         file.outputStream().use { capture.captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
         // Gradle removes test APKs and their app-specific files before the shell pull.
         val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
@@ -112,6 +126,7 @@ class LargeFontLayoutTest {
     }
     @Test fun splitShortcutExplainsOptionalPermissionAt125Percent() {
         show(MediaUiState())
+        compose.onNodeWithText("更多").performClick()
         compose.onNodeWithText("分割／多工").performClick()
         listOf("啟用系統快捷入口", "前往設定", "稍後").forEach(::fullLabel)
         screenshot("home-split-permission-125", dialog = true)
@@ -131,12 +146,12 @@ class LargeFontLayoutTest {
         show(MediaUiState())
         compose.onNodeWithText("前往授權").performScrollTo()
         screenshot("home-permission-125")
-        listOf("前往授權", "Google 導航", "開啟導航", "所有 App", "設定", "語音", "目前位置").forEach(::fullLabel)
+        listOf("前往授權", "更多", "開啟導航", "所有 App", "設定", "語音", "目前位置").forEach(::fullLabel)
         screenshot("home-permission-125")
     }
     @Test fun googleNotificationCardKeepsButtonsVisibleAt125Percent() {
         show(MediaUiState(), google = true)
-        listOf("Google 導航", "開啟導航", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
+        listOf("更多", "開啟導航", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
         screenshot("home-google-voice-125")
     }
     @Test fun drivingModeAt125Percent() {
@@ -182,7 +197,7 @@ class LargeFontLayoutTest {
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS))
         screenshot("home-playing-125")
-        listOf("Morphe Music", "晴天", "周杰倫", "Google 導航", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
+        listOf("Morphe Music", "晴天", "周杰倫", "更多", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
     private fun pompompurin(night: Boolean, driving: Boolean = false, spider: Boolean = false) {
@@ -195,7 +210,8 @@ class LargeFontLayoutTest {
             gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
                 if (spider) AccentTheme.HERO_RED else AccentTheme.CARAMEL, if (spider) VisualStyle.SPIDERMAN else VisualStyle.POMPOMPURIN))
         listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
-        compose.onNodeWithContentDescription(if (spider) "蜘蛛人全版背景" else "布丁狗全版背景").assertIsDisplayed()
+        // 0.4.16：主畫面不再放會被卡片遮住的大背景，只保留時鐘旁小圖
+        compose.onNodeWithContentDescription(if (spider) "蜘蛛人全版背景" else "布丁狗全版背景").assertDoesNotExist()
         compose.onNodeWithContentDescription(if (spider) "蜘蛛人蹲姿插畫" else "布丁狗主題插畫").assertDoesNotExist()
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription(if (spider) "蜘蛛人飛躍插畫" else "布丁狗趴睡插畫").assertDoesNotExist()
@@ -236,6 +252,9 @@ class LargeFontLayoutTest {
                     tw.fitcar.launcher.lyrics.LyricLine(0, "上一句測試文字"),
                     tw.fitcar.launcher.lyrics.LyricLine(5000, "目前這一行比較長也要完整顯示不能裁切"),
                     tw.fitcar.launcher.lyrics.LyricLine(20000, "下一行也要完整顯示"))), state) })
+            // Source attribution remains available without taking a row from the current/next lyrics.
+            compose.onNodeWithContentDescription("同步歌詞 · LRCLIB", useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText("同步歌詞 · LRCLIB").assertDoesNotExist()
             listOf("自製歌曲測試", "測試歌手", "目前這一行比較長也要完整顯示不能裁切", "下一行也要完整顯示", "−15", "+15").forEach(::fullLabel)
             val current = compose.onNodeWithText("目前這一行比較長也要完整顯示不能裁切", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             val next = compose.onNodeWithText("下一行也要完整顯示", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -315,11 +334,23 @@ class LargeFontLayoutTest {
     @Test fun mapToolsShareBottomToolbarAndKeepCameraState() {
         show(MediaUiState())
         val group = compose.onNodeWithContentDescription("地圖工具列", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        listOf("開啟導航", "Google 導航", "分割／多工", "自動縮放", "回到目前位置").forEach { text ->
+        // 0.4.16：下方工具列只留常用動作，且只有一排；縮放與回到定位浮在地圖右下角
+        listOf("開啟導航", "更多").forEach { text ->
             fullLabel(text)
             val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-            assertTrue("地圖控制必須在工具列內：$text", child.top >= group.top && child.bottom <= group.bottom)
+            assertTrue("常用動作必須在工具列內：$text", child.top >= group.top && child.bottom <= group.bottom)
         }
+        assertTrue("工具列必須維持一排", group.height < 100.dp.value * InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density)
+        listOf("自動縮放", "回到目前位置").forEach { text ->
+            fullLabel(text)
+            val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("地圖浮動控制應在工具列上方：$text", child.bottom <= group.top)
+        }
+        listOf("Google 導航", "分割／多工", "桌面調暗").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        compose.onNodeWithText("更多").performClick()
+        listOf("更多工具", "Google 導航", "分割／多工", "桌面調暗", "關閉").forEach(::fullLabel)
+        screenshot("home-more-tools-125", dialog = true)
+        compose.onNodeWithText("關閉").performClick()
         compose.onNodeWithText("自動縮放").performClick()
         fullLabel("手動縮放")
         compose.onNodeWithText("回到目前位置").performClick()
@@ -334,7 +365,7 @@ class LargeFontLayoutTest {
             wallpaper = tw.fitcar.launcher.wallpaper.WallpaperState(tw.fitcar.launcher.wallpaper.WallpaperOptions(enabled = true, showArt = false), bitmap, true))
         compose.onNodeWithContentDescription("自訂桌布").assertExists()
         compose.onAllNodesWithContentDescription("蜘蛛人伸手插畫").assertCountEquals(0)
-        listOf("測試歌曲", "測試歌手", "自動縮放", "回到目前位置", "分割／多工").forEach(::fullLabel)
+        listOf("測試歌曲", "測試歌手", "自動縮放", "回到目前位置", "更多").forEach(::fullLabel)
         screenshot("home-wallpaper-${if (night) "night" else "day"}-125")
     }
     @Test fun customWallpaperDayAt125Percent() = wallpaperHome(false)
@@ -461,7 +492,7 @@ class LargeFontLayoutTest {
         compose.onNodeWithText("免費底圖測試").assertDoesNotExist()
         compose.onNodeWithText("自動縮放").assertDoesNotExist()
         compose.onNodeWithText("回到目前位置").assertDoesNotExist()
-        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "分割／多工").forEach(::fullLabel)
+        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "更多").forEach(::fullLabel)
         screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
@@ -477,7 +508,11 @@ class LargeFontLayoutTest {
         fullLabel("通知權限")
         compose.runOnIdle { google.value = false }
         compose.onNodeWithText("Google 地圖導航通知").assertDoesNotExist()
-        fullLabel("免費底圖測試"); fullLabel("自動縮放"); fullLabel("回到目前位置")
+        fullLabel("免費底圖測試")
+        // Switching providers must preserve the same driving-safe controls as a fresh map.
+        if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist()
+        else fullLabel("自動縮放")
+        fullLabel("回到目前位置")
     }
     @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
     @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
@@ -510,7 +545,7 @@ class LargeFontLayoutTest {
         } finally { ThemeAppearanceStore.save(context, old) }
     }
     private fun settingsFixture(): SettingsData = SettingsData(tw.fitcar.launcher.data.LauncherState(), null, null, null, true, 50, true, true,
-        otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.14")
+        otherHomes = emptyList(), diagnostics = emptyList(), versionName = tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext))
     private fun settingsActionsFixture() = SettingsActions(back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
         pickTime = { _, _ -> }, requestWriteSettings = {}, requestNotificationAccess = {}, requestLocation = {}, bind = {}, clearBinding = {},
         setNavMode = {}, setMediaMode = {}, testSplit = {}, openOtherHome = {}, openHomeSettings = {}, openChecker = {})
@@ -526,7 +561,7 @@ class LargeFontLayoutTest {
         fullLabel("設定"); fullLabel("返回桌面")
         compose.onNodeWithContentDescription("蜘蛛人飛躍插畫").assertIsDisplayed()
         compose.onNodeWithText("關於").performScrollTo().performClick()
-        fullLabel("個人化啟動器"); fullLabel("版本 0.4.14")
+        fullLabel("個人化啟動器"); fullLabel("版本 ${tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext)}")
         compose.onNodeWithContentDescription("蜘蛛人蹲姿插畫").assertIsDisplayed()
         screenshot("settings-about-spiderman-light-night-125")
     }
@@ -548,4 +583,127 @@ class LargeFontLayoutTest {
         screenshot("apps-spiderman-light-night-grid-125")
     }
 
+    @Test fun backupRestoreAt125Percent() {
+        var exports=0; var imports=0
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,VisualStyle.SPIDERMAN)) {
+                    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        BackupPage(false,null,{ exports++ },{ imports++ })
+                    }
+                }
+            }
+        }
+        listOf("備份與還原","匯出設定","匯入設定").forEach(::fullLabel)
+        compose.onNodeWithText("匯出設定").performClick(); compose.onNodeWithText("匯入設定").performClick()
+        compose.runOnIdle { assertTrue(exports==1 && imports==1) }
+        screenshot("backup-restore-125")
+    }
+    @Test fun desktopDimmingAt125Percent() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        DesktopDimStore.initialize(context)
+        val before=DesktopDimStore.state.value
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(DayPalette) {
+                    Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                        DesktopDimShortcut(); DesktopDimSettings()
+                    }
+                }
+            }
+        }
+        listOf("桌面自己調暗","夜間自動調暗","桌面調暗").forEach(::fullLabel)
+        compose.onNodeWithText("桌面調暗").performClick()
+        compose.runOnIdle { assertTrue(DesktopDimStore.manual.value==true) }
+        compose.onNodeWithContentDescription("夜間自動調暗").performClick()
+        compose.runOnIdle { assertTrue(DesktopDimStore.state.value.auto!=before.auto) }
+        screenshot("desktop-dimming-125")
+        compose.runOnIdle { DesktopDimStore.save(context,before); DesktopDimStore.manual.value=null }
+    }
+    @Test fun movingCardClarityAt125Percent() {
+        val appearance=ThemeAppearanceOptions(clarity=ThemeClarity.AIRY)
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,VisualStyle.SPIDERMAN),appearanceOverride=appearance) {
+                    CompositionLocalProvider(LocalDriving provides true, LocalFullThemeActive provides true) {
+                        Box(Modifier.fillMaxSize().background(Color.Black).padding(30.dp)) {
+                            FitCard { Text("行車卡片清楚顯示",color=LocalPalette.current.text,fontSize=androidx.compose.ui.unit.TextUnit(20f, androidx.compose.ui.unit.TextUnitType.Sp)) }
+                        }
+                    }
+                }
+            }
+        }
+        fullLabel("行車卡片清楚顯示")
+        val nodes=compose.onAllNodes(SemanticsMatcher.expectValue(CardOpacityKey,.98f),useUnmergedTree=true).fetchSemanticsNodes()
+        assertTrue(nodes.isNotEmpty())
+        assertTrue(appearance.clarity==ThemeClarity.AIRY)
+        screenshot("moving-card-clarity-125")
+    }
+
+    @Test fun originalArtworkActualBoundsNeverExceed150Percent() {
+        compose.setContent {
+            val density=LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density,1.25f)) {
+                Column(Modifier.fillMaxSize()) {
+                    listOf(VisualStyle.POMPOMPURIN,VisualStyle.SPIDERMAN).forEach { style ->
+                        FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY,AccentTheme.HERO_RED,style)) {
+                            Row { ThemeArtPose.entries.forEach { pose -> ThemeArtwork(250.dp,pose) } }
+                        }
+                    }
+                }
+            }
+        }
+        ThemeArtPose.entries.forEach { pose ->
+            listOf(pose.drawable to pose.description,pose.spiderDrawable to pose.spiderDescription).forEach { (id,desc) ->
+                val context=InstrumentationRegistry.getInstrumentation().targetContext
+                val (w,h)=checkNotNull(ArtworkSize.originals[context.resources.getResourceEntryName(id)])
+                val rect=compose.onNodeWithContentDescription(desc,useUnmergedTree=true).fetchSemanticsNode().boundsInRoot
+                assertTrue("$desc width $rect",rect.width<=w*1.5f+1f)
+                assertTrue("$desc height $rect",rect.height<=h*1.5f+1f)
+                assertTrue(rect.width>0 && rect.height>0)
+            }
+        }
+        screenshot("original-artwork-bounds-125")
+    }
+
+    @Test fun unauthorizedLocationIsOneTappableLineAt125Percent() {
+        var asked = false
+        val withLocation = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voice = {}, requestLocation = { asked = true })
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    HomeScreen(nav = null, navModeLabel = "全螢幕", splitResult = false, music = null, shield = null,
+                        media = MediaUiState(), gps = GpsState(), slots = List(8) { SlotView(null, null) }, actions = withLocation,
+                        mapContent = { _, modifier -> Box(modifier.background(Color(0xffe4e8df))) { Text("地圖區域（版面測試）") } })
+                }
+            }
+        }
+        fullLabel("目前位置：尚未授權定位 · 點此允許")
+        compose.onNodeWithText("目前位置：尚未授權定位 · 點此允許").performClick()
+        compose.runOnIdle { assertTrue(asked) }
+        compose.onAllNodesWithContentDescription("新增捷徑")[0].assertIsDisplayed()
+        screenshot("home-location-prompt-125")
+    }
+    @Test fun allAppsSearchAndRecentAt125Percent() {
+        val apps = (1..12).map { AppEntry("工具程式$it", ComponentName("test.app$it", "Main"), null) }
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
+                    FullScreenAppList("所有 App", "選擇要開啟的程式", apps, "返回桌面", {}, {}, recentKeys = listOf(apps[4].key))
+                }
+            }
+        }
+        listOf("最近使用", "全部", "搜尋 App 名稱").forEach(::fullLabel)
+        // 不再顯示套件名稱
+        compose.onNodeWithText("test.app1").assertDoesNotExist()
+        compose.onNodeWithText("搜尋 App 名稱").performTextInput("程式12")
+        fullLabel("工具程式12")
+        compose.onNodeWithText("工具程式3").assertDoesNotExist()
+        screenshot("apps-search-125")
+    }
 }
