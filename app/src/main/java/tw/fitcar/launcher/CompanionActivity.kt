@@ -92,8 +92,21 @@ class CompanionActivity : ComponentActivity() {
     }
 
     /** 螢幕與本視窗的實際邊界（Android 11+ WindowMetrics，取代已棄用的 getRealMetrics／decorView 位置）。 */
-    private fun bounds(): Pair<android.graphics.Rect, android.graphics.Rect> =
-        windowManager.maximumWindowMetrics.bounds to windowManager.currentWindowMetrics.bounds
+    private fun bounds(): Pair<android.graphics.Rect, android.graphics.Rect> {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            return android.graphics.Rect(windowManager.maximumWindowMetrics.bounds) to
+                android.graphics.Rect(windowManager.currentWindowMetrics.bounds)
+        }
+        // The imported build still supports API 26; retain its public-API path before Android 11.
+        val metrics = android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val view = window.decorView
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels) to
+            android.graphics.Rect(location[0], location[1], location[0] + view.width, location[1] + view.height)
+    }
 
     private var lastRecorded: Pair<android.graphics.Rect, tw.fitcar.launcher.nav.NavigationSide>? = null
 
