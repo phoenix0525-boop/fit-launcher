@@ -29,7 +29,8 @@ internal fun SplitArrangementEntry() {
 }
 
 @Composable
-internal fun SplitArrangementDialog(side: NavigationSide, select: (NavigationSide) -> Unit, close: () -> Unit) {
+internal fun SplitArrangementDialog(side: NavigationSide, select: (NavigationSide) -> Unit, close: () -> Unit, openSidebar: (() -> Unit)? = null) {
+    val context=LocalContext.current
     val p=LocalPalette.current
     AlertDialog(onDismissRequest=close,containerColor=p.surface,
         title={ Text("分割排列指引",color=p.text,fontSize=22.sp) },
@@ -41,7 +42,16 @@ internal fun SplitArrangementDialog(side: NavigationSide, select: (NavigationSid
                 }
             }
             Text("只記住排列目標，不會自動搬移視窗。",color=p.text,fontSize=18.sp)
-            Text("請用原廠分割按鈕或下方系統入口，選擇導航與車機桌面視窗；若左右相反，使用系統提供的交換或重新排列功能。",color=p.textSoft,fontSize=16.sp)
+            Text("先開啟車機側欄，再用原廠分割介面選擇導航與「車機側欄」。左右相反時，請用系統提供的交換或重新排列功能。",color=p.textSoft,fontSize=16.sp)
+            PrimaryButton("開啟車機側欄",{
+                if (openSidebar!=null) openSidebar()
+                else try {
+                    context.startActivity(tw.fitcar.launcher.nav.CompanionEntry.intent(context))
+                    close()
+                } catch (_: Exception) {
+                    android.widget.Toast.makeText(context,"無法開啟車機側欄，請返回桌面後再試。",android.widget.Toast.LENGTH_LONG).show()
+                }
+            })
             SystemSplitShortcut()
         } },
         confirmButton={ TextButton(onClick=close) { Text("完成",color=p.accent,fontSize=20.sp) } })

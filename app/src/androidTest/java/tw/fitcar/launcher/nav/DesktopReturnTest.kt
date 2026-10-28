@@ -16,4 +16,12 @@ class DesktopReturnTest {
         assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK, intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK)
         assertEquals(Intent.FLAG_ACTIVITY_CLEAR_TOP, intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP)
     }
+    @Test fun manualEntryCreatesSidebarWithoutAutoLaunchingNavigation() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val intent=CompanionEntry.intent(context)
+        assertEquals(tw.fitcar.launcher.CompanionActivity::class.java.name,intent.component?.className)
+        assertEquals(context.packageName,intent.component?.packageName)
+        assertEquals(Intent.FLAG_ACTIVITY_NEW_TASK,intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK)
+        assertFalse(intent.getBooleanExtra(tw.fitcar.launcher.CompanionActivity.EXTRA_LAUNCH_NAV,false))
+    }
 }
