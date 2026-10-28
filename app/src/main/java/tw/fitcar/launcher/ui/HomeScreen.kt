@@ -325,8 +325,10 @@ private fun MapPill(text: String, onClick: () -> Unit) {
 @Composable
 private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
+    var arrange by remember { mutableStateOf(false) }
     val p = LocalPalette.current
     SecondaryButton("更多", { open = true })
+    if (arrange) SplitArrangementPrefsDialog { arrange = false }
     if (open) androidx.compose.material3.AlertDialog(
         onDismissRequest = { open = false }, containerColor = p.surface,
         title = { Text("更多工具", color = p.text, fontSize = 22.sp) },
@@ -336,7 +338,8 @@ private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null
                 goWork?.let { go -> SecondaryButton("去公司", { open = false; go() }, Modifier.fillMaxWidth()) }
                 SecondaryButton("Google 導航", { open = false; openGoogle() }, Modifier.fillMaxWidth())
                 SystemSplitShortcut()
-                SplitArrangementEntry()
+                // 先關閉「更多」再開排列指引，不讓對話框一層疊一層
+                SecondaryButton("排列", { open = false; arrange = true }, Modifier.fillMaxWidth())
                 DesktopDimShortcut()
             }
         },
