@@ -72,6 +72,7 @@ class SettingsActions(
     val setShortcutPages: ((Int) -> Unit)? = null,
     val setAccent: ((AccentTheme) -> Unit)? = null,
     val setStyle: ((VisualStyle) -> Unit)? = null,
+    val setCharacterThemesUnlocked: ((Boolean) -> Unit)? = null,
     val updateDisplay: ((DisplaySettings) -> DisplaySettings) -> Unit,
     val setManualBrightness: (Int) -> Unit,
     val restoreAuto: () -> Unit,
@@ -100,6 +101,8 @@ private val SECTIONS = listOf("顯示與亮度", "App 綁定", "導航", "權限
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
     var section by rememberSaveable { mutableStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val characterTaps = remember { HiddenCharacterThemeTaps() }
     ThemePageFrame(ThemePage.SETTINGS) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -109,7 +112,15 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
             })
         }
         Spacer(Modifier.height(16.dp))
-        SectionNavLayout(SECTIONS, section, { section = it }, footer = {
+        SectionNavLayout(SECTIONS, section, { chosen ->
+            if (SECTIONS[chosen] == "實機資訊" && !CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)) {
+                if (characterTaps.onTap(android.os.SystemClock.elapsedRealtime())) {
+                    actions.setCharacterThemesUnlocked?.invoke(true)
+                    android.widget.Toast.makeText(context, "角色主題已開啟", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else characterTaps.reset()
+            section = chosen
+        }, footer = {
             if (p.characterArt && LocalThemeAppearance.current.smallArt) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ThemeArtwork(112.dp, ThemeArtPose.MUSIC) }
         }) {
                 // 以名稱對應，之後調整順序不會接錯頁
@@ -193,10 +204,12 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     Section("自訂桌布") { WallpaperSettings() }
     actions.setStyle?.let { setStyle ->
         Section("畫面風格") {
-            Hint("風格與強調色可分別搭配。布丁狗會先套用焦糖棕，之後仍可自訂；各風格沿用日夜排程。", size = 13)
+            val unlocked = CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)
+            var confirmHide by remember { mutableStateOf(false) }
+            Hint(if (unlocked) "風格與強調色可分別搭配；角色風格沿用日夜排程。" else "風格與強調色可分別搭配；各風格沿用日夜排程。", size = 13)
             val current = VisualStyle.fromId(data.state.visualStyle)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                VisualStyle.entries.forEach { style ->
+                CharacterThemeAccess.visibleStyles(data.state.characterThemesUnlocked, data.state.visualStyle).forEach { style ->
                     val preview = styledBase(p.isNight, style)
                     Column(
                         Modifier.clip(RadiusMd).background(preview.surface)
@@ -217,6 +230,20 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                     }
                 }
             }
+            if (unlocked && actions.setCharacterThemesUnlocked != null) {
+                SecondaryButton("隱藏角色主題", {
+                    if (CharacterThemeAccess.isCharacter(data.state.visualStyle)) confirmHide = true
+                    else actions.setCharacterThemesUnlocked.invoke(false)
+                })
+            }
+            if (confirmHide) androidx.compose.material3.AlertDialog(
+                onDismissRequest = { confirmHide = false },
+                title = { Text("隱藏角色主題？") },
+                text = { Text("目前正在使用角色風格。隱藏後會切回一般風格，其他顯示設定保留。") },
+                confirmButton = { PrimaryButton("切回並隱藏", { actions.setCharacterThemesUnlocked?.invoke(false); confirmHide = false }) },
+                dismissButton = { SecondaryButton("取消", { confirmHide = false }) },
+                containerColor = p.surface,
+            )
         }
     }
     actions.setAccent?.let { setAccent ->
