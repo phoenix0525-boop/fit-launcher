@@ -582,6 +582,12 @@ class MainActivity : ComponentActivity() {
                                 back = { screen = Screen.Home },
                                 setAccent = { t -> prefs.update { st -> st.copy(accentTheme = t.id) } },
                                 setStyle = { t -> prefs.update { st -> st.copy(visualStyle = t.id) } },
+                                setCharacterThemesUnlocked = { unlocked -> prefs.update { st ->
+                                    st.copy(
+                                        visualStyle = if (!unlocked && tw.fitcar.launcher.ui.CharacterThemeAccess.isCharacter(st.visualStyle)) "original" else st.visualStyle,
+                                        characterThemesUnlocked = unlocked,
+                                    )
+                                } },
                                 setShortcutPages = { n -> prefs.update { st -> st.copy(shortcutPages = ShortcutSlots.clampPages(n)) } },
                                 requestBluetooth = if (android.os.Build.VERSION.SDK_INT >= 31) {
                                     { bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT) }
