@@ -91,9 +91,7 @@ class CompanionActivity : ComponentActivity() {
     }
 
     private fun goHome() {
-        startActivity(
-            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        startActivity(tw.fitcar.launcher.nav.DesktopReturn.intent(this))
         finishAndRemoveTask()
     }
 
