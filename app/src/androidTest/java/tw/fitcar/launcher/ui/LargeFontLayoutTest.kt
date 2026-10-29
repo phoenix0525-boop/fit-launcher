@@ -425,8 +425,10 @@ class LargeFontLayoutTest {
             val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("地圖浮動控制應在工具列上方：$text", child.bottom <= group.top)
         }
-        val king = compose.onNodeWithText("導航王", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        val google = compose.onNodeWithText("Google 地圖", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        // Measure adjacent clickable buttons, not labels plus their internal padding.
+        // Keep the same gap threshold and all full-label/cropping assertions above.
+        val king = compose.onNode(hasText("導航王") and hasClickAction()).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val google = compose.onNode(hasText("Google 地圖") and hasClickAction()).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue("導航王與 Google 地圖必須相鄰並排", google.left >= king.right && google.left - king.right < 40.dp.value * InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density)
         listOf("Google 導航", "分割／多工", "桌面調暗").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         compose.onNodeWithText("更多").performClick()
