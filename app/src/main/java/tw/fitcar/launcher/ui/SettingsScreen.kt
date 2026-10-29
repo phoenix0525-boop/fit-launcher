@@ -542,6 +542,7 @@ internal fun AboutSection(data: SettingsData) {
         }
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.20：Google 導航通知支援距離與路名；不從圖示猜方向，舊提示仍會過期。", size = 16)
         Hint("• 0.4.19：「更多」裡的排列不再疊兩層視窗；側欄位置判斷更準、更省電。", size = 16)
         Hint("• 0.4.18：角色主題可隱藏（實機資訊連點五下再開啟）。", size = 16)
         Hint("• 0.4.17：側欄直接回車機桌面、左右排列指引與側欄位置觀察；實體 Home 及原廠音量仍未解。", size = 16)

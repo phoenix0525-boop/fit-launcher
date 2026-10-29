@@ -30,6 +30,6 @@ manifest = {
     'packageName': 'tw.fitcar.launcher', 'versionName': version, 'versionCode': code,
     'apkUrl': f'https://github.com/phoenix0525-boop/fit-launcher/releases/download/v{version}/{name}',
     'size': apk.stat().st_size, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
-    'certificateSha256': CERT, 'notes': Path('docs/release-0.4.19.md').read_text(),
+    'certificateSha256': CERT, 'notes': Path('docs/release-0.4.20.md').read_text(),
 }
 (out / 'update.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
