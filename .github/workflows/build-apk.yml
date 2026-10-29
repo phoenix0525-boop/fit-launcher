@@ -112,6 +112,22 @@ jobs:
           name: fit-launcher-release-audit
           path: release-artifact-report.json
           if-no-files-found: error
+      - name: Prepare unsigned release for offline signing
+        run: |
+          mkdir -p local-signing-inputs/tools
+          cp app/build/outputs/apk/release/*.apk local-signing-inputs/
+          cp app/build/outputs/bundle/release/*.aab local-signing-inputs/
+          cp release-artifact-report.json local-signing-inputs/
+          TOOLS=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          cp "$(dirname "$TOOLS")/lib/apksigner.jar" local-signing-inputs/tools/
+          cp "$(dirname "$TOOLS")/aapt" local-signing-inputs/tools/
+          sha256sum local-signing-inputs/*apk local-signing-inputs/tools/* > local-signing-inputs/SHA256SUMS.txt
+      - name: Upload public offline signing inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-release-local-signing
+          path: local-signing-inputs/
+          if-no-files-found: error
       - name: Build and verify signed release
         if: env.FIT_SIGNING_AVAILABLE == 'true'
         env:
