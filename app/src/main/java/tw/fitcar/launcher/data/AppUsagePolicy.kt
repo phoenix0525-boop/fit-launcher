@@ -18,4 +18,8 @@ object AppUsagePolicy {
         if (q.isEmpty()) return true
         return label.contains(q, ignoreCase = true) || packageName.contains(q, ignoreCase = true)
     }
+
+    /** 車機桌面自己的紀錄在前；不足時以系統使用紀錄（需使用者開啟使用情況存取）補上，去重後最多 8 個。 */
+    fun merge(own: List<String>, systemPackages: List<String>, keyForPackage: (String) -> String?): List<String> =
+        (own + systemPackages.mapNotNull(keyForPackage)).filter { it.isNotBlank() }.distinct().take(MAX_RECENT)
 }

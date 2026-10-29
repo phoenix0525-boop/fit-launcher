@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- User-confirmed self-updates only; never silent installation. -->
@@ -17,6 +18,13 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- 開機後重新排程亮度 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 0.4.27 桌面接管：以下皆需使用者在系統設定頁自行允許，App 不會自動授權 -->
+    <!-- 背景不被關閉：系統跳窗詢問 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 使用情況存取：所有 App 的最近使用（只讀近 3 天 App 名稱與時間） -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- 導航時的「回桌面」浮動鍵 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- 套件可見性：只查詢可啟動 App 與其他桌面，不使用 QUERY_ALL_PACKAGES -->
     <queries>

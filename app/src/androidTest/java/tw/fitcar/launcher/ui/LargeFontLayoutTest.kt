@@ -715,6 +715,36 @@ class LargeFontLayoutTest {
         screenshot("settings-startup-125")
         compose.onNodeWithContentDescription("開機時嘗試開啟車機桌面").performClick().assertIsOff()
     }
+    @Test fun desktopTakeoverOptionsAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val before = Triple(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context), tw.fitcar.launcher.system.DesktopGuard.wakeLaunch(context), tw.fitcar.launcher.system.DesktopGuard.overlay(context))
+        tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, false)
+        tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, false)
+        tw.fitcar.launcher.system.DesktopGuard.setOverlay(context, false)
+        try {
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(DayPalette) { SettingsScreen(settingsFixture(), settingsActionsFixture()) }
+                }
+            }
+            compose.onNodeWithText("啟動設定").performScrollTo().performClick()
+            // 0.4.27：桌面接管的各項都預設關閉，開關只改本機設定
+            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面", "導航 App 在前景時顯示「⌂ 桌面」").forEach { label ->
+                compose.onNodeWithContentDescription(label).performScrollTo().assertIsOff()
+                fullLabel(label)
+            }
+            compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performClick()
+            compose.runOnIdle { assertTrue(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context)) }
+            compose.onNodeWithText("設為預設桌面").performScrollTo()
+            fullLabel("設為預設桌面")
+            screenshot("settings-desktop-takeover-125")
+        } finally {
+            tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, before.first)
+            tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, before.second)
+            tw.fitcar.launcher.system.DesktopGuard.setOverlay(context, before.third)
+        }
+    }
     @Test fun lightSpiderSettingsAndAboutAt125Percent() {
         compose.setContent {
             val density = LocalDensity.current.density

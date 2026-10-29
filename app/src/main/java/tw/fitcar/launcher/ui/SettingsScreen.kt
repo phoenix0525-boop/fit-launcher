@@ -514,6 +514,7 @@ private fun StartupSection(data: SettingsData, actions: SettingsActions) {
         Hint("此選項不會改變預設桌面，也不保證修復原廠 Home 接管。", size = 16)
         PrimaryButton("變更預設桌面", actions.openHomeSettings)
     }
+    DesktopTakeoverSettings()
 }
 
 @Composable
@@ -562,6 +563,7 @@ internal fun AboutSection(data: SettingsData) {
         }
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.27：新增桌面接管：預設桌面確認、adb 指令、原廠桌面切回、喚醒開啟、浮動回桌面鍵、桌面小工具。", size = 16)
         Hint("• 0.4.26：Google 導航提示不再頻繁顯示已過期；等紅燈時保留提示，行駛中久未更新才過期。", size = 16)
         Hint("• 0.4.25：導航王與Google地圖並排在工具列，點一下即切換；音量檢測加記系統音量廣播與設定值變化。", size = 16)
         Hint("• 0.4.24：Google導航時定位地圖常駐、提示區固定；減少通知重掃閃爍，新增導航王快捷鍵。", size = 16)
