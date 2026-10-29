@@ -29,13 +29,14 @@ class GoogleGuidanceRepositoryTest {
         GoogleGuidanceRepository.connection(false)
     }
 
+    @Suppress("DEPRECATION") // Public SDK constructor; no hidden overrideGroupKey API.
     private fun notification(title: String?, text: String?, category: String = Notification.CATEGORY_NAVIGATION,
         pkg: String = GoogleNavigation.PACKAGE, extras: Bundle = Bundle(), ageMs: Long = 0): StatusBarNotification {
         val n = Notification.Builder(context, "navigation-fixture")
             .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(title).setContentText(text)
             .setCategory(category).setOngoing(true).addExtras(extras).build()
-        return StatusBarNotification(pkg, pkg, 1, null, Process.myUid(), Process.myPid(), n,
-            Process.myUserHandle(), null, System.currentTimeMillis() - ageMs)
+        return StatusBarNotification(pkg, pkg, 1, null, Process.myUid(), Process.myPid(), 0, n,
+            Process.myUserHandle(), System.currentTimeMillis() - ageMs)
     }
 
     @Test fun navigationCategoryAcceptsDistanceAndRoadWithoutInventingArrow() {
