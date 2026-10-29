@@ -38,7 +38,9 @@ class SystemShortcutService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = WeakReference(this)
-        try { registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON)) } catch (_: Exception) { }
+        // 系統廣播仍會送達 NOT_EXPORTED 接收器；明確標示以符合 Android 14 規定
+        try { androidx.core.content.ContextCompat.registerReceiver(this, screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) } catch (_: Exception) { }
         // 開機後系統會重新連上本服務；若使用者開啟「開機啟動」，在開機 3 分鐘內補開一次。
         if (SystemClock.elapsedRealtime() < 180_000 && Prefs.get(this).state.value.startOnBoot) {
             handler.postDelayed({
