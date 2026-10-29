@@ -42,4 +42,11 @@ class SettingsBackupTest {
         }
         assertTrue(runCatching { SettingsBackup.encode(mapOf("fit_launcher" to mapOf("split_navigation_side" to "top")),"t","now") }.isFailure)
     }
+    @Test fun startupPreferenceRoundTripsButRequestHistoryIsExcluded() {
+        assertFalse(LauncherState().startOnBoot)
+        val values = mapOf("fit_launcher" to mapOf<String,Any>("start_desktop_on_boot" to true, "startup_request_token" to "not-exported"))
+        val text = SettingsBackup.encode(values,"test","now")
+        assertFalse(text.contains("startup_request_token"))
+        assertEquals(true,SettingsBackup.decode(text).groups["fit_launcher"]?.get("start_desktop_on_boot"))
+    }
 }
