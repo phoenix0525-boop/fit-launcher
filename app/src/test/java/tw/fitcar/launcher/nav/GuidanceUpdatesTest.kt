@@ -15,7 +15,7 @@ class GuidanceUpdatesTest {
         val previous = state("a", 100, 1000)
         val next = GuidanceUpdates.posted(previous, state("a", 200, 2000, null))
         assertEquals(previous.guidance, next.guidance); assertEquals(1000L, next.receivedElapsed)
-        assertFalse(next.fresh(9000))
+        assertFalse(next.fresh(32_000))
     }
     @Test fun differentNotificationCannotInheritOldTurn() {
         val next = GuidanceUpdates.posted(state("a", 100, 1000), state("b", 200, 2000, null))
@@ -28,7 +28,7 @@ class GuidanceUpdatesTest {
     @Test fun repeatedSnapshotDoesNotRefreshOldText() {
         val old = state("a", 100, 1000)
         val next = GuidanceUpdates.snapshot(old, listOf(old))
-        assertEquals(1000L, next.receivedElapsed); assertFalse(next.fresh(9000))
+        assertEquals(1000L, next.receivedElapsed); assertFalse(next.fresh(32_000))
     }
     @Test fun olderPostedEventDoesNotReplaceNewerState() {
         val current = state("a", 200, 2000)

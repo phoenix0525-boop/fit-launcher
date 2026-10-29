@@ -51,6 +51,8 @@ fun FullScreenAppList(
     recentKeys: List<String> = emptyList(),
     /** 是否提供搜尋框；行車中自動隱藏。 */
     searchable: Boolean = true,
+    /** 清單上方的額外內容（「所有 App」放桌面小工具）；行車中不顯示。 */
+    header: (@Composable () -> Unit)? = null,
 ) {
     val p = LocalPalette.current
     var query by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
@@ -73,6 +75,10 @@ fun FullScreenAppList(
             androidx.compose.material3.OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(),
                 singleLine = true, label = { Text("搜尋 App 名稱", fontSize = TypeScale.SECONDARY.sp) },
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = TypeScale.BODY.sp))
+        }
+        if (header != null && !LocalDriving.current) {
+            Spacer(Modifier.height(12.dp))
+            header()
         }
         Spacer(Modifier.height(18.dp))
         if (apps.isEmpty()) {

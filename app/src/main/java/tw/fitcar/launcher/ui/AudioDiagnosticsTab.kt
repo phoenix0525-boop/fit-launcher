@@ -32,6 +32,7 @@ internal fun AudioDiagnosticsTab(portOverride: AudioProbePort? = null) {
         Hint("本次先測「系統目前音量：降低一次」即可。播放音樂、結束通話與語音播報後再按；由系統選擇音量通道，不保證等同方向盤。", size = 16)
         Hint("每次只降低一次，不自動調回；需要時用方向盤調回。小芳與原廠按鍵觀察不送出任何音量控制。", size = 16)
         Hint("開始觀察後，用小芳說「小聲一點」，或按原廠降低音量鍵。20 秒內不要混用其他控制。離開此檢測分頁會取消本次檢測。", size = 16)
+        Hint("0.4.25：小芳與原廠按鍵觀察另外記錄系統音量廣播，並比對觀察前後的系統設定值（只讀，不寫入）；音訊以外的設定只列名稱。", size = 16)
         AudioProbeMethod.entries.forEach { method ->
             SecondaryButton(method.label, {
                 if (busy == null) {

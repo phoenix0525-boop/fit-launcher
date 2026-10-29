@@ -65,6 +65,10 @@ object Diagnostics {
                 "android" -> "尚未選擇（每次詢問）"
                 else -> defaultHome
             },
+            "原廠桌面主畫面" to tw.fitcar.launcher.system.DesktopGuard.factoryHomes(context).sorted().joinToString().ifEmpty { "找不到" },
+            "系統服務（無障礙）" to if (tw.fitcar.launcher.system.LauncherPermissions.accessibilityEnabled(context))
+                "已開啟；前景 ${tw.fitcar.launcher.system.SystemShortcutService.foreground ?: "尚未收到"}" else "未開啟",
+            "桌面接管紀錄" to tw.fitcar.launcher.system.DesktopGuard.lastEvent(context),
             "系統亮度權限" to if (BrightnessController.canWrite(context)) "已允許" else "未允許",
             "分割畫面實測" to when (state.lastSplitResult) { true -> "成功"; false -> "未進入分割"; null -> "尚未測試" },
             "通知存取" to if (media.permissionGranted) "已開啟" else "未開啟",

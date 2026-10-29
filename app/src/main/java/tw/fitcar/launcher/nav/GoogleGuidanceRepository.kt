@@ -16,8 +16,9 @@ data class GoogleGuidanceState(
     val notificationKey: String? = null,
     val postedAt: Long = 0,
 ) {
-    fun fresh(now: Long = SystemClock.elapsedRealtime()) = guidance != null &&
-        GuidanceFreshness.isFresh(receivedElapsed, now, connected)
+    /** [speedKmh] 只傳有效 GPS 車速；未知時採最保守的 30 秒。 */
+    fun fresh(now: Long = SystemClock.elapsedRealtime(), speedKmh: Float? = null) = guidance != null &&
+        GuidanceFreshness.isFresh(receivedElapsed, now, connected, GuidanceFreshness.distanceMeters(guidance.distance), speedKmh)
 }
 
 /** Only the explicitly selected Google Maps package is read; text stays in process memory. */
@@ -45,8 +46,9 @@ object GoogleGuidanceRepository {
             navigationCategory = n.category == Notification.CATEGORY_NAVIGATION)
         if (g == null && n.category != Notification.CATEGORY_NAVIGATION) return null
         val age = System.currentTimeMillis() - sbn.postTime
-        // Rescanning an old notification must not make its instruction look new.
-        val received = if (age < -5000 || age >= GuidanceFreshness.MAX_AGE_MS) 0L
+        // 重新掃描（例如回到桌面）沿用通知真正的發布時間，不把舊提示當新的，也不因重掃就直接判為過期；
+        // 是否仍可信交給 GuidanceFreshness 依車速與距離判斷。時鐘異常（未來時間）才視為無效。
+        val received = if (age < -5000) 0L
             else (SystemClock.elapsedRealtime() - age.coerceAtLeast(0)).coerceAtLeast(1)
         return GoogleGuidanceState(mutable.value.connected, true, g, received, sbn.key, sbn.postTime)
     }
