@@ -292,17 +292,26 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
         Spacer(Modifier.height(10.dp))
         // 下方只留最常用的動作；其餘收進「更多」，避免換成兩排吃掉地圖高度
         Row(Modifier.fillMaxWidth().semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
-            if (googleSelected) SecondaryButton("導航王", actions.openKingNav ?: actions.bindNav)
-            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）；小螢幕放進「更多」避免擠壓
-            val inline = !LocalLayoutSpec.current.compactChrome
+            // 0.4.25：導航王與 Google 地圖固定並排，選定的那顆為主要按鈕；點另一顆即切換綁定並開啟
+            val navButtons = NavShortcutPolicy.buttons(NavShortcutPolicy.selected(nav?.label, nav?.component?.packageName))
+            navButtons.forEach { b ->
+                val onClick = when (b.action) {
+                    NavShortcutPolicy.Action.OPEN_CURRENT -> actions.openNavFullscreen
+                    NavShortcutPolicy.Action.SELECT_APP -> actions.bindNav
+                    NavShortcutPolicy.Action.KING -> actions.openKingNav ?: actions.bindNav
+                    NavShortcutPolicy.Action.GOOGLE -> actions.openGoogleNav ?: { openGoogleNavigation(context) }
+                }
+                if (b.primary) PrimaryButton(b.label, onClick) else SecondaryButton(b.label, onClick)
+            }
+            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）；小螢幕或三顆導航鍵時放進「更多」避免擠壓
+            val inline = NavShortcutPolicy.placesInline(LocalLayoutSpec.current.compactChrome, navButtons.size)
             val home = actions.goHome.takeIf { hasHome }
             val work = actions.goWork.takeIf { hasWork }
             if (inline) home?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
             if (inline) work?.let { SecondaryButton("去公司", it) }
             Spacer(Modifier.weight(1f))
             UpdateIndicator()
-            MoreToolsButton(actions.openGoogleNav ?: { openGoogleNavigation(context) }, if (inline) null else home, if (inline) null else work)
+            MoreToolsButton(if (inline) null else home, if (inline) null else work)
         }
     }
 }
@@ -329,9 +338,9 @@ private fun MapPill(text: String, onClick: () -> Unit) {
         color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 17.sp, maxLines = 1)
 }
 
-/** 不常用的工具集中在「更多」：Google 導航、系統分割、桌面調暗。 */
+/** 不常用的工具集中在「更多」：系統分割、排列、桌面調暗（Google 地圖已移到工具列，與導航王並排）。 */
 @Composable
-private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
+private fun MoreToolsButton(goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     var arrange by remember { mutableStateOf(false) }
     val p = LocalPalette.current
@@ -344,7 +353,6 @@ private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 goHome?.let { go -> SecondaryButton("回家", { open = false; go() }, Modifier.fillMaxWidth()) }
                 goWork?.let { go -> SecondaryButton("去公司", { open = false; go() }, Modifier.fillMaxWidth()) }
-                SecondaryButton("Google 導航", { open = false; openGoogle() }, Modifier.fillMaxWidth())
                 SystemSplitShortcut()
                 // 先關閉「更多」再開排列指引，不讓對話框一層疊一層
                 SecondaryButton("排列", { open = false; arrange = true }, Modifier.fillMaxWidth())

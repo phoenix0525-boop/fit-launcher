@@ -562,6 +562,7 @@ internal fun AboutSection(data: SettingsData) {
         }
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.25：導航王與Google地圖並排在工具列，點一下即切換；音量檢測加記系統音量廣播與設定值變化。", size = 16)
         Hint("• 0.4.24：Google導航時定位地圖常駐、提示區固定；減少通知重掃閃爍，新增導航王快捷鍵。", size = 16)
         Hint("• 0.4.23：新增單次系統目前音量測試、靜音與播放干擾記錄；桌面實際調音仍待驗證。", size = 16)
         Hint("• 0.4.22：新增音量對照檢測與手動聲音回報；未宣稱修復原廠音量或接通小芳。", size = 16)

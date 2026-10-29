@@ -23,9 +23,14 @@ interface AudioProbePort {
     fun setMusic(target: Int)
     fun lowerMusic()
     fun lowerCurrent()
+    /** Read-only extras for observation methods; fakes may keep the defaults. */
+    fun settings(): SettingsSnapshot = SettingsSnapshot()
+    fun beginEvents() {}
+    fun endEvents(): List<String> = emptyList()
 }
 data class AudioProbeReport(val method: AudioProbeMethod, val samples: List<AudioProbeSample>, val error: String? = null,
-    val skipReason: String? = null, val requestAttempted: Boolean = false) {
+    val skipReason: String? = null, val requestAttempted: Boolean = false,
+    val settingsDiff: SettingsDiffResult? = null, val volumeEvents: List<String> = emptyList()) {
     val verifiesVehicleSound get() = false
     fun summary(): String {
         if (error != null) return "檢測未完成：$error；不能判定控制有效或故障原因。"
@@ -41,6 +46,7 @@ data class AudioProbeReport(val method: AudioProbeMethod, val samples: List<Audi
             return (if (method == AudioProbeMethod.CURRENT) "已呼叫系統目前音量降低一次。" else "") +
                 (if (changed) "觀察期間 Android 音量數值有變化。" else "未觀察到 Android 音量數值變化。") +
                 (if (mutedChanged) "靜音旗標有變化。" else "") +
+                (settingsDiff?.let { if (it.audioChanges.isEmpty()) "系統設定未見音訊相關變化。" else "系統設定有 ${it.audioChanges.size} 項音訊相關變化（見報告）。" } ?: "") +
                 "不能據此判定實際聲音是否改變，請另行回報；無法僅憑此判定原廠介面、權限或硬體原因。"
         }
         val target = (before.music - 1).coerceAtLeast(before.minimumMusic)
@@ -48,7 +54,10 @@ data class AudioProbeReport(val method: AudioProbeMethod, val samples: List<Audi
         return VolumeVerification.check(before.music, target, if (reachedEarly) target else before.music,
             after.music, before.fixed).message
     }
-    fun text() = "${method.label}\n請求曾嘗試=$requestAttempted（非成功確認）\n${summary()}\n" + samples.joinToString("\n") { "+${it.elapsedMs}ms ${it.reading.text()}" }
+    fun text() = "${method.label}\n請求曾嘗試=$requestAttempted（非成功確認）\n${summary()}\n" +
+        samples.joinToString("\n") { "+${it.elapsedMs}ms ${it.reading.text()}" } +
+        (if (method.observesOnly) "\n系統音量廣播 ${volumeEvents.size} 次" + volumeEvents.joinToString("") { "\n$it" } else "") +
+        (settingsDiff?.let { "\n" + it.text() } ?: "")
 }
 
 object AudioProbe {
@@ -75,10 +84,17 @@ object AudioProbe {
                     else -> error("observation cannot write")
                 }
             }
+            val settingsBefore = if (method.observesOnly) port.settings() else null
+            if (method.observesOnly) port.beginEvents()
             val intervals = if (method.observesOnly) List(20) { 1000L } else listOf(150L, 450L, 900L)
             intervals.forEachIndexed { i, ms -> pause(ms); sample(); progress(i + 1) }
-        } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { return AudioProbeReport(method, samples, e.javaClass.simpleName, requestAttempted = attempted) }
+            if (settingsBefore != null) {
+                val events = port.endEvents()
+                return AudioProbeReport(method, samples, requestAttempted = attempted,
+                    settingsDiff = SettingsDiff.diff(settingsBefore, port.settings()), volumeEvents = events)
+            }
+        } catch (e: CancellationException) { if (method.observesOnly) port.endEvents(); throw e }
+        catch (e: Exception) { if (method.observesOnly) port.endEvents(); return AudioProbeReport(method, samples, e.javaClass.simpleName, requestAttempted = attempted) }
         return AudioProbeReport(method, samples, requestAttempted = attempted)
     }
 }
