@@ -14,14 +14,16 @@ data class GoogleGuidance(val primary: String, val secondary: String?, val dista
             "↑" to Regex("直行|直走|繼續行駛|continue straight", RegexOption.IGNORE_CASE),
         )
         private fun clean(value: CharSequence?) = value?.toString()?.filterNot(Char::isISOControl)?.trim()?.take(256).orEmpty()
-        fun parse(title: CharSequence?, text: CharSequence?, subText: CharSequence?): GoogleGuidance? {
+        fun parse(title: CharSequence?, text: CharSequence?, subText: CharSequence?, navigationCategory: Boolean = false): GoogleGuidance? {
             val t = clean(title); val x = clean(text); val sub = clean(subText)
             val main = "$t $x"
             val arrow = turns.firstOrNull { it.second.containsMatchIn(main) }?.first.orEmpty()
             val navigation = Regex("導航|导航|navigation|駛入匝道|take the exit", RegexOption.IGNORE_CASE).containsMatchIn(main)
-            if (t.isBlank() && x.isBlank() || arrow.isBlank() && !navigation) return null
+            // Distance + road name is valid when the selected Google notification declares navigation.
+            // Do not infer an arrow from a notification image or relax unrelated Maps notifications.
+            if (t.isBlank() && x.isBlank() || arrow.isBlank() && !navigation && !navigationCategory) return null
             val distance = Regex("(\\d+(?:\\.\\d+)?)\\s*(公尺|公里|km|m)(?![a-zA-Z])", RegexOption.IGNORE_CASE)
-                .find(if (t.isNotBlank()) t else x)?.let { "${it.groupValues[1]} ${it.groupValues[2]}" }
+                .find(main)?.let { "${it.groupValues[1]} ${it.groupValues[2]}" }
             val eta = Regex("(?<!\\d)([01]?\\d|2[0-3]):([0-5]\\d)(?!\\d)").find(sub)?.value
             return GoogleGuidance(t.ifBlank { x }, x.takeIf { t.isNotBlank() && it.isNotBlank() }, distance, eta, arrow)
         }

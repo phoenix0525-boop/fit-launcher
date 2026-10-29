@@ -503,6 +503,14 @@ class LargeFontLayoutTest {
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
         fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now,
+            guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("260 公尺", "測試道路", null, navigationCategory = true)) }
+        fullLabel("260 公尺"); fullLabel("測試道路")
+        compose.onNodeWithText("→ 260 公尺").assertDoesNotExist()
+        screenshot("google-distance-road-${if (driving) "driving" else if (night) "night" else "day"}-125")
+        compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
+        compose.onNodeWithText("260 公尺").assertDoesNotExist()
+        fullLabel("導航提示已過期，請開啟 Google 地圖確認")
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true, activeNavigation = true) }
         fullLabel("導航提示暫不可用，請開啟 Google 地圖確認")
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true) }
