@@ -558,6 +558,8 @@ class LargeFontLayoutTest {
             activeNavigation = true, guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("300 公尺後右轉", "進入中山路", "預計 12:40 抵達"), receivedElapsed = now))
         val permission = androidx.compose.runtime.mutableStateOf(true)
         val google = androidx.compose.runtime.mutableStateOf(true)
+        var mapMounts = 0
+        var mapDisposals = 0
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
@@ -569,18 +571,25 @@ class LargeFontLayoutTest {
                         gps = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
                             latitude = 24.95, longitude = 121.29, fixElapsed = now) else GpsState(),
                         slots = emptyList(), actions = actions, googleGuidanceOverride = guidance.value, googleGuidanceNow = now,
-                        mapContent = { _, m -> Box(m) { Text("免費底圖測試") } })
+                        mapContent = { _, m ->
+                            androidx.compose.runtime.DisposableEffect(Unit) {
+                                mapMounts++
+                                onDispose { mapDisposals++ }
+                            }
+                            Box(m) { Text("免費底圖測試", modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(16.dp)) }
+                        })
                 }
             }
         }
-        compose.onNodeWithText("免費底圖測試").assertDoesNotExist()
-        compose.onNodeWithText("自動縮放").assertDoesNotExist()
-        compose.onNodeWithText("回到目前位置").assertDoesNotExist()
-        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "更多").forEach(::fullLabel)
+        compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
+        if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist() else fullLabel("自動縮放")
+        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "導航王", "更多", "回到目前位置").forEach(::fullLabel)
         screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
         fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
+        screenshot("google-map-expired-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now,
             guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("260 公尺", "測試道路", null, navigationCategory = true)) }
         fullLabel("260 公尺"); fullLabel("測試道路")
@@ -607,6 +616,26 @@ class LargeFontLayoutTest {
         if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist()
         else fullLabel("自動縮放")
         fullLabel("回到目前位置")
+        compose.runOnIdle { assertTrue(mapMounts == 1); assertTrue(mapDisposals == 0) }
+    }
+    @Test fun googleHasOneTapNavigationKingShortcutAt125Percent() {
+        var calls = 0
+        val navActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, openKingNav = { calls++ })
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    HomeScreen(nav = AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "Main"), null),
+                        navModeLabel = "全螢幕", splitResult = false, music = musicApp, shield = null,
+                        media = MediaUiState(permissionGranted = true), gps = GpsState(), slots = emptyList(), actions = navActions,
+                        mapContent = { _, m -> Box(m) { Text("定位底圖", modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart)) } })
+                }
+            }
+        }
+        fullLabel("導航王")
+        screenshot("google-navigation-king-shortcut-125")
+        compose.onNodeWithText("導航王").performClick()
+        compose.runOnIdle { assertTrue(calls == 1) }
     }
     @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
     @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)

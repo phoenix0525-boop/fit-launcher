@@ -120,6 +120,24 @@ class MainActivity : ComponentActivity() {
         handleNav(NavLauncher.open(this, forceFullscreen = true))
     }
 
+    private fun selectNavigationKing() {
+        val apps = AppRepository.launchableApps(this).filter {
+            tw.fitcar.launcher.nav.NavigationKingShortcut.matches(it.label, it.component.packageName)
+        }.distinctBy { it.key }
+        fun select(app: tw.fitcar.launcher.data.AppEntry) {
+            if (AppRepository.resolve(this, app.key) == null) { toast("導航王已無法啟動，請確認安裝狀態。"); return }
+            setBinding(BindingTarget.NAVIGATION, app.key)
+            handleNav(NavLauncher.open(this, forceFullscreen = true))
+        }
+        when {
+            apps.isEmpty() -> toast("找不到可啟動的導航王，請先安裝或啟用。")
+            apps.size == 1 && apps[0].component.packageName == tw.fitcar.launcher.nav.NavigationKingShortcut.VERIFIED_PACKAGE -> select(apps[0])
+            else -> android.app.AlertDialog.Builder(this).setTitle("選擇要切換的導航王")
+                .setItems(apps.map { "${it.label}\n${it.component.packageName}" }.toTypedArray()) { _, index -> select(apps[index]) }
+                .setNegativeButton("取消", null).show()
+        }
+    }
+
     private fun executeVoice(command: VoiceCommand) {
         fun unsupported() = toast("目前播放器沒有提供這項控制，請先播放歌曲並開啟通知存取。")
         when (command.action) {
@@ -462,6 +480,7 @@ class MainActivity : ComponentActivity() {
                 editSlot = { i -> editing = i },
                 voice = { startVoice() },
                 openGoogleNav = { selectGoogleNavigation() },
+                openKingNav = { selectNavigationKing() },
                 requestLocation = { locationRequest?.invoke() },
                 goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.homeAddress)) },
                 goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.workAddress)) },

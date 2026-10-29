@@ -5,6 +5,8 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Process
 import android.service.notification.StatusBarNotification
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.*
@@ -14,6 +16,38 @@ import tw.fitcar.launcher.data.LauncherState
 import tw.fitcar.launcher.data.Prefs
 
 class GoogleGuidanceRepositoryTest {
+    @Test fun authoritativeSnapshotNeverPublishesEmptyBetweenValidUpdates() {
+        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路"))
+        val observed = mutableListOf<Boolean>()
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val job = scope.launchSnapshot(observed)
+        try {
+            GoogleGuidanceRepository.replaceSnapshot(context, listOf(notification("200 公尺", "測試道路")))
+            assertTrue(observed.isNotEmpty()); assertTrue(observed.all { it })
+            assertEquals("200 公尺", GoogleGuidanceRepository.state.value.guidance?.primary)
+        } finally { job.cancel() }
+    }
+
+    private fun kotlinx.coroutines.CoroutineScope.launchSnapshot(observed: MutableList<Boolean>) =
+        launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            GoogleGuidanceRepository.state.collect { observed += it.activeNavigation }
+        }
+
+    @Test fun blankSameKeyUpdateKeepsPreviousTextWithoutRenewingAge() {
+        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路"))
+        val before = GoogleGuidanceRepository.state.value
+        GoogleGuidanceRepository.posted(context, notification(null, null))
+        val after = GoogleGuidanceRepository.state.value
+        assertEquals(before.guidance, after.guidance)
+        assertEquals(before.receivedElapsed, after.receivedElapsed)
+    }
+
+    @Test fun emptySnapshotRemovesTurnAndNavigationState() {
+        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路"))
+        GoogleGuidanceRepository.replaceSnapshot(context, emptyList())
+        assertFalse(GoogleGuidanceRepository.state.value.activeNavigation)
+        assertNull(GoogleGuidanceRepository.state.value.guidance)
+    }
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var original: LauncherState
 

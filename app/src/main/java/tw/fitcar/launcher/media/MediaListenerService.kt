@@ -32,8 +32,9 @@ class MediaListenerService : NotificationListenerService() {
     companion object {
         private var live: MediaListenerService? = null
         fun rescanNavigation() {
-            GoogleGuidanceRepository.clear()
-            live?.let { GoogleGuidanceRepository.rescan(it) }
+            val service = live
+            if (service == null) GoogleGuidanceRepository.connection(false)
+            else GoogleGuidanceRepository.rescan(service)
         }
     }
 }
