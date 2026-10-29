@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +66,7 @@ class SettingsData(
     val otherHomes: List<AppEntry>,
     val diagnostics: List<Pair<String, String>>,
     val versionName: String,
+    val startupStatus: String = "尚無開機啟動紀錄",
 )
 
 class SettingsActions(
@@ -92,10 +95,11 @@ class SettingsActions(
     /** 儲存回家／公司地址（null = 不提供此設定）。 */
     val savePlaces: ((String, String) -> Unit)? = null,
     val setSpeedAlert: ((Int) -> Unit)? = null,
+    val setStartOnBoot: ((Boolean) -> Unit)? = null,
 )
 
 // 依使用頻率排序：常用設定在前，檢測與資訊在後
-private val SECTIONS = listOf("顯示與亮度", "App 綁定", "導航", "權限", "備份與還原", "實機檢測", "返回原廠桌面", "實機資訊", "更新", "關於")
+private val SECTIONS = listOf("顯示與亮度", "App 綁定", "導航", "權限", "備份與還原", "實機檢測", "啟動設定", "返回原廠桌面", "實機資訊", "更新", "關於")
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
@@ -131,6 +135,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     "權限" -> PermissionSection(data, actions)
                     "備份與還原" -> BackupSection()
                     "實機檢測" -> CheckerEntrySection(actions)
+                    "啟動設定" -> StartupSection(data, actions)
                     "返回原廠桌面" -> FactoryHomeSection(data, actions)
                     "實機資訊" -> DiagnosticsSection(data)
                     "更新" -> UpdateSection()
@@ -493,6 +498,21 @@ private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
     Section("修改系統設定（背光）") {
         StatusLine(data.canWriteBrightness, "已允許", "未允許：亮度排程不會生效")
         SecondaryButton("開啟系統設定", actions.requestWriteSettings)
+    }
+}
+
+@Composable
+private fun StartupSection(data: SettingsData, actions: SettingsActions) {
+    Section("開機啟動") {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("開機時嘗試開啟車機桌面", color = LocalPalette.current.text, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            Switch(checked = data.state.startOnBoot, onCheckedChange = actions.setStartOnBoot,
+                modifier = Modifier.semantics { contentDescription = "開機時嘗試開啟車機桌面" })
+        }
+        Hint("只在真正開機後嘗試一次，預設關閉。Android 或原廠可能限制自動開啟；休眠喚醒不一定會觸發。", size = 16)
+        Hint(data.startupStatus, size = 16)
+        Hint("此選項不會改變預設桌面，也不保證修復原廠 Home 接管。", size = 16)
+        PrimaryButton("變更預設桌面", actions.openHomeSettings)
     }
 }
 

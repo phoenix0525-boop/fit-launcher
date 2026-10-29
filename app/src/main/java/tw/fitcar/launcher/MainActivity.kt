@@ -191,6 +191,11 @@ class MainActivity : ComponentActivity() {
         MediaListenerService.rescanNavigation()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) tw.fitcar.launcher.system.DesktopStartup.confirm(this, intent)
+    }
+
     /** 依目前設定計算並套用本視窗亮度；只影響車機桌面自己的視窗，不寫系統亮度。 */
     private fun applyDesktopDim() {
         val opts = tw.fitcar.launcher.ui.DesktopDimStore.state.value
@@ -216,6 +221,10 @@ class MainActivity : ComponentActivity() {
     /** 已在桌面時再按 Home：關閉所有覆蓋畫面回到主畫面。 */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (intent.hasExtra(tw.fitcar.launcher.system.DesktopStartup.EXTRA_REQUEST)) {
+            setIntent(intent)
+            screen = Screen.Home
+        }
         if (intent.hasCategory(Intent.CATEGORY_HOME)) screen = Screen.Home
     }
 
@@ -574,12 +583,14 @@ class MainActivity : ComponentActivity() {
                                 otherHomes = AppRepository.otherHomeApps(this@MainActivity),
                                 diagnostics = Diagnostics.collect(this@MainActivity, state, media, gps),
                                 versionName = BuildInfo.versionName(this@MainActivity),
+                                startupStatus = tw.fitcar.launcher.system.DesktopStartup.statusText(this@MainActivity),
                             )
                         }
                         SettingsScreen(
                             data,
                             SettingsActions(
                                 back = { screen = Screen.Home },
+                                setStartOnBoot = { enabled -> prefs.update { it.copy(startOnBoot = enabled) } },
                                 setAccent = { t -> prefs.update { st -> st.copy(accentTheme = t.id) } },
                                 setStyle = { t -> prefs.update { st -> st.copy(visualStyle = t.id) } },
                                 setCharacterThemesUnlocked = { unlocked -> prefs.update { st ->
