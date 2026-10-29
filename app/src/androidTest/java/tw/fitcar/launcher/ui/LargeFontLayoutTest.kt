@@ -29,6 +29,33 @@ import tw.fitcar.launcher.system.GpsState
 import java.io.File
 
 class LargeFontLayoutTest {
+    @Test fun audioDiagnosticsAt125PercentDoesNotChangeVolumeOnEntry() {
+        var reads = 0
+        var writes = 0
+        val port = object : tw.fitcar.launcher.system.AudioProbePort {
+            override fun read(): tw.fitcar.launcher.system.AudioReading {
+                reads++
+                return tw.fitcar.launcher.system.AudioReading(mapOf("MUSIC" to 36), 0, 40, false, 0, true, listOf(2))
+            }
+            override fun setMusic(target: Int) { writes++ }
+            override fun lowerMusic() { writes++ }
+        }
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(24.dp)) {
+                        AudioDiagnosticsTab(port)
+                    }
+                }
+            }
+        }
+        listOf("音量對照檢測", "桌面絕對設定：降低一格", "桌面相對調整：降低一格", "小芳／小方：20 秒觀察", "原廠按鍵：20 秒觀察").forEach {
+            compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
+        }
+        screenshot("audio-diagnostics-125")
+        compose.runOnIdle { assertTrue(reads == 0); assertTrue(writes == 0) }
+    }
     @get:Rule val compose = createComposeRule()
     private var originalMapZoom: Boolean? = null
     @org.junit.Before fun isolatePersistedMapPreference() {

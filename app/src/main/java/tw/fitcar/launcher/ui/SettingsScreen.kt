@@ -562,6 +562,7 @@ internal fun AboutSection(data: SettingsData) {
         }
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.22：新增音量對照檢測與手動聲音回報；未宣稱修復原廠音量或接通小芳。", size = 16)
         Hint("• 0.4.21：無 Google 導航通知時回到定位地圖；新增開機嘗試開啟選項，實際效果待車機驗證。", size = 16)
         Hint("• 0.4.20：Google 導航通知支援距離與路名；不從圖示猜方向，舊提示仍會過期。", size = 16)
         Hint("• 0.4.19：「更多」裡的排列不再疊兩層視窗；側欄位置判斷更準、更省電。", size = 16)

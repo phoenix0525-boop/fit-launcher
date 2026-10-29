@@ -70,7 +70,7 @@ class CheckerActions(
     val requestWriteSettings: () -> Unit,
 )
 
-private val TABS = listOf("可改進的地方", "全部結果", "手勢測試", "按鍵測試", "亮度測試", "分割畫面", "GPS 測試", "手動檢查", "匯出報告")
+private val TABS = listOf("可改進的地方", "全部結果", "手勢測試", "按鍵測試", "亮度測試", "分割畫面", "GPS 測試", "手動檢查", "音量檢測", "匯出報告")
 
 @Composable
 fun CheckerScreen(actions: CheckerActions) {
@@ -98,6 +98,7 @@ fun CheckerScreen(actions: CheckerActions) {
                     5 -> SplitTab(results["split"], actions)
                     6 -> GpsTab(actions)
                     7 -> ManualTab(results)
+                    8 -> AudioDiagnosticsTab()
                     else -> ReportTab(results)
                 }
             }
@@ -176,7 +177,7 @@ private fun GestureTab() {
     var lastSeen by remember { mutableStateOf("尚未偵測到手勢") }
 
     Section("原車機音量手勢在 車機桌面內是否仍有效") {
-        Hint("1. 先調一個中間音量並播放音樂。2. 按下要測的手勢。3. 5 秒內在下方灰色區域做該手勢。系統會比對前後音量，判斷手勢是由車機系統處理（不需實作），還是只存在原廠桌面（需要實作）。", size = 14)
+        Hint("1. 停車並播放音樂。2. 按下要測的手勢。3. 5 秒內在下方灰色區域做該手勢。只比對 Android 音量數值與觸控；不能證明實際聲音或手勢由哪一層處理。", size = 14)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GestureKind.entries.forEach { k ->
                 val busy = armed != null
