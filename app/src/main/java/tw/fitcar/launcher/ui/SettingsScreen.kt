@@ -96,6 +96,7 @@ class SettingsActions(
     val savePlaces: ((String, String) -> Unit)? = null,
     val setSpeedAlert: ((Int) -> Unit)? = null,
     val setStartOnBoot: ((Boolean) -> Unit)? = null,
+    val openTestTab: ((Int) -> Unit)? = null,
 )
 
 // 依使用頻率排序：常用設定在前，檢測與資訊在後
@@ -140,6 +141,17 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     "實機資訊" -> DiagnosticsSection(data)
                     "更新" -> UpdateSection()
                     else -> AboutSection(data)
+                }
+                val test = when (SECTIONS.getOrNull(section)) {
+                    "顯示與亮度" -> "測試亮度" to 4
+                    "App 綁定", "導航" -> "測試導航與播放器" to 7
+                    "權限" -> "重新檢測權限與功能" to 1
+                    "啟動設定", "返回原廠桌面" -> "測試桌面接管與喚醒" to 7
+                    "實機檢測" -> "開啟功能測試按鈕" to 7
+                    else -> null
+                }
+                if (test != null && actions.openTestTab != null) {
+                    SecondaryButton(test.first, { actions.openTestTab.invoke(test.second) })
                 }
             }
     }
