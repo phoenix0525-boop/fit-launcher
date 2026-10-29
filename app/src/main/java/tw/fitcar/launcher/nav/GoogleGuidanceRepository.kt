@@ -34,9 +34,13 @@ object GoogleGuidanceRepository {
         if (!candidate(context, sbn)) return
         val n = sbn.notification
         val e = n.extras
+        // Big text may be present but blank; some Maps versions put the road in text lines.
+        val bodies = (listOf(e.getCharSequence(Notification.EXTRA_BIG_TEXT), e.getCharSequence(Notification.EXTRA_TEXT)) +
+            e.getCharSequenceArray(Notification.EXTRA_TEXT_LINES).orEmpty().take(8))
+            .mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }.distinct()
         val g = GoogleGuidance.parse(e.getCharSequence(Notification.EXTRA_TITLE),
-            e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT),
-            e.getCharSequence(Notification.EXTRA_SUB_TEXT))
+            bodies.joinToString(" · "), e.getCharSequence(Notification.EXTRA_SUB_TEXT),
+            navigationCategory = n.category == Notification.CATEGORY_NAVIGATION)
         if (g == null && n.category != Notification.CATEGORY_NAVIGATION) {
             if (mutable.value.notificationKey == sbn.key) clear()
             return

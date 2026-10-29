@@ -24,4 +24,17 @@ class GoogleGuidanceTest {
         assertEquals("", g.arrow)
         assertNull(g.distance)
     }
+    @Test fun distanceAndRoadRequireTrustedNavigationCategory() {
+        assertNull(GoogleGuidance.parse("260 公尺", "測試道路", null))
+        val g = GoogleGuidance.parse("260 公尺", "測試道路", null, navigationCategory = true)!!
+        assertEquals("260 公尺", g.distance)
+        assertEquals("測試道路", g.secondary)
+        assertEquals("", g.arrow)
+        assertNull(GoogleGuidance.parse(null, "", null, navigationCategory = true))
+    }
+    @Test fun distanceMayBeInBodyButNeverUsesSubtextTripDistance() {
+        val g = GoogleGuidance.parse("地圖", "260 公尺 · 測試道路", "剩餘 5 公里", navigationCategory = true)!!
+        assertEquals("260 公尺", g.distance)
+        assertEquals("", g.arrow)
+    }
 }
