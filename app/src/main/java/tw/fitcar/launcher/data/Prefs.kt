@@ -39,6 +39,7 @@ data class LauncherState(
     val workAddress: String? = null,
     /** 自訂超速提醒門檻（km/h），0 = 關閉。只比對 GPS 車速。 */
     val speedAlertKmh: Int = 0,
+    val startOnBoot: Boolean = false,
 )
 
 /**
@@ -83,6 +84,7 @@ class Prefs private constructor(context: Context) {
         )
         val split = if (sp.contains("last_split_result")) sp.getBoolean("last_split_result", false) else null
         return LauncherState(
+            startOnBoot = sp.getBoolean("start_desktop_on_boot", false),
             display = display,
             shortcuts = shortcuts,
             bindings = Bindings(
@@ -109,6 +111,7 @@ class Prefs private constructor(context: Context) {
 
     private fun save(s: LauncherState) {
         sp.edit().apply {
+            putBoolean("start_desktop_on_boot", s.startOnBoot)
             putBoolean("auto_schedule", s.display.autoSchedule)
             putBoolean("auto_theme", s.display.autoTheme)
             putString("manual_theme", if (s.display.manualTheme == ThemeChoice.NIGHT) "night" else "day")

@@ -514,7 +514,9 @@ class LargeFontLayoutTest {
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true, activeNavigation = true) }
         fullLabel("導航提示暫不可用，請開啟 Google 地圖確認")
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true) }
-        fullLabel("請在 Google 地圖開始導航")
+        fullLabel("未收到 Google 導航提示，顯示定位地圖")
+        compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
+        screenshot("google-ended-map-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState() }
         fullLabel("導航通知服務未連線")
         compose.runOnIdle { permission.value = false }
@@ -560,9 +562,28 @@ class LargeFontLayoutTest {
     }
     private fun settingsFixture(): SettingsData = SettingsData(tw.fitcar.launcher.data.LauncherState(), null, null, null, true, 50, true, true,
         otherHomes = emptyList(), diagnostics = emptyList(), versionName = tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext))
-    private fun settingsActionsFixture() = SettingsActions(back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
+    private fun settingsActionsFixture(startup: ((Boolean) -> Unit)? = null) = SettingsActions(setStartOnBoot = startup, back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
         pickTime = { _, _ -> }, requestWriteSettings = {}, requestNotificationAccess = {}, requestLocation = {}, bind = {}, clearBinding = {},
         setNavMode = {}, setMediaMode = {}, testSplit = {}, openOtherHome = {}, openHomeSettings = {}, openChecker = {})
+    @Test fun startupOptionAt125Percent() {
+        val state = androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.data.LauncherState())
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    SettingsScreen(SettingsData(state.value,null,null,null,true,50,true,true,
+                        otherHomes=emptyList(),diagnostics=emptyList(),versionName="test"),
+                        settingsActionsFixture { enabled -> state.value=state.value.copy(startOnBoot=enabled) })
+                }
+            }
+        }
+        compose.onNodeWithText("啟動設定").performScrollTo().performClick()
+        fullLabel("開機時嘗試開啟車機桌面")
+        compose.onNodeWithContentDescription("開機時嘗試開啟車機桌面").assertIsOff().performClick().assertIsOn()
+        fullLabel("尚無開機啟動紀錄")
+        screenshot("settings-startup-125")
+        compose.onNodeWithContentDescription("開機時嘗試開啟車機桌面").performClick().assertIsOff()
+    }
     @Test fun lightSpiderSettingsAndAboutAt125Percent() {
         compose.setContent {
             val density = LocalDensity.current.density

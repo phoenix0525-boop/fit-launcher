@@ -21,6 +21,7 @@ class BrightnessReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in ALLOWED_ACTIONS) return
+        DesktopStartup.request(context, intent.action, Prefs.get(context).state.value.startOnBoot)
         val pending = goAsync()
         BrightnessController.applyScheduled(context) {
             BrightnessController.scheduleNext(context)
