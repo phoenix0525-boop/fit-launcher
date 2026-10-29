@@ -409,7 +409,10 @@ internal fun ManualTab(results: Map<String, CheckResult>, actions: CheckerAction
             tw.fitcar.launcher.check.ManualTestActions.forItem(item.id).forEach { testAction ->
                 SecondaryButton(testAction.label, {
                     begin()
-                    launchMessage = actions.runManualAction(testAction.id) ?: "已提出開啟請求；請目視確認，完成後回到本頁記錄結果。"
+                    launchMessage = if (testAction.id == "audio_readonly") {
+                        selectTab(8)
+                        "已開啟音量只讀觀察，未調整音量；實際聲音仍需使用者確認。"
+                    } else actions.runManualAction(testAction.id) ?: "已提出開啟請求；請目視確認，完成後回到本頁記錄結果。"
                     CheckStore.put(ctx, manualResult(item, null, launchMessage, testScenario.orEmpty())
                         .copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime))
                 })

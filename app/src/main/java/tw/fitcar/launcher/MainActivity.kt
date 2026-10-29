@@ -626,7 +626,12 @@ class MainActivity : ComponentActivity() {
                                         else bound(state.bindings.music)
                                     }
                                     "shield" -> bound(state.bindings.shield)
-                                    "google" -> launchTest(packageManager.getLaunchIntentForPackage(tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE))
+                                    "google" -> {
+                                        val selected = AppRepository.resolve(this@MainActivity, state.bindings.navigation)?.component?.packageName
+                                        if (selected != tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE)
+                                            "請先在導航設定選擇 Google 地圖，再測試通知提示；不會自動更改你的導航綁定。"
+                                        else launchTest(packageManager.getLaunchIntentForPackage(tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE))
+                                    }
                                     "king" -> launchTest(packageManager.getLaunchIntentForPackage(tw.fitcar.launcher.nav.NavigationKingShortcut.VERIFIED_PACKAGE))
                                     "system_settings" -> launchTest(Intent(Settings.ACTION_SETTINGS))
                                     "desktop" -> { screen = Screen.Home; null }

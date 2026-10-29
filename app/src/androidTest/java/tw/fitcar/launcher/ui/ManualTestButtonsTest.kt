@@ -82,6 +82,18 @@ class ManualTestButtonsTest {
         }
     }
 
+    @Test fun volumeShortcutDoesNotSendAnAudioControlRequest() {
+        var target = -1
+        var requests = 0
+        show({ requests++; null }, { target = it })
+        compose.onNodeWithText("開啟音量只讀觀察").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(8, target)
+            assertEquals(0, requests)
+            assertEquals(Status.TODO, CheckStore.results.value["m_desktop_volume"]?.status)
+        }
+    }
+
     private fun screenshot(name: String) {
         val file = File(context.getExternalFilesDir(null), "$name.png")
         file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }

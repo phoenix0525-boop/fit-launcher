@@ -14,7 +14,8 @@ object ManualTestActions {
         "m_player_morphe" -> listOf(ManualTestAction("music_morphe", "開啟已綁定 Morphe 測試"))
         "m_shield" -> listOf(ManualTestAction("shield", "開啟已綁定測速 App 測試"))
         "m_factory_home_return" -> listOf(ManualTestAction("system_settings", "開啟系統設定（確認不被切走）"))
-        "m_reverse", "m_readability", "m_touch", "m_headlight", "m_desktop_volume" -> listOf(ManualTestAction("desktop", "回主畫面進行測試"))
+        "m_reverse", "m_readability", "m_touch", "m_headlight" -> listOf(ManualTestAction("desktop", "回主畫面進行測試"))
+        "m_desktop_volume" -> listOf(ManualTestAction("audio_readonly", "開啟音量只讀觀察"))
         "m_widgets" -> listOf(ManualTestAction("all_apps", "開啟所有 App 測試小工具"))
         else -> emptyList() // Physical Home/ACC operations cannot be simulated by launching HOME.
     }
