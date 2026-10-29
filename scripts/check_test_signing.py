@@ -11,7 +11,7 @@ assert '未使用固定測試金鑰，無法覆蓋安裝' in w
 release=s.split('release {',1)[1].split('compileOptions',1)[0]
 assert 'fitTest' not in release
 policy=Path('app/src/main/java/tw/fitcar/launcher/update/UpdatePolicy.kt').read_text()
-assert '52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6' in policy
+assert '274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF' in policy
 assert 'TEST' not in policy
 assert not list(Path('.').rglob('*.p12')) and not list(Path('.').rglob('*.jks'))
 print('Test signing boundaries passed')

@@ -39,7 +39,7 @@ jobs:
           if (-not $assignment.Success) { throw 'Retry helper must contain one explicit confirmed public pin' }
           $pin = [IO.File]::ReadAllText((Join-Path $PWD 'docs/test-certificate.sha256')).Trim().Replace(':','').ToUpperInvariant()
           if ($assignment.Groups[1].Value -ne $pin) { throw 'Retry helper pin differs from candidate certificate pin' }
-          if ($pin -eq '52EE06F203BEA1460317B66170B99D07214B366E9A3A1E6F30D873E42C3835C6') { throw 'Production certificate cannot be the test pin' }
+          if ($pin -eq '274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF') { throw 'Production certificate cannot be the test pin' }
           if ($source.Contains('-genkeypair')) { throw 'Retry helper must never create another private key' }
           $tokens = $null
           $parseErrors = $null
