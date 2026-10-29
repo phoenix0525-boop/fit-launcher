@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -383,7 +384,7 @@ internal fun ManualTab(results: Map<String, CheckResult>, actions: CheckerAction
         var testVersion by rememberSaveable(item.id) { mutableStateOf(pending?.appVersion.orEmpty()) }
         var testTime by rememberSaveable(item.id) { mutableStateOf(pending?.time ?: 0L) }
         Column(
-            Modifier.fillMaxWidth().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
+            Modifier.fillMaxWidth().testTag("manual-${item.id}").clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import android.graphics.Bitmap
+import java.io.File
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
@@ -62,16 +65,29 @@ class ManualTestButtonsTest {
             assertEquals(CheckStore.version(context), CheckStore.results.value["m_google_hint"]?.appVersion)
             assertEquals(Status.TODO, CheckStore.results.value["m_google_hint"]?.status)
         }
+        compose.onNode(hasText("正常") and hasAnyAncestor(hasTestTag("manual-m_google_hint")))
+            .performScrollTo().assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(Status.PASS, CheckStore.results.value["m_google_hint"]?.status) }
     }
 
     @Test fun missingAppRetainsFailureInformationWithoutAutomaticPass() {
         show({ "找不到對應 App；請先安裝或在 App 綁定選擇" })
         compose.onNodeWithText("開啟已綁定測速 App 測試").performScrollTo().performClick()
+        compose.onNodeWithText("找不到對應 App；請先安裝或在 App 綁定選擇").performScrollTo().assertIsDisplayed()
+        screenshot("manual-test-missing-app-125")
         compose.runOnIdle {
             val result = CheckStore.results.value["m_shield"]!!
             assertEquals(Status.TODO, result.status)
             assertTrue(result.notes.contains("找不到對應 App"))
         }
+    }
+
+    private fun screenshot(name: String) {
+        val file = File(context.getExternalFilesDir(null), "$name.png")
+        file.outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val shell = InstrumentationRegistry.getInstrumentation().uiAutomation
+        shell.executeShellCommand("mkdir -p /sdcard/Download/fit-ui").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+        shell.executeShellCommand("cp ${file.absolutePath} /sdcard/Download/fit-ui/$name.png").use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
 
     @Test fun brightnessShortcutOnlyNavigatesWithoutStartingHardwareTest() {
