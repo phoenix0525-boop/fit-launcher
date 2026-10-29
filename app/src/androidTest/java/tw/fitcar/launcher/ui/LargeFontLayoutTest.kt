@@ -736,7 +736,8 @@ class LargeFontLayoutTest {
                 compose.onNodeWithContentDescription(label).performScrollTo().assertIsOff()
                 fullLabel(label)
             }
-            compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performClick()
+            // The loop above scrolls to the last option; bring the first switch back before tapping.
+            compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performScrollTo().assertIsOff().performClick().assertIsOn()
             compose.runOnIdle { assertTrue(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context)) }
             compose.onNodeWithText("設為預設桌面").performScrollTo()
             fullLabel("設為預設桌面")
