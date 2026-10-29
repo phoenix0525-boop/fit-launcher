@@ -46,7 +46,7 @@ object GestureTest {
         return VolumeSnapshot(am.getStreamVolume(AudioManager.STREAM_MUSIC), am.isStreamMute(AudioManager.STREAM_MUSIC))
     }
 
-    /** 做完手勢 0.8 秒後比對音量，判斷系統是否處理了這個手勢。 */
+    /** 做完手勢後只比對 Android 數值，不能推斷原廠硬體或實際聲音。 */
     fun evaluate(kind: GestureKind, before: VolumeSnapshot, after: VolumeSnapshot, appSaw: Boolean): CheckResult {
         val changed = when (kind) {
             GestureKind.TWO_UP -> after.volume > before.volume || (before.muted && !after.muted)
@@ -56,12 +56,11 @@ object GestureTest {
         val f = "在 車機桌面內做「${kind.label}」：音量 ${before.volume}${if (before.muted) "（靜音）" else ""} → ${after.volume}${if (after.muted) "（靜音）" else ""}；" +
             (if (appSaw) "App 有收到這個手勢的觸控。" else "App 沒收到這個手勢的觸控（被系統先攔截，或手勢未做完整）。")
         return if (changed) {
-            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.PASS, f + "系統層級有處理。",
-                "這個手勢由車機系統或觸控驅動提供，換成 車機桌面後仍有效，不需要另外實作。")
+            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.INFO, f + "Android 數值符合預期方向，但不代表實際聲音或已確認系統層級處理。",
+                "請另外確認實際聲音，並以音量檢測對照小芳及原廠按鍵；不能單憑數值判定驅動來源。")
         } else {
-            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.FAIL, f + "音量沒有變化。",
-                "若在原廠桌面做同樣手勢會${kind.expect}，表示手勢只存在原廠桌面，車機桌面需要自行實作（記入下一版需求）。" +
-                    "若原廠桌面也沒反應，代表原車機不是用這個手勢，可忽略。")
+            CheckResult(kind.id, "操作", "手勢：${kind.label}（原車機＝${kind.expect}）", Status.INFO, f + "Android 數值未呈現預期變化；無法判定原廠實際音量或手勢來源。",
+                "若實際聲音有變、Android 數值未變，請記錄兩者差異；不能因此判定手勢只存在原廠桌面。")
         }
     }
 }
