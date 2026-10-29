@@ -430,6 +430,7 @@ class MainActivity : ComponentActivity() {
             ShortcutSlots.visible(state.shortcuts, state.shortcutPages).map { SlotView(it, AppCatalog.resolve(this, it)) }
         }
         var editing by remember { mutableStateOf<Int?>(null) }
+        var checkerInitialTab by remember { mutableIntStateOf(0) }
 
         val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             GpsSpeed.start(this)
@@ -604,7 +605,38 @@ class MainActivity : ComponentActivity() {
                             },
                             requestLocation = { locationRequest?.invoke() },
                             requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this@MainActivity), "車機沒有提供修改系統設定頁") },
+                            runManualAction = { action ->
+                                fun launchTest(intent: Intent?): String? {
+                                    if (intent == null) return "找不到對應 App；請先安裝或在 App 綁定選擇，測試仍待確認。"
+                                    return try { startActivity(intent); null }
+                                    catch (_: Exception) { "開啟失敗；請檢查 App 與系統限制，測試仍待確認。" }
+                                }
+                                fun bound(key: String?): String? = launchTest(AppRepository.resolve(this@MainActivity, key)?.let { AppRepository.launchIntent(it.component) })
+                                when (action) {
+                                    "navigation" -> bound(state.bindings.navigation)
+                                    "music_kkbox", "music_yt", "music_morphe" -> {
+                                        val expected = when (action) {
+                                            "music_kkbox" -> "com.skysoft.kkbox.android"
+                                            "music_yt" -> "com.google.android.apps.youtube.music"
+                                            else -> "app.morphe.android.apps.youtube.music"
+                                        }
+                                        val actual = AppRepository.resolve(this@MainActivity, state.bindings.music)
+                                        if (actual?.component?.packageName != expected)
+                                            "目前綁定播放器不符合本項；請先到 App 綁定選擇對應播放器，不會自動更改你的設定。"
+                                        else bound(state.bindings.music)
+                                    }
+                                    "shield" -> bound(state.bindings.shield)
+                                    "google" -> launchTest(packageManager.getLaunchIntentForPackage(tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE))
+                                    "king" -> launchTest(packageManager.getLaunchIntentForPackage(tw.fitcar.launcher.nav.NavigationKingShortcut.VERIFIED_PACKAGE))
+                                    "system_settings" -> launchTest(Intent(Settings.ACTION_SETTINGS))
+                                    "desktop" -> { screen = Screen.Home; null }
+                                    "all_apps" -> { screen = Screen.AllApps; null }
+                                    "voice" -> { startVoice(); "已請求語音入口；是否有服務、收音與控制正確，仍需實際確認。" }
+                                    else -> "沒有對應測試操作，請依說明手動測試。"
+                                }
+                            },
                         ),
+                        initialTab = checkerInitialTab,
                     )
                     Screen.Settings -> {
                         val data = remember(tick, state, media.permissionGranted) {
@@ -670,7 +702,8 @@ class MainActivity : ComponentActivity() {
                                         .setComponent(home.component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     safeStart(i, "無法開啟 ${home.label}")
                                 },
-                                openChecker = { screen = Screen.Checker },
+                                openChecker = { checkerInitialTab = 0; screen = Screen.Checker },
+                                openTestTab = { target -> checkerInitialTab = target; screen = Screen.Checker },
                                 savePlaces = { home, work ->
                                     prefs.update { st -> st.copy(homeAddress = tw.fitcar.launcher.nav.Places.clean(home), workAddress = tw.fitcar.launcher.nav.Places.clean(work)) }
                                     Toast.makeText(this@MainActivity, "已儲存常用地點", Toast.LENGTH_SHORT).show()

@@ -68,15 +68,17 @@ class CheckerActions(
     val startSplitTest: () -> Unit,
     val requestLocation: () -> Unit,
     val requestWriteSettings: () -> Unit,
+    /** Explicit user action only. null means no matching installed app/permission; never implies a pass. */
+    val runManualAction: (String) -> String? = { "此測試入口尚未連接" },
 )
 
 private val TABS = listOf("可改進的地方", "全部結果", "手勢測試", "按鍵測試", "亮度測試", "分割畫面", "GPS 測試", "手動檢查", "音量檢測", "匯出報告")
 
 @Composable
-fun CheckerScreen(actions: CheckerActions) {
+fun CheckerScreen(actions: CheckerActions, initialTab: Int = 0) {
     val p = LocalPalette.current
     val results by CheckStore.results.collectAsState()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(initialTab.coerceIn(TABS.indices)) }
     val improvements = CheckStore.improvements(results)
     Column(Modifier.fillMaxSize().background(p.bg).padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,7 +99,7 @@ fun CheckerScreen(actions: CheckerActions) {
                     4 -> BrightnessTab(actions)
                     5 -> SplitTab(results["split"], actions)
                     6 -> GpsTab(actions)
-                    7 -> ManualTab(results)
+                    7 -> ManualTab(results, actions) { tab = it }
                     8 -> AudioDiagnosticsTab()
                     else -> ReportTab(results)
                 }
@@ -359,20 +361,27 @@ private fun GpsTab(actions: CheckerActions) {
 }
 
 @Composable
-private fun ManualTab(results: Map<String, CheckResult>) {
+internal fun ManualTab(results: Map<String, CheckResult>, actions: CheckerActions, selectTab: (Int) -> Unit) {
     val ctx = LocalContext.current
     val p = LocalPalette.current
     Section("手動檢查") {
-        Hint("需要人眼判斷的項目。倒車影像請務必最先確認。", size = 14)
+        Hint("請先停車。開始測試只記錄情境，開啟 App 不代表測試通過；完成後回到本頁確認結果。倒車影像請務必最先確認。", size = 14)
+        // Vertical buttons remain usable at 125% and in narrow windows.
+        listOf("測試亮度（4 秒後恢復）" to 4, "測試 GPS 定位" to 6,
+            "測試分割畫面" to 5, "音量只讀觀察" to 8, "測試按鍵接收" to 3).forEach { (label, target) ->
+            SecondaryButton(label, { selectTab(target) })
+        }
     }
     IgnitionPanel()
     MANUAL_ITEMS.forEach { item ->
+        val r = results[item.id]
+        val pending = r?.takeIf { it.status == Status.TODO && it.time > 0L &&
+            it.appVersion == CheckStore.version(ctx) && it.contextKey == CheckStore.scenario(ctx) }
         var note by rememberSaveable(item.id) { mutableStateOf("") }
         var scenario by rememberSaveable(item.id) { mutableStateOf("") }
-        var testScenario by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
-        var testVersion by rememberSaveable(item.id) { mutableStateOf("") }
-        var testTime by rememberSaveable(item.id) { mutableStateOf(0L) }
-        val r = results[item.id]
+        var testScenario by rememberSaveable(item.id) { mutableStateOf(pending?.contextKey) }
+        var testVersion by rememberSaveable(item.id) { mutableStateOf(pending?.appVersion.orEmpty()) }
+        var testTime by rememberSaveable(item.id) { mutableStateOf(pending?.time ?: 0L) }
         Column(
             Modifier.fillMaxWidth().clip(RadiusMd).background(p.surfaceStrong).border(1.dp, p.line, RadiusMd).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -383,18 +392,35 @@ private fun ManualTab(results: Map<String, CheckResult>) {
             }
             Hint("做法：${item.howTo}", size = 14)
             Hint("有問題時：${item.ifBad}", size = 13)
-            SecondaryButton("開始本項測試", {
+            var launchMessage by rememberSaveable(item.id) { mutableStateOf(pending?.notes.orEmpty()) }
+            fun begin() {
                 testScenario = CheckStore.scenario(ctx)
                 testVersion = CheckStore.version(ctx)
                 testTime = System.currentTimeMillis()
-            })
+                launchMessage = ""
+                note = ""
+                scenario = ""
+                // Save pending state BEFORE leaving for another app, including process death.
+                CheckStore.put(ctx, manualResult(item, null, "已開始，尚未確認實際結果", testScenario.orEmpty())
+                    .copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime))
+            }
+            SecondaryButton("開始本項測試", { begin() })
+            tw.fitcar.launcher.check.ManualTestActions.forItem(item.id).forEach { testAction ->
+                SecondaryButton(testAction.label, {
+                    begin()
+                    launchMessage = actions.runManualAction(testAction.id) ?: "已提出開啟請求；請目視確認，完成後回到本頁記錄結果。"
+                    CheckStore.put(ctx, manualResult(item, null, launchMessage, testScenario.orEmpty())
+                        .copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime))
+                })
+            }
+            if (launchMessage.isNotBlank()) Hint(launchMessage, size = 14)
             Hint(testScenario ?: "請先開始測試，記錄當時預設桌面與播放器情境。", size = 12)
             OutlinedTextField(value = scenario, onValueChange = { scenario = it }, label = { Text("測試情境（例如使用中的 App、白天／夜間）") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("備註（問題位置、裁字等）") }, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
-                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
-                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null, note, testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
+                SecondaryButton("正常", { CheckStore.put(ctx, manualResult(item, true, listOf(launchMessage, note).filter { it.isNotBlank() }.joinToString("；"), testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
+                SecondaryButton("有問題", { CheckStore.put(ctx, manualResult(item, false, listOf(launchMessage, note).filter { it.isNotBlank() }.joinToString("；"), testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
+                SecondaryButton("未測", { CheckStore.put(ctx, manualResult(item, null, listOf(launchMessage, note).filter { it.isNotBlank() }.joinToString("；"), testScenario.orEmpty() + "; " + scenario).copy(appVersion = testVersion, contextKey = testScenario.orEmpty(), time = testTime)) }, enabled = testScenario != null)
             }
         }
     }

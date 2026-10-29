@@ -232,6 +232,8 @@ object GpsTest {
 data class ManualItem(val id: String, val group: String, val title: String, val howTo: String, val ifBad: String)
 
 val MANUAL_ITEMS = listOf(
+    ManualItem("m_widgets", "桌面", "系統小工具", "停車後開所有 App，加入一個小工具，確認系統綁定、設定、更新；回本頁記錄結果。", "無法綁定、內容不更新或速度未知時顯示不合理，請記錄小工具名稱與情境。"),
+    ManualItem("m_wake_launch", "電源", "螢幕喚醒開桌面", "先在啟動設定開啟喚醒功能與系統服務，再開始本項測試；實際熄火再發動，確認桌面是否恢復、是否搶走原廠畫面。另用下方熄火測試記錄恢復情況。", "開機與休眠喚醒分開記錄；開啟請求成功不能代替目視確認。"),
     ManualItem("m_voice", "操作", "語音控制", "點語音測開導航、播放、暫停、上一首／下一首、亮度；Google 目的地須先確認。", "記錄無服務、無收音、辨識錯字或控制對象不符。"),
     ManualItem("m_google_hint", "導航", "Google 導航通知", "選 Google 地圖並開始導航，返回車機桌面 核對提示；停止導航後確認舊方向距離消失；等紅燈時提示應保留，行駛中長時間沒有新通知才顯示過期。", "通知收不到時應顯示請看地圖，不能保留舊轉彎提示。"),
     ManualItem("m_factory_home_return", "桌面", "原廠桌面切回", "開啟系統服務與「原廠桌面出現時自動回到車機桌面」後，按實體 Home 鍵、熄火再發動各一次，記錄是否回到車機桌面。", "原廠桌面內的收音機、設定等畫面不應被切走；若出現來回跳動，30 秒內應自動暫停。"),
