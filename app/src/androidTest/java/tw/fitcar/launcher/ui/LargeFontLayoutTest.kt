@@ -224,12 +224,12 @@ class LargeFontLayoutTest {
         show(MediaUiState())
         compose.onNodeWithText("前往授權").performScrollTo()
         screenshot("home-permission-125")
-        listOf("前往授權", "更多", "開啟導航", "所有 App", "設定", "語音", "目前位置").forEach(::fullLabel)
+        listOf("前往授權", "更多", "導航王", "所有 App", "設定", "語音", "目前位置").forEach(::fullLabel)
         screenshot("home-permission-125")
     }
     @Test fun googleNotificationCardKeepsButtonsVisibleAt125Percent() {
         show(MediaUiState(), google = true)
-        listOf("更多", "開啟導航", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
+        listOf("更多", "導航王", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
         screenshot("home-google-voice-125")
     }
     @Test fun drivingModeAt125Percent() {
@@ -240,9 +240,9 @@ class LargeFontLayoutTest {
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
             gps = GpsState(permission = true, providerEnabled = true, speedKmh = 60f, accuracyM = 5f, latitude = 24.95, longitude = 121.29, fixElapsed = now, bearing = 90f))
         compose.waitForIdle()
-        listOf("km/h", "晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
+        listOf("km/h", "晴天", "周杰倫", "導航王", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
         // Primary driving labels must stay legible at the agreed 19.2 sp minimum.
-        listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach { text ->
+        listOf("晴天", "周杰倫", "導航王", "所有 App", "設定", "語音", "−15", "+15").forEach { text ->
             val layouts = mutableListOf<TextLayoutResult>()
             compose.onNodeWithText(text, useUnmergedTree = true)
                 .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
@@ -275,7 +275,7 @@ class LargeFontLayoutTest {
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS))
         screenshot("home-playing-125")
-        listOf("Morphe Music", "晴天", "周杰倫", "更多", "開啟導航", "所有 App", "設定", "語音").forEach(::fullLabel)
+        listOf("Morphe Music", "晴天", "周杰倫", "更多", "導航王", "所有 App", "設定", "語音").forEach(::fullLabel)
         screenshot("home-playing-125")
     }
     private fun pompompurin(night: Boolean, driving: Boolean = false, spider: Boolean = false) {
@@ -287,7 +287,7 @@ class LargeFontLayoutTest {
             actions = PlaybackState.ACTION_SEEK_TO or PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS),
             gps = fix, palette = paletteFor(if (night) tw.fitcar.launcher.data.ThemeChoice.NIGHT else tw.fitcar.launcher.data.ThemeChoice.DAY,
                 if (spider) AccentTheme.HERO_RED else AccentTheme.CARAMEL, if (spider) VisualStyle.SPIDERMAN else VisualStyle.POMPOMPURIN))
-        listOf("晴天", "周杰倫", "開啟導航", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
+        listOf("晴天", "周杰倫", "導航王", "所有 App", "設定", "語音", "−15", "+15").forEach(::fullLabel)
         // 0.4.16：主畫面不再放會被卡片遮住的大背景，只保留時鐘旁小圖
         compose.onNodeWithContentDescription(if (spider) "蜘蛛人全版背景" else "布丁狗全版背景").assertDoesNotExist()
         compose.onNodeWithContentDescription(if (spider) "蜘蛛人蹲姿插畫" else "布丁狗主題插畫").assertDoesNotExist()
@@ -413,7 +413,8 @@ class LargeFontLayoutTest {
         show(MediaUiState())
         val group = compose.onNodeWithContentDescription("地圖工具列", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         // 0.4.16：下方工具列只留常用動作，且只有一排；縮放與回到定位浮在地圖右下角
-        listOf("開啟導航", "更多").forEach { text ->
+        // 0.4.25：導航王與 Google 地圖並排在工具列
+        listOf("導航王", "Google 地圖", "更多").forEach { text ->
             fullLabel(text)
             val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("常用動作必須在工具列內：$text", child.top >= group.top && child.bottom <= group.bottom)
@@ -424,9 +425,15 @@ class LargeFontLayoutTest {
             val child = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("地圖浮動控制應在工具列上方：$text", child.bottom <= group.top)
         }
+        // Measure adjacent clickable buttons, not labels plus their internal padding.
+        // Keep the same gap threshold and all full-label/cropping assertions above.
+        val king = compose.onNode(hasText("導航王") and hasClickAction()).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val google = compose.onNode(hasText("Google 地圖") and hasClickAction()).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue("導航王與 Google 地圖必須相鄰並排", google.left >= king.right && google.left - king.right < 40.dp.value * InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density)
         listOf("Google 導航", "分割／多工", "桌面調暗").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         compose.onNodeWithText("更多").performClick()
-        listOf("更多工具", "Google 導航", "分割／多工", "桌面調暗", "關閉").forEach(::fullLabel)
+        listOf("更多工具", "分割／多工", "桌面調暗", "關閉").forEach(::fullLabel)
+        compose.onNodeWithText("Google 導航").assertDoesNotExist()
         screenshot("home-more-tools-125", dialog = true)
         // 0.4.19：從「更多」開排列指引時，「更多」先關閉，只剩一層對話框
         compose.onNodeWithText("排列").performClick()
@@ -558,6 +565,8 @@ class LargeFontLayoutTest {
             activeNavigation = true, guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("300 公尺後右轉", "進入中山路", "預計 12:40 抵達"), receivedElapsed = now))
         val permission = androidx.compose.runtime.mutableStateOf(true)
         val google = androidx.compose.runtime.mutableStateOf(true)
+        var mapMounts = 0
+        var mapDisposals = 0
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
@@ -569,18 +578,25 @@ class LargeFontLayoutTest {
                         gps = if (driving) GpsState(permission = true, providerEnabled = true, speedKmh = 60f,
                             latitude = 24.95, longitude = 121.29, fixElapsed = now) else GpsState(),
                         slots = emptyList(), actions = actions, googleGuidanceOverride = guidance.value, googleGuidanceNow = now,
-                        mapContent = { _, m -> Box(m) { Text("免費底圖測試") } })
+                        mapContent = { _, m ->
+                            androidx.compose.runtime.DisposableEffect(Unit) {
+                                mapMounts++
+                                onDispose { mapDisposals++ }
+                            }
+                            Box(m) { Text("免費底圖測試", modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(16.dp)) }
+                        })
                 }
             }
         }
-        compose.onNodeWithText("免費底圖測試").assertDoesNotExist()
-        compose.onNodeWithText("自動縮放").assertDoesNotExist()
-        compose.onNodeWithText("回到目前位置").assertDoesNotExist()
-        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "開啟導航", "更多").forEach(::fullLabel)
+        compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
+        if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist() else fullLabel("自動縮放")
+        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "導航王", "Google 地圖", "更多", "回到目前位置").forEach(::fullLabel)
         screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
         fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
+        screenshot("google-map-expired-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now,
             guidance = tw.fitcar.launcher.nav.GoogleGuidance.parse("260 公尺", "測試道路", null, navigationCategory = true)) }
         fullLabel("260 公尺"); fullLabel("測試道路")
@@ -607,6 +623,45 @@ class LargeFontLayoutTest {
         if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist()
         else fullLabel("自動縮放")
         fullLabel("回到目前位置")
+        compose.runOnIdle { assertTrue(mapMounts == 1); assertTrue(mapDisposals == 0) }
+    }
+    @Test fun googleHasOneTapNavigationKingShortcutAt125Percent() {
+        var calls = 0
+        val navActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, openKingNav = { calls++ })
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    HomeScreen(nav = AppEntry("Google 地圖", ComponentName("com.google.android.apps.maps", "Main"), null),
+                        navModeLabel = "全螢幕", splitResult = false, music = musicApp, shield = null,
+                        media = MediaUiState(permissionGranted = true), gps = GpsState(), slots = emptyList(), actions = navActions,
+                        mapContent = { _, m -> Box(m) { Text("定位底圖", modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart)) } })
+                }
+            }
+        }
+        fullLabel("導航王")
+        screenshot("google-navigation-king-shortcut-125")
+        compose.onNodeWithText("導航王").performClick()
+        compose.runOnIdle { assertTrue(calls == 1) }
+    }
+    @Test fun navigationKingAndGoogleMapsSitTogetherAndSwitchAt125Percent() {
+        var google = 0
+        val navActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, openGoogleNav = { google++ })
+        compose.setContent {
+            val density = LocalDensity.current.density
+            CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                FitTheme(DayPalette) {
+                    HomeScreen(nav = AppEntry("樂客導航王A5i 3D⁺", ComponentName("test.nav", "Nav"), null),
+                        navModeLabel = "全螢幕", splitResult = false, music = musicApp, shield = null,
+                        media = MediaUiState(permissionGranted = true), gps = GpsState(), slots = emptyList(), actions = navActions,
+                        mapContent = { _, m -> Box(m) { Text("定位底圖", modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart)) } })
+                }
+            }
+        }
+        listOf("導航王", "Google 地圖").forEach(::fullLabel)
+        screenshot("navigation-pair-king-selected-125")
+        compose.onNodeWithText("Google 地圖").performClick()
+        compose.runOnIdle { assertTrue(google == 1) }
     }
     @Test fun googleNotificationPanelDayAt125Percent() = googleNotificationPanel(false)
     @Test fun googleNotificationPanelNightAt125Percent() = googleNotificationPanel(true)
@@ -661,6 +716,37 @@ class LargeFontLayoutTest {
         fullLabel("尚無開機啟動紀錄")
         screenshot("settings-startup-125")
         compose.onNodeWithContentDescription("開機時嘗試開啟車機桌面").performClick().assertIsOff()
+    }
+    @Test fun desktopTakeoverOptionsAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val before = Triple(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context), tw.fitcar.launcher.system.DesktopGuard.wakeLaunch(context), tw.fitcar.launcher.system.DesktopGuard.overlay(context))
+        tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, false)
+        tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, false)
+        tw.fitcar.launcher.system.DesktopGuard.setOverlay(context, false)
+        try {
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(DayPalette) { SettingsScreen(settingsFixture(), settingsActionsFixture()) }
+                }
+            }
+            compose.onNodeWithText("啟動設定").performScrollTo().performClick()
+            // 0.4.27：桌面接管的各項都預設關閉，開關只改本機設定
+            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面", "導航 App 在前景時顯示「⌂ 桌面」").forEach { label ->
+                compose.onNodeWithContentDescription(label).performScrollTo().assertIsOff()
+                fullLabel(label)
+            }
+            // The loop above scrolls to the last option; bring the first switch back before tapping.
+            compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performScrollTo().assertIsOff().performClick().assertIsOn()
+            compose.runOnIdle { assertTrue(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context)) }
+            compose.onNodeWithText("設為預設桌面").performScrollTo()
+            fullLabel("設為預設桌面")
+            screenshot("settings-desktop-takeover-125")
+        } finally {
+            tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, before.first)
+            tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, before.second)
+            tw.fitcar.launcher.system.DesktopGuard.setOverlay(context, before.third)
+        }
     }
     @Test fun lightSpiderSettingsAndAboutAt125Percent() {
         compose.setContent {

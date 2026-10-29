@@ -53,4 +53,4 @@ jobs:
         run: |
           set -euo pipefail
           TAG=$(python -c 'import json; print("v" + json.load(open("update-distribution/update.json"))["versionName"])')
-          gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "車機桌面 $TAG" --notes-file docs/release-0.4.23.md update-distribution/*
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "車機桌面 $TAG" --notes-file docs/release-0.4.27.md update-distribution/*

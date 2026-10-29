@@ -43,7 +43,7 @@ class GoogleNotificationTest {
         assertNull(GoogleGuidanceRepository.state.value.guidance)
     }
     @Test fun oldNotificationAndDisconnectCannotShowOldTurnAsFresh() {
-        GoogleGuidanceRepository.posted(context, notification(age = 9000))
+        GoogleGuidanceRepository.posted(context, notification(age = GuidanceFreshness.MAX_AGE_MS + 1000))
         assertFalse(GoogleGuidanceRepository.state.value.fresh())
         GoogleGuidanceRepository.connection(false)
         assertNull(GoogleGuidanceRepository.state.value.guidance)

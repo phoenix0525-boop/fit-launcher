@@ -29,8 +29,37 @@ data class GoogleGuidance(val primary: String, val secondary: String?, val dista
         }
     }
 }
+/**
+ * Google 地圖只在顯示文字改變時才更新通知：等紅燈或長直路時，舊通知本來就會停很久。
+ * 因此不再用固定 8 秒判斷，而依「通知仍在、車是否在動、距離單位」決定可信時間：
+ * - 停車（GPS 有效且 < 5 km/h）：通知仍在就有效，最多 10 分鐘。
+ * - 行駛中、距離 < 1 公里：30 秒沒更新視為過期（50 公尺級距約數秒就會變）。
+ * - 行駛中、距離 ≥ 1 公里：90 秒（0.1 公里級距在低速時要較久才變）。
+ * - 速度未知（GPS 失效、隧道）或無距離：30 秒。
+ * 通知被移除或監聽中斷仍立即結束，不推算距離。
+ */
 object GuidanceFreshness {
-    const val MAX_AGE_MS = 8000L
-    fun isFresh(receivedElapsed: Long, now: Long, connected: Boolean): Boolean =
-        connected && receivedElapsed > 0 && now - receivedElapsed in 0 until MAX_AGE_MS
+    /** 速度未知時的上限；UI 測試以此建立「已過期」狀態。 */
+    const val MAX_AGE_MS = 30_000L
+    const val NEAR_MOVING_MS = 30_000L
+    const val FAR_MOVING_MS = 90_000L
+    const val STOPPED_MS = 600_000L
+    const val STOPPED_KMH = 5f
+
+    fun distanceMeters(distance: String?): Int? {
+        val m = Regex("(\\d+(?:\\.\\d+)?)\\s*(公尺|公里|km|m)", RegexOption.IGNORE_CASE).find(distance ?: return null) ?: return null
+        val v = m.groupValues[1].toDoubleOrNull() ?: return null
+        return (if (m.groupValues[2].equals("公里") || m.groupValues[2].equals("km", true)) v * 1000 else v).toInt()
+    }
+
+    fun limitMs(distanceMeters: Int?, speedKmh: Float?): Long = when {
+        speedKmh == null -> MAX_AGE_MS
+        speedKmh < STOPPED_KMH -> STOPPED_MS
+        distanceMeters == null -> MAX_AGE_MS
+        distanceMeters >= 1000 -> FAR_MOVING_MS
+        else -> NEAR_MOVING_MS
+    }
+
+    fun isFresh(receivedElapsed: Long, now: Long, connected: Boolean, distanceMeters: Int? = null, speedKmh: Float? = null): Boolean =
+        connected && receivedElapsed > 0 && now - receivedElapsed in 0 until limitMs(distanceMeters, speedKmh)
 }

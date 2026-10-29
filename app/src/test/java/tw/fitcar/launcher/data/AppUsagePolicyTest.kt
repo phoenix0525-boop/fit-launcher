@@ -23,4 +23,9 @@ class AppUsagePolicyTest {
         assertTrue(AppUsagePolicy.matches("任何", "x.y", "   "))
         assertFalse(AppUsagePolicy.matches("工具程式3", "test.app3", "程式12"))
     }
+    @Test fun systemUsageOnlyFillsAfterOwnHistory() {
+        val keys = mapOf("a" to "a/A", "b" to "b/B", "c" to "c/C")
+        assertEquals(listOf("b/B", "a/A", "c/C"), AppUsagePolicy.merge(listOf("b/B"), listOf("a", "b", "x", "c"), keys::get))
+        assertEquals(8, AppUsagePolicy.merge(List(8) { "o$it" }, listOf("a"), keys::get).size)
+    }
 }

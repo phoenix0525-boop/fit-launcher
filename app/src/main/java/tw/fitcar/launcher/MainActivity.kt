@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
     private var activityResumed by mutableStateOf(false)
     private var resumeTick by mutableIntStateOf(0)
     private var screen by mutableStateOf<Screen>(Screen.Home)
+    /** 「所有 App」上方的系統小工具；必須在 onCreate 前註冊 Activity 結果。 */
+    private val widgets = tw.fitcar.launcher.ui.DesktopWidgets(this)
 
     private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -118,6 +120,24 @@ class MainActivity : ComponentActivity() {
         if (app == null) { toast("找不到可啟動的 Google 地圖，請先安裝並啟用。 "); return }
         setBinding(BindingTarget.NAVIGATION, app.key)
         handleNav(NavLauncher.open(this, forceFullscreen = true))
+    }
+
+    private fun selectNavigationKing() {
+        val apps = AppRepository.launchableApps(this).filter {
+            tw.fitcar.launcher.nav.NavigationKingShortcut.matches(it.label, it.component.packageName)
+        }.distinctBy { it.key }
+        fun select(app: tw.fitcar.launcher.data.AppEntry) {
+            if (AppRepository.resolve(this, app.key) == null) { toast("導航王已無法啟動，請確認安裝狀態。"); return }
+            setBinding(BindingTarget.NAVIGATION, app.key)
+            handleNav(NavLauncher.open(this, forceFullscreen = true))
+        }
+        when {
+            apps.isEmpty() -> toast("找不到可啟動的導航王，請先安裝或啟用。")
+            apps.size == 1 && apps[0].component.packageName == tw.fitcar.launcher.nav.NavigationKingShortcut.VERIFIED_PACKAGE -> select(apps[0])
+            else -> android.app.AlertDialog.Builder(this).setTitle("選擇要切換的導航王")
+                .setItems(apps.map { "${it.label}\n${it.component.packageName}" }.toTypedArray()) { _, index -> select(apps[index]) }
+                .setNegativeButton("取消", null).show()
+        }
     }
 
     private fun executeVoice(command: VoiceCommand) {
@@ -173,6 +193,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         tw.fitcar.launcher.ui.DesktopDimStore.initialize(this)
         BrightnessController.scheduleNext(this)
+        widgets.load()
         setContent { Root() }
     }
 
@@ -212,8 +233,14 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
 
+    override fun onStart() {
+        super.onStart()
+        widgets.start()
+    }
+
     override fun onStop() {
         super.onStop()
+        widgets.stop()
         GpsSpeed.stop()
         SystemStatusMonitor.stop()
     }
@@ -462,6 +489,7 @@ class MainActivity : ComponentActivity() {
                 editSlot = { i -> editing = i },
                 voice = { startVoice() },
                 openGoogleNav = { selectGoogleNavigation() },
+                openKingNav = { selectNavigationKing() },
                 requestLocation = { locationRequest?.invoke() },
                 goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.homeAddress)) },
                 goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.workAddress)) },
@@ -512,7 +540,13 @@ class MainActivity : ComponentActivity() {
                     Screen.Home -> Unit
                     Screen.AllApps -> CompositionLocalProvider(tw.fitcar.launcher.ui.LocalDriving provides tw.fitcar.launcher.ui.rememberDriving(gps)) {
                         // 最近使用只存在車機；行車中自動隱藏搜尋框
-                        val recentApps = remember(tick, screen) { tw.fitcar.launcher.data.AppUsage.recent(this@MainActivity) }
+                        val recentApps = remember(tick, screen, apps) {
+                            // 自己的紀錄在前；已允許使用情況存取時以系統紀錄補足（只讀、只存在車機）
+                            tw.fitcar.launcher.data.AppUsagePolicy.merge(tw.fitcar.launcher.data.AppUsage.recent(this@MainActivity),
+                                tw.fitcar.launcher.system.LauncherPermissions.recentPackages(this@MainActivity)) { pkg ->
+                                apps.firstOrNull { it.component.packageName == pkg }?.key
+                            }
+                        }
                         FullScreenAppList(
                             title = "所有 App",
                             subtitle = "共 ${apps.size} 個可啟動的 App",
@@ -524,6 +558,7 @@ class MainActivity : ComponentActivity() {
                                 safeStart(AppRepository.launchIntent(app.component), "無法啟動 ${app.label}")
                             },
                             recentKeys = recentApps,
+                            header = { widgets.Panel() },
                         )
                     }
                     is Screen.PickForSlot -> FullScreenAppList(
@@ -629,6 +664,8 @@ class MainActivity : ComponentActivity() {
                                     handleNav(NavLauncher.open(this@MainActivity))
                                 },
                                 openOtherHome = { home ->
+                                    // 使用者主動開原廠桌面：暫停自動切回 10 分鐘
+                                    tw.fitcar.launcher.system.DesktopGuard.pause(this@MainActivity)
                                     val i = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                                         .setComponent(home.component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     safeStart(i, "無法開啟 ${home.label}")

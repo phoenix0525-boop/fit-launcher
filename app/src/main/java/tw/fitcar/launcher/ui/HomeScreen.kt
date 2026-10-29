@@ -96,6 +96,7 @@ class HomeActions(
     val openPlayer: ((String) -> Unit)? = null,
     /** 狀態列「目前位置」在未授權時可直接請求定位。 */
     val requestLocation: (() -> Unit)? = null,
+    val openKingNav: (() -> Unit)? = null,
 )
 
 @Composable
@@ -273,41 +274,45 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
         val currentGuidance = guidanceOverride ?: guidance
-        if (NavigationPanelPolicy.showGoogleHints(googleSelected, currentGuidance.activeNavigation)) {
-            var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
-            LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
-            GoogleGuidanceCard(guidanceOverride ?: guidance, notificationAccess, guidanceNow ?: now,
-                actions.grantNotificationAccess, Modifier.weight(1f).fillMaxWidth())
-        } else {
-            if (googleSelected) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val message = when {
-                    !notificationAccess -> "請開啟通知存取以顯示導航提示"
-                    !currentGuidance.connected -> "導航通知服務未連線"
-                    else -> "未收到 Google 導航提示，顯示定位地圖"
-                }
-                Text(message, color = LocalPalette.current.textSoft,
-                    fontSize = if (LocalDriving.current) 20.sp else 18.sp, modifier = Modifier.weight(1f))
-                if (!notificationAccess || !currentGuidance.connected) SecondaryButton("通知權限", actions.grantNotificationAccess)
-            }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        // Keep the same map composition during active/expired/removed notification updates.
+        Box(Modifier.weight(1f).fillMaxWidth()) {
             mapContent(gps, Modifier.fillMaxSize())
+            if (NavigationPanelPolicy.showGooglePanel(googleSelected)) {
+                var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+                LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
+                GoogleGuidanceCard(currentGuidance, notificationAccess, guidanceNow ?: now,
+                    actions.grantNotificationAccess,
+                    Modifier.align(Alignment.TopCenter).fillMaxWidth().height(168.dp)
+                        .clip(RadiusMd).background(LocalPalette.current.surfaceStrong.copy(alpha = .96f))
+                        .border(1.dp, LocalPalette.current.line, RadiusMd), compact = true,
+                    speedKmh = gps.speedKmh.takeIf { gps.isFresh() })
+            }
             // 縮放與回到定位改成浮在地圖右下角，不再佔用下方工具列與地圖高度
             MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))
-            }
         }
         Spacer(Modifier.height(10.dp))
         // 下方只留最常用的動作；其餘收進「更多」，避免換成兩排吃掉地圖高度
         Row(Modifier.fillMaxWidth().semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            PrimaryButton(if (nav == null) "選擇導航 App" else "開啟導航", if (nav == null) actions.bindNav else actions.openNavFullscreen)
-            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）；小螢幕放進「更多」避免擠壓
-            val inline = !LocalLayoutSpec.current.compactChrome
+            // 0.4.25：導航王與 Google 地圖固定並排，選定的那顆為主要按鈕；點另一顆即切換綁定並開啟
+            val navButtons = NavShortcutPolicy.buttons(NavShortcutPolicy.selected(nav?.label, nav?.component?.packageName))
+            navButtons.forEach { b ->
+                val onClick = when (b.action) {
+                    NavShortcutPolicy.Action.OPEN_CURRENT -> actions.openNavFullscreen
+                    NavShortcutPolicy.Action.SELECT_APP -> actions.bindNav
+                    NavShortcutPolicy.Action.KING -> actions.openKingNav ?: actions.bindNav
+                    NavShortcutPolicy.Action.GOOGLE -> actions.openGoogleNav ?: { openGoogleNavigation(context) }
+                }
+                if (b.primary) PrimaryButton(b.label, onClick) else SecondaryButton(b.label, onClick)
+            }
+            // 回家／去公司：設定好地址才顯示（自 0.3.2 線移植）；小螢幕或三顆導航鍵時放進「更多」避免擠壓
+            val inline = NavShortcutPolicy.placesInline(LocalLayoutSpec.current.compactChrome, navButtons.size)
             val home = actions.goHome.takeIf { hasHome }
             val work = actions.goWork.takeIf { hasWork }
             if (inline) home?.let { SecondaryButton("回家", it, icon = { GlyphIcon(Glyph.HOME, size = 22.dp) }) }
             if (inline) work?.let { SecondaryButton("去公司", it) }
             Spacer(Modifier.weight(1f))
             UpdateIndicator()
-            MoreToolsButton(actions.openGoogleNav ?: { openGoogleNavigation(context) }, if (inline) null else home, if (inline) null else work)
+            MoreToolsButton(if (inline) null else home, if (inline) null else work)
         }
     }
 }
@@ -334,9 +339,9 @@ private fun MapPill(text: String, onClick: () -> Unit) {
         color = p.text, fontSize = if (LocalDriving.current) DriveText.BUTTON.sp else 17.sp, maxLines = 1)
 }
 
-/** 不常用的工具集中在「更多」：Google 導航、系統分割、桌面調暗。 */
+/** 不常用的工具集中在「更多」：系統分割、排列、桌面調暗（Google 地圖已移到工具列，與導航王並排）。 */
 @Composable
-private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
+private fun MoreToolsButton(goHome: (() -> Unit)? = null, goWork: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     var arrange by remember { mutableStateOf(false) }
     val p = LocalPalette.current
@@ -349,7 +354,6 @@ private fun MoreToolsButton(openGoogle: () -> Unit, goHome: (() -> Unit)? = null
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 goHome?.let { go -> SecondaryButton("回家", { open = false; go() }, Modifier.fillMaxWidth()) }
                 goWork?.let { go -> SecondaryButton("去公司", { open = false; go() }, Modifier.fillMaxWidth()) }
-                SecondaryButton("Google 導航", { open = false; openGoogle() }, Modifier.fillMaxWidth())
                 SystemSplitShortcut()
                 // 先關閉「更多」再開排列指引，不讓對話框一層疊一層
                 SecondaryButton("排列", { open = false; arrange = true }, Modifier.fillMaxWidth())
