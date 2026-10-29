@@ -9,7 +9,7 @@ import sys
 EXPECTED = '274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF'
 
 def certificate_matches(output: str) -> bool:
-    digests = re.findall(r'Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F:]+)', output)
+    digests = re.findall(r'certificate SHA-256 digest:\s*([0-9a-fA-F:]+)', output)
     return len(digests) == 1 and digests[0].replace(':', '').upper() == EXPECTED
 
 if __name__ == '__main__':
