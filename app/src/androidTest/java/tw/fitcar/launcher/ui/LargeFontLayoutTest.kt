@@ -55,7 +55,9 @@ class LargeFontLayoutTest {
             compose.waitUntil(10_000) { tw.fitcar.launcher.check.CheckStore.results.value["audio_probe_CURRENT"] != null }
             compose.onNodeWithText("請回報這一項測試的實際聲音：").performScrollTo()
             fullLabel("請回報這一項測試的實際聲音：")
-            fullLabel("有變小"); fullLabel("沒有變化"); fullLabel("不確定")
+            listOf("有變小", "沒有變化", "不確定").forEach {
+                compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
+            }
             compose.onNodeWithText("沒有變化").performClick()
             compose.onNodeWithText("已儲存聲音回報；不代表程式已修復。").performScrollTo()
             fullLabel("已儲存聲音回報；不代表程式已修復。")
