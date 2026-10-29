@@ -12,6 +12,7 @@ class AndroidAudioProbeTest {
         assertEquals(setOf("MUSIC", "SYSTEM", "VOICE_CALL", "RING", "NOTIFICATION", "ALARM"), r.streams.keys)
         assertTrue(r.minimumMusic <= r.music); assertTrue(r.music <= r.maximumMusic)
         assertTrue(r.outputTypes.all { it >= 0 })
+        assertTrue(r.streams.keys.containsAll(r.mutedStreams))
         assertFalse(r.text().contains("address="))
     }
 }

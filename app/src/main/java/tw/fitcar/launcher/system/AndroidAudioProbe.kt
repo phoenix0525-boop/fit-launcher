@@ -13,8 +13,10 @@ class AndroidAudioProbe(context: Context) : AudioProbePort {
         return AudioReading(streams.mapValues { audio.getStreamVolume(it.value) },
             if (Build.VERSION.SDK_INT >= 28) audio.getStreamMinVolume(AudioManager.STREAM_MUSIC) else 0,
             audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC), audio.isVolumeFixed, audio.mode, audio.isMusicActive,
-            audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.distinct().sorted())
+            audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.distinct().sorted(),
+            streams.filterValues { audio.isStreamMute(it) }.keys.toSet())
     }
     override fun setMusic(target: Int) = audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
     override fun lowerMusic() = audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
+    override fun lowerCurrent() = audio.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
 }

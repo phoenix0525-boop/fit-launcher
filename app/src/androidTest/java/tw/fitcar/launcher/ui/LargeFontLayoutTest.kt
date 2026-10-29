@@ -29,6 +29,54 @@ import tw.fitcar.launcher.system.GpsState
 import java.io.File
 
 class LargeFontLayoutTest {
+    @Test fun currentVolumeFeedbackAndExportRemainInformationAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val sp = context.getSharedPreferences("fit_checks", 0)
+        val previous = sp.getString("saved", null)
+        var currentCalls = 0
+        val port = object : tw.fitcar.launcher.system.AudioProbePort {
+            override fun read() = tw.fitcar.launcher.system.AudioReading(mapOf("MUSIC" to 36), 0, 36, false, 0, true, listOf(2))
+            override fun setMusic(target: Int) = error("unexpected absolute fallback")
+            override fun lowerMusic() = error("unexpected relative fallback")
+            override fun lowerCurrent() { currentCalls++ }
+        }
+        try {
+            compose.setContent {
+                val density = LocalDensity.current.density
+                CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
+                    FitTheme(DayPalette) {
+                        Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(24.dp)) {
+                            AudioDiagnosticsTab(port)
+                        }
+                    }
+                }
+            }
+            compose.onNodeWithText("系統目前音量：降低一次").performScrollTo().performClick()
+            compose.waitUntil(10_000) { tw.fitcar.launcher.check.CheckStore.results.value["audio_probe_CURRENT"] != null }
+            compose.onNodeWithText("請回報這一項測試的實際聲音：").performScrollTo()
+            fullLabel("請回報這一項測試的實際聲音：")
+            fullLabel("有變小"); fullLabel("沒有變化"); fullLabel("不確定")
+            compose.onNodeWithText("沒有變化").performClick()
+            compose.onNodeWithText("已儲存聲音回報；不代表程式已修復。").performScrollTo()
+            fullLabel("已儲存聲音回報；不代表程式已修復。")
+            screenshot("audio-current-report-125")
+            compose.runOnIdle {
+                assertTrue(currentCalls == 1)
+                val r = tw.fitcar.launcher.check.CheckStore.results.value.getValue("audio_probe_CURRENT")
+                assertTrue(r.status == tw.fitcar.launcher.check.Status.INFO)
+                assertTrue(r.notes.contains("沒有變化（使用者回報"))
+                assertTrue(tw.fitcar.launcher.check.Report.text(context, tw.fitcar.launcher.check.CheckStore.results.value)
+                    .contains("請求曾嘗試=true（非成功確認）"))
+            }
+        } finally {
+            compose.runOnIdle {
+                val editor = sp.edit()
+                if (previous == null) editor.remove("saved") else editor.putString("saved", previous)
+                check(editor.commit())
+                tw.fitcar.launcher.check.CheckStore.reload(context)
+            }
+        }
+    }
     @Test fun audioDiagnosticsAt125PercentDoesNotChangeVolumeOnEntry() {
         var reads = 0
         var writes = 0
@@ -39,6 +87,7 @@ class LargeFontLayoutTest {
             }
             override fun setMusic(target: Int) { writes++ }
             override fun lowerMusic() { writes++ }
+            override fun lowerCurrent() { writes++ }
         }
         compose.setContent {
             val density = LocalDensity.current.density
@@ -50,7 +99,7 @@ class LargeFontLayoutTest {
                 }
             }
         }
-        listOf("音量對照檢測", "桌面絕對設定：降低一格", "桌面相對調整：降低一格", "小芳／小方：20 秒觀察", "原廠按鍵：20 秒觀察").forEach {
+        listOf("音量對照檢測", "桌面絕對設定：降低一格", "桌面相對調整：降低一格", "系統目前音量：降低一次", "小芳／小方：20 秒觀察", "原廠按鍵：20 秒觀察").forEach {
             compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
         }
         screenshot("audio-diagnostics-125")

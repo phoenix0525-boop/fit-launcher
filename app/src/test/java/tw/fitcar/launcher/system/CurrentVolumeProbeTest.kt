@@ -8,10 +8,11 @@ class CurrentVolumeProbeTest {
     private class Port : AudioProbePort {
         var reading = AudioReading(mapOf("MUSIC" to 36), 0, 36, false, 0, true, listOf(2))
         val calls = mutableListOf<String>()
+        var reject = false
         override fun read() = reading
         override fun setMusic(target: Int) { calls += "absolute" }
         override fun lowerMusic() { calls += "relative" }
-        override fun lowerCurrent() { calls += "current" }
+        override fun lowerCurrent() { calls += "current"; if (reject) throw SecurityException() }
     }
     private fun run(p: Port, wait: () -> Unit = {}) = runBlocking {
         var clock = 0L
@@ -37,6 +38,12 @@ class CurrentVolumeProbeTest {
     @Test fun numericChangeStillCannotVerifyVehicleSound() {
         val p = Port(); val r = run(p) { p.reading = p.reading.copy(streams = mapOf("MUSIC" to 35)) }
         assertTrue(r.summary().contains("Android 音量數值有變化")); assertFalse(r.verifiesVehicleSound)
+    }
+    @Test fun rejectedCurrentRequestDoesNotRetryOrFallback() {
+        val p = Port().apply { reject = true }; val r = run(p)
+        assertEquals(listOf("current"), p.calls); assertTrue(r.requestAttempted)
+        assertEquals("SecurityException", r.error); assertTrue(r.summary().contains("未完成"))
+        assertFalse(r.verifiesVehicleSound)
     }
     @Test fun playbackInterruptionCannotBecomeVolumeEvidence() {
         val p = Port(); val r = run(p) { p.reading = p.reading.copy(musicActive = false, streams = mapOf("MUSIC" to 0)) }

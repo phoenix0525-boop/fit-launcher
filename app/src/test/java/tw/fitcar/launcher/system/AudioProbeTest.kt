@@ -10,6 +10,7 @@ class AudioProbeTest {
         override fun read() = AudioReading(mapOf("MUSIC" to value, "SYSTEM" to 7), 0, 40, fixed, 0, true, listOf(2))
         override fun setMusic(target: Int) { writes++; if (fail) throw SecurityException(); if (!ignore) value = target }
         override fun lowerMusic() = setMusic(value - 1)
+        override fun lowerCurrent() = setMusic(value - 1)
     }
     private fun run(method: AudioProbeMethod, port: Port, wait: (Long) -> Unit = {}): AudioProbeReport = runBlocking {
         var clock = 0L
@@ -71,6 +72,7 @@ class AudioProbeTest {
             override fun read(): AudioReading = throw SecurityException()
             override fun setMusic(target: Int) = fail("write after failed baseline")
             override fun lowerMusic() = fail("write after failed baseline")
+            override fun lowerCurrent() = fail("write after failed baseline")
         }
         val r = AudioProbe.run(AudioProbeMethod.ABSOLUTE, p)
         assertTrue(r.samples.isEmpty()); assertEquals("SecurityException", r.error)
