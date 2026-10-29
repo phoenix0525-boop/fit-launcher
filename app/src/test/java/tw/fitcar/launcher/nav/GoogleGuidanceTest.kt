@@ -14,8 +14,8 @@ class GoogleGuidanceTest {
         assertNull(GoogleGuidance.parse(null, null, null))
     }
     @Test fun expiredOrDisconnectedHintsCannotBeDisplayed() {
-        assertTrue(GuidanceFreshness.isFresh(1000, 8999, true))
-        assertFalse(GuidanceFreshness.isFresh(1000, 9000, true))
+        assertTrue(GuidanceFreshness.isFresh(1000, 30_999, true))
+        assertFalse(GuidanceFreshness.isFresh(1000, 31_000, true))
         assertFalse(GuidanceFreshness.isFresh(1000, 500, true))
         assertFalse(GuidanceFreshness.isFresh(1000, 2000, false))
     }
@@ -36,5 +36,24 @@ class GoogleGuidanceTest {
         val g = GoogleGuidance.parse("地圖", "260 公尺 · 測試道路", "剩餘 5 公里", navigationCategory = true)!!
         assertEquals("260 公尺", g.distance)
         assertEquals("", g.arrow)
+    }
+    @Test fun redLightKeepsHintWhileNotificationRemains() {
+        // 0.4.26：等紅燈時 Google 不會更新通知，停車狀態下 5 分鐘仍有效，10 分鐘才過期
+        assertTrue(GuidanceFreshness.isFresh(1000, 301_000, true, 300, 0f))
+        assertFalse(GuidanceFreshness.isFresh(1000, 601_000, true, 300, 0f))
+    }
+    @Test fun movingLimitsDependOnDistanceUnit() {
+        assertEquals(300, GuidanceFreshness.distanceMeters("300 公尺"))
+        assertEquals(1200, GuidanceFreshness.distanceMeters("1.2 公里"))
+        assertEquals(2000, GuidanceFreshness.distanceMeters("2 km"))
+        assertNull(GuidanceFreshness.distanceMeters(null))
+        assertTrue(GuidanceFreshness.isFresh(1000, 30_000, true, 300, 40f))
+        assertFalse(GuidanceFreshness.isFresh(1000, 31_000, true, 300, 40f))
+        assertTrue(GuidanceFreshness.isFresh(1000, 90_000, true, 1200, 40f))
+        assertFalse(GuidanceFreshness.isFresh(1000, 91_000, true, 1200, 40f))
+        // 速度未知（GPS 失效、隧道）採最保守值
+        assertFalse(GuidanceFreshness.isFresh(1000, 31_000, true, 1200, null))
+        // 監聽中斷一律無效
+        assertFalse(GuidanceFreshness.isFresh(1000, 2000, false, 300, 0f))
     }
 }

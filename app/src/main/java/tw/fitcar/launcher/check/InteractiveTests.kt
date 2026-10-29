@@ -233,7 +233,7 @@ data class ManualItem(val id: String, val group: String, val title: String, val 
 
 val MANUAL_ITEMS = listOf(
     ManualItem("m_voice", "操作", "語音控制", "點語音測開導航、播放、暫停、上一首／下一首、亮度；Google 目的地須先確認。", "記錄無服務、無收音、辨識錯字或控制對象不符。"),
-    ManualItem("m_google_hint", "導航", "Google 導航通知", "選 Google 地圖並開始導航，返回車機桌面 核對提示；停止導航或 8 秒沒有新通知時確認舊方向距離消失。", "通知收不到時應顯示請看地圖，不能保留舊轉彎提示。"),
+    ManualItem("m_google_hint", "導航", "Google 導航通知", "選 Google 地圖並開始導航，返回車機桌面 核對提示；停止導航後確認舊方向距離消失；等紅燈時提示應保留，行駛中長時間沒有新通知才顯示過期。", "通知收不到時應顯示請看地圖，不能保留舊轉彎提示。"),
     ManualItem("m_player_kkbox", "音樂", "KKBOX 播放一致性", "從實際安裝清單選擇 KKBOX，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
     ManualItem("m_player_yt", "音樂", "官方 YT Music 播放一致性", "從實際安裝清單選擇 官方 YT Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),
     ManualItem("m_player_morphe", "音樂", "Morphe Music 播放一致性", "從實際安裝清單選擇 Morphe Music，播放歌曲，確認卡片名稱、歌名、播放／暫停／切歌對象與報告一致；另測固定與跟隨模式。", "記錄實際套件、歌曲與不一致的控制。"),

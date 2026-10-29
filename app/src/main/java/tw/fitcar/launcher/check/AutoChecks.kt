@@ -72,7 +72,7 @@ object AutoChecks {
             !MediaRepository.isPermissionGranted(context) -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO,
                 "尚未授權通知存取。", fix = Fix("開啟通知存取", FixKind.OPEN_NOTIFICATION_ACCESS))
             !hint.connected -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO, "通知服務未連線。")
-            hint.fresh() -> CheckResult("google_hint", "導航", "Google 導航通知", Status.PASS, "收到 Google 地圖導航文字；8 秒無新資料即隱藏。轉彎正確性仍需人工確認。")
+            hint.fresh() -> CheckResult("google_hint", "導航", "Google 導航通知", Status.PASS, "收到 Google 地圖導航文字；停車時通知仍在即有效，行駛中 30～90 秒無新資料即隱藏。轉彎正確性仍需人工確認。")
             else -> CheckResult("google_hint", "導航", "Google 導航通知", Status.TODO, "沒有新鮮導航文字；請在 Google 地圖開始導航。沒有資料時不猜測方向與距離。")
         }
         val recognizer = context.packageManager.resolveActivity(Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0)

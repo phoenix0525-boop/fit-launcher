@@ -17,14 +17,14 @@ import tw.fitcar.launcher.nav.GoogleGuidanceState
 /** Persistent notification panel above the free position map. No Google route inference or embedding. */
 @Composable
 internal fun GoogleGuidanceCard(state: GoogleGuidanceState, permission: Boolean, now: Long, grant: () -> Unit,
-    modifier: Modifier = Modifier, compact: Boolean = false) {
+    modifier: Modifier = Modifier, compact: Boolean = false, speedKmh: Float? = null) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
     Column(modifier.semantics { contentDescription = "Google 導航通知面板" }
         .verticalScroll(rememberScrollState()).padding(if (compact) 8.dp else 12.dp),
         verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 16.dp,
             if (compact) Alignment.Top else Alignment.CenterVertically)) {
-        val guidance = state.guidance.takeIf { permission && state.fresh(now) }
+        val guidance = state.guidance.takeIf { permission && state.fresh(now, speedKmh) }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Google 地圖導航通知", color = p.textSoft, fontSize = 20.sp, lineHeight = 26.sp,

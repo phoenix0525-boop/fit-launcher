@@ -284,7 +284,8 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
                     actions.grantNotificationAccess,
                     Modifier.align(Alignment.TopCenter).fillMaxWidth().height(168.dp)
                         .clip(RadiusMd).background(LocalPalette.current.surfaceStrong.copy(alpha = .96f))
-                        .border(1.dp, LocalPalette.current.line, RadiusMd), compact = true)
+                        .border(1.dp, LocalPalette.current.line, RadiusMd), compact = true,
+                    speedKmh = gps.speedKmh.takeIf { gps.isFresh() })
             }
             // 縮放與回到定位改成浮在地圖右下角，不再佔用下方工具列與地圖高度
             MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))

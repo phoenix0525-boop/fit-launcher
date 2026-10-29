@@ -104,8 +104,15 @@ class GoogleGuidanceRepositoryTest {
         assertFalse(GoogleGuidanceRepository.state.value.activeNavigation)
     }
 
+    @Test fun rescanKeepsRealPostTimeSoRecentNotificationStaysFresh() {
+        // 0.4.26：回到桌面重新掃描時，15 秒前發布、仍在通知列的提示不能直接變成「已過期」
+        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路", ageMs = 15_000))
+        assertTrue(GoogleGuidanceRepository.state.value.fresh())
+        assertTrue(GoogleGuidanceRepository.state.value.fresh(speedKmh = 0f))
+    }
+
     @Test fun recoveredOldNavigationTextDoesNotBecomeFresh() {
-        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路", ageMs = 9_000))
+        GoogleGuidanceRepository.posted(context, notification("260 公尺", "測試道路", ageMs = GuidanceFreshness.MAX_AGE_MS + 1_000))
         assertNotNull(GoogleGuidanceRepository.state.value.guidance)
         assertFalse(GoogleGuidanceRepository.state.value.fresh())
     }
