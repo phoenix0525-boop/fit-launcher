@@ -5,10 +5,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AudioProbeTest {
-    private class Port(var value: Int = 36, val fixed: Boolean = false, val fail: Boolean = false) : AudioProbePort {
+    private class Port(var value: Int = 36, val fixed: Boolean = false, val fail: Boolean = false, val ignore: Boolean = false) : AudioProbePort {
         var writes = 0
         override fun read() = AudioReading(mapOf("MUSIC" to value, "SYSTEM" to 7), 0, 40, fixed, 0, true, listOf(2))
-        override fun setMusic(target: Int) { writes++; if (fail) throw SecurityException(); value = target }
+        override fun setMusic(target: Int) { writes++; if (fail) throw SecurityException(); if (!ignore) value = target }
         override fun lowerMusic() = setMusic(value - 1)
     }
     private fun run(method: AudioProbeMethod, port: Port, wait: (Long) -> Unit = {}): AudioProbeReport = runBlocking {
@@ -55,5 +55,25 @@ class AudioProbeTest {
             AudioProbe.run(AudioProbeMethod.KEYS, Port(), pause = { throw kotlinx.coroutines.CancellationException() })
             fail("cancelled run returned a complete report")
         } catch (_: kotlinx.coroutines.CancellationException) { }
+    }
+    @Test fun firstSampleReversionIsStillRecordedAsReversion() {
+        val p = Port()
+        val r = run(AudioProbeMethod.ABSOLUTE, p) { if (it == 450L) p.value = 36 }
+        assertTrue(r.summary().contains("改回"))
+    }
+    @Test fun ignoredRequestPreserves36To36AsNotApplied() {
+        val p = Port(ignore = true); val r = run(AudioProbeMethod.ABSOLUTE, p)
+        assertEquals(1, p.writes); assertTrue(r.samples.all { it.reading.music == 36 })
+        assertTrue(r.summary().contains("未生效")); assertFalse(r.verifiesVehicleSound)
+    }
+    @Test fun unavailableReadCannotLookLikeNormalVolume() = runBlocking {
+        val p = object : AudioProbePort {
+            override fun read(): AudioReading = throw SecurityException()
+            override fun setMusic(target: Int) = fail("write after failed baseline")
+            override fun lowerMusic() = fail("write after failed baseline")
+        }
+        val r = AudioProbe.run(AudioProbeMethod.ABSOLUTE, p)
+        assertTrue(r.samples.isEmpty()); assertEquals("SecurityException", r.error)
+        assertTrue(r.summary().contains("未完成"))
     }
 }
