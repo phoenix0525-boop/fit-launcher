@@ -758,9 +758,9 @@ class LargeFontLayoutTest {
             }
         }
         fullLabel("設定"); fullLabel("返回桌面")
-        compose.onNodeWithContentDescription("蜘蛛人飛躍插畫").assertIsDisplayed()
+        compose.onNodeWithContentDescription("蜘蛛人飛躍插畫").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("關於").performScrollTo().performClick()
-        fullLabel("個人化啟動器"); fullLabel("版本 ${tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext)}")
+        fullLabel("個人化啟動器"); fullLabel("版本 ${tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext)}（${tw.fitcar.launcher.BuildInfo.versionCode(InstrumentationRegistry.getInstrumentation().targetContext)}）")
         compose.onNodeWithContentDescription("蜘蛛人蹲姿插畫").assertIsDisplayed()
         screenshot("settings-about-spiderman-light-night-125")
     }
