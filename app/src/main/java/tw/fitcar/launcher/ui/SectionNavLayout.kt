@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +40,7 @@ fun SectionNavLayout(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
+    val contentScroll = remember(selected) { ScrollState(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 900.dp && maxWidth > maxHeight * 0.95f
         val sidebarWidth = if (maxWidth < 1200.dp) 200.dp else 250.dp
@@ -66,7 +69,7 @@ fun SectionNavLayout(
                     footer?.invoke()
                 }
                 Column(
-                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(contentScroll),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     content = content,
                 )
@@ -94,7 +97,7 @@ fun SectionNavLayout(
                     }
                 }
                 Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(contentScroll),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     content = content,
                 )

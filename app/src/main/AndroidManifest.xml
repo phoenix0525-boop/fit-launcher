@@ -28,6 +28,7 @@
 
     <!-- 套件可見性：只查詢可啟動 App 與其他桌面，不使用 QUERY_ALL_PACKAGES -->
     <queries>
+        <package android:name="com.syu.eq" />
         <!-- Scoped visibility for the documented map-search/navigation protocols. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

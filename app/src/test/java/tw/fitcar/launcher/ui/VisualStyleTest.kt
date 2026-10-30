@@ -49,7 +49,7 @@ class VisualStyleTest {
     }
 
     @Test fun newStylesKeepBodyAndButtonTextReadable() {
-        listOf(VisualStyle.JAPANESE, VisualStyle.WHITE, VisualStyle.POMPOMPURIN, VisualStyle.SPIDERMAN).forEach { style ->
+        VisualStyle.entries.forEach { style ->
             ThemeChoice.entries.forEach { theme ->
                 AccentTheme.entries.forEach { accent ->
                     val p = paletteFor(theme, accent, style)

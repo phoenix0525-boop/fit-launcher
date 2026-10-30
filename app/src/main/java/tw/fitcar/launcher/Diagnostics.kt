@@ -11,6 +11,12 @@ import tw.fitcar.launcher.system.BrightnessController
 import tw.fitcar.launcher.system.GpsState
 
 object BuildInfo {
+    fun versionCode(context: Context): String = try {
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        if (Build.VERSION.SDK_INT >= 28) info.longVersionCode.toString() else info.versionCode.toString()
+    } catch (_: Exception) { "?" }
+
     fun versionName(context: Context): String = try {
         val info = if (Build.VERSION.SDK_INT >= 33) {
             context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))

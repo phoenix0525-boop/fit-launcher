@@ -29,7 +29,7 @@ class HiddenCharacterThemeLayoutTest {
                 FitTheme(DayPalette) {
                     SettingsScreen(
                         SettingsData(state, null, null, null, true, 50, true, true,
-                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.19"),
+                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.30"),
                         SettingsActions(back = {}, setStyle = { state = state.copy(visualStyle = it.id) },
                             setCharacterThemesUnlocked = { unlocked -> state = state.copy(
                                 characterThemesUnlocked = unlocked,
@@ -72,7 +72,7 @@ class HiddenCharacterThemeLayoutTest {
         state = LauncherState()
         screen()
         val info = compose.onNode(hasText("實機資訊") and hasClickAction())
-        val display = compose.onNode(hasText("顯示與亮度") and hasClickAction())
+        val display = compose.onNode(hasText("外觀與配色") and hasClickAction())
         info.performScrollTo().performClick()
         repeat(2) { info.performClick() }
         display.performScrollTo().performClick()
@@ -99,7 +99,7 @@ class HiddenCharacterThemeLayoutTest {
         compose.onNode(styleLabel("蜘蛛人")).assertDoesNotExist()
         compose.onNode(hasText("實機資訊") and hasClickAction()).performScrollTo().performClick()
         repeat(4) { compose.onNode(hasText("實機資訊") and hasClickAction()).performClick() }
-        compose.onNode(hasText("顯示與亮度") and hasClickAction()).performScrollTo().performClick()
+        compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
         compose.onNode(styleLabel("布丁狗")).performScrollTo()
         fullLabel("布丁狗"); fullLabel("蜘蛛人")
         compose.onNodeWithText("隱藏角色主題").performScrollTo()
@@ -118,4 +118,29 @@ class HiddenCharacterThemeLayoutTest {
         compose.onNode(styleLabel("原有")).performScrollTo()
         fullLabel("原有")
     }
+    @Test fun ordinaryStylesAreSelectableAndCategorySwitchStartsAtTop() {
+        state = LauncherState()
+        screen()
+        compose.onNode(styleLabel("運動風")).performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals("sport", state.visualStyle) }
+        compose.onNode(styleLabel("動感風")).performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals("dynamic", state.visualStyle) }
+        compose.onNode(hasText("亮度與日夜") and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("系統背光權限").assertIsDisplayed()
+        compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("畫面風格").assertIsDisplayed()
+        snapshot("settings-appearance-0430-125")
+    }
+
+    @Test fun aboutShowsVersionAndSeparatesCompatibilityFromTestedHardware() {
+        state = LauncherState()
+        screen()
+        compose.onNode(hasText("關於") and hasClickAction()).performScrollTo().performClick()
+        compose.onNode(hasText("版本 0.4.30（", substring = true)).assertIsDisplayed()
+        compose.onNodeWithText("適用機型").assertIsDisplayed()
+        compose.onNode(hasText("Android 8.0（API 26）", substring = true)).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("已有實機檢測：Honda Fit", substring = true)).performScrollTo().assertIsDisplayed()
+        snapshot("settings-about-0430-125")
+    }
+
 }
