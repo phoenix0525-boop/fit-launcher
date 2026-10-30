@@ -12,6 +12,7 @@ import tw.fitcar.launcher.check.Status
 import tw.fitcar.launcher.system.*
 
 /** Never runs automatically on entry; manual observations are explicitly separate from numeric readback. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AudioDiagnosticsTab(portOverride: AudioProbePort? = null) {
     val context = LocalContext.current
@@ -20,12 +21,13 @@ internal fun AudioDiagnosticsTab(portOverride: AudioProbePort? = null) {
     var busy by remember { mutableStateOf<AudioProbeMethod?>(null) }
     var progress by remember { mutableIntStateOf(0) }
     var report by remember { mutableStateOf<AudioProbeReport?>(null) }
-    var saved by remember { mutableStateOf(false) }
+    var answered by remember { mutableStateOf<AudibleAnswer?>(null) }
     val results by CheckStore.results.collectAsState()
-    fun save(r: AudioProbeReport, audible: String) {
-        CheckStore.put(context, CheckResult("audio_probe_${r.method.name}", "操作", r.method.label, Status.INFO,
-            r.text(), suggestion = "Android 數值不能證明原廠實際音量或私有控制通道；對照使用者回報後再分析。",
-            notes = "實際聲音：$audible（使用者回報，非程式自動驗證）；不錄音、不讀取語音內容。"))
+    fun save(r: AudioProbeReport, answer: AudibleAnswer?) {
+        val v = AudioVerdicts.of(r, answer)
+        CheckStore.put(context, CheckResult("audio_probe_${r.method.name}", "操作", r.method.label, v.status,
+            v.finding, suggestion = v.suggestion,
+            notes = "實際聲音：${answer?.label ?: "尚未回報"}（使用者回報，非程式自動驗證）；不錄音、不讀取語音內容。"))
     }
     Section("音量對照檢測") {
         Hint("請停車、保持同一首音樂播放，先用原廠按鍵調到舒適音量。每項分開測，不同播放來源不能直接比較。", size = 16)
@@ -36,11 +38,11 @@ internal fun AudioDiagnosticsTab(portOverride: AudioProbePort? = null) {
         AudioProbeMethod.entries.forEach { method ->
             SecondaryButton(method.label, {
                 if (busy == null) {
-                    busy = method; progress = 0; report = null; saved = false
+                    busy = method; progress = 0; report = null; answered = null
                     scope.launch {
                         try {
                             val r = AudioProbe.run(method, port, progress = { progress = it })
-                            report = r; save(r, "尚未回報")
+                            report = r; save(r, null)
                         } finally { busy = null }
                     }
                 }
@@ -48,14 +50,15 @@ internal fun AudioDiagnosticsTab(portOverride: AudioProbePort? = null) {
         }
         busy?.let { Hint("檢測中：${it.label}；已取得 $progress 個後續樣本，尚未完成。", size = 16) }
         report?.let { r ->
-            Hint(r.summary(), size = 16, essential = true)
-            Hint("請回報這一項測試的實際聲音：", size = 16)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("有變小", "沒有變化", "不確定").forEach { answer ->
-                    SecondaryButton(answer, { save(r, answer); saved = true })
+            Hint(r.summary(answered != null), size = 16, essential = true)
+            Hint(if (answered == null) "請回報這一項測試的實際聲音：" else "已回報：${answered!!.label}；可改選後重新儲存。", size = 16)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AudibleAnswer.entries.forEach { answer ->
+                    val label = if (answer == answered) "✓ ${answer.label}" else answer.label
+                    SecondaryButton(label, { answered = answer; save(r, answer) })
                 }
             }
-            if (saved) Hint("已儲存聲音回報；不代表程式已修復。", size = 16)
+            answered?.let { a -> Hint("已儲存：${AudioVerdicts.of(r, a).status.label}。這是聽感紀錄，不代表程式已修復。", size = 16) }
         }
         Hint("完成後到「匯出報告」儲存文字檔，再提供報告分析。不錄音、不抓小芳語音內容，不含藍牙位址或裝置序號。", size = 16)
     }

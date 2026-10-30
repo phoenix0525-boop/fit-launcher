@@ -2,9 +2,9 @@ package tw.fitcar.launcher.system
 
 /** Android stream readback is never evidence that the vehicle amplifier changed. */
 enum class VolumeReadback(val message: String) {
-    FIXED("Android 音量固定，請使用系統音量或車機音量鍵。"),
-    NOT_APPLIED("Android 數值未改變，這個控制方式未生效。請使用系統音量或車機音量鍵。"),
-    REVERTED("音量數值被系統改回，請使用系統音量或車機音量鍵。"),
+    FIXED("Android 回報音量固定；實際聲音是否改變需以聽感確認，原廠音量可能不經 Android 數值。"),
+    NOT_APPLIED("Android 數值未改變；這不代表實際聲音一定沒變，請以聽感回報為準。"),
+    REVERTED("Android 數值變動後又被改回；實際聲音是否改變需以聽感回報確認。"),
     NUMERIC_ONLY("Android 數值已改變；仍需確認實際聲音是否改變。"),
     NO_CHANGE_REQUESTED("已達音量邊界，沒有調整。"),
     ;

@@ -112,4 +112,37 @@ class VisualStyleTest {
         } }
     }
 
+
+    /** 狀態文字（● 已允許／✗ 有問題）畫在 Section 卡片（surfaceStrong）與一般卡片上，須 ≥ 4.5:1。 */
+    @Test fun statusTextReadableOnCardsInEveryStyle() {
+        VisualStyle.entries.forEach { style -> ThemeChoice.entries.forEach { theme ->
+            val p = paletteFor(theme, AccentTheme.MIST_BLUE, style)
+            listOf(p.surface, p.surfaceStrong).forEach { bg ->
+                listOf("success" to p.success, "danger" to p.danger).forEach { (name, c) ->
+                    assertTrue("$style $theme $name on $bg",
+                        Contrast.ratio(c.toArgb().toLong(), bg.toArgb().toLong()) >= 4.5)
+                }
+            }
+        } }
+    }
+
+    /** 選取中的設定分類（強調字在淡強調底）在每種風格、強調色都清楚。 */
+    @Test fun selectedSectionLabelReadableForEveryAccent() {
+        VisualStyle.entries.forEach { style -> ThemeChoice.entries.forEach { theme -> AccentTheme.entries.forEach { accent ->
+            val p = paletteFor(theme, accent, style)
+            assertTrue("$style $theme $accent selected",
+                Contrast.ratio(p.accentStrong.toArgb().toLong(), p.accentSoft.toArgb().toLong()) >= 4.5)
+        } } }
+    }
+
+    @Test fun sportAndDynamicHaveMatchingAccentsAndFullDayNightPalettes() {
+        assertEquals(AccentTheme.SPORT, AccentTheme.fromId("sport"))
+        assertEquals(AccentTheme.DYNAMIC, AccentTheme.fromId("dynamic"))
+        listOf(VisualStyle.SPORT, VisualStyle.DYNAMIC).forEach { style ->
+            val day = styledBase(false, style); val night = styledBase(true, style)
+            assertNotEquals(DayPalette.bg, day.bg); assertNotEquals(NightPalette.bg, night.bg)
+            assertNotEquals(day.surface, night.surface)
+            assertFalse(day.characterArt || night.characterArt)
+        }
+    }
 }

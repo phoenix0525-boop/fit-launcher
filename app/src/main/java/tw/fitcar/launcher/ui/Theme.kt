@@ -46,8 +46,8 @@ val DayPalette = Palette(
     accent = Color(0xFF47768B),
     accentStrong = Color(0xFF315F74),
     accentSoft = Color(0xFFD7E4E8),
-    success = Color(0xFF5B796C),
-    danger = Color(0xFFA55D58),
+    success = Color(0xFF4F6D60),
+    danger = Color(0xFF9A524D),
 )
 
 val NightPalette = Palette(
@@ -66,6 +66,13 @@ val NightPalette = Palette(
     success = Color(0xFF88AA9A),
     danger = Color(0xFFD18B83),
 )
+
+/**
+ * 夜間較亮底色卡片（surfaceStrong）上的狀態文字：原本的 #D18B83／#88AA9A 在運動風、動感風、日系、白色夜間
+ * 只有 4.2–4.4:1，略加亮後在所有卡片底色 ≥ 4.5:1；色相不變。
+ */
+val NightStatusDanger = Color(0xFFDC958D)
+val NightStatusSuccess = Color(0xFF93B5A5)
 
 /** 畫面風格與日夜／強調色分開保存，切換風格不改亮度排程。 */
 enum class VisualStyle(val id: String, val label: String, val description: String) {
@@ -90,7 +97,8 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             bg = Color(0xFF1D2026), bgDeep = Color(0xFF12151A),
             surface = Color(0xFF292D34), surfaceStrong = Color(0xFF353A43),
             surfaceMuted = Color(0xFF242830), text = Color(0xFFF5F3F1),
-            textSoft = Color(0xFFC2BDBB), line = Color(0xFF55505A),
+            textSoft = Color(0xFFC2BDBB), line = Color(0xFF4E5560),
+            success = NightStatusSuccess, danger = NightStatusDanger,
         ) else base.copy(
             bg = Color(0xFFE8EAEE), bgDeep = Color(0xFFD7DBE2),
             surface = Color(0xFFF4F5F8), surfaceStrong = Color(0xFFFFFFFF),
@@ -102,6 +110,7 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             surface = Color(0xFF2C273D), surfaceStrong = Color(0xFF39324E),
             surfaceMuted = Color(0xFF252135), text = Color(0xFFF5F0FF),
             textSoft = Color(0xFFC4BAD6), line = Color(0xFF584D70),
+            success = NightStatusSuccess, danger = NightStatusDanger,
         ) else base.copy(
             bg = Color(0xFFEDE8F7), bgDeep = Color(0xFFDCD4EF),
             surface = Color(0xFFF7F3FD), surfaceStrong = Color(0xFFFFFFFF),
@@ -126,6 +135,8 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             surface = Color(0xFFC9D1DA), surfaceStrong = Color(0xFFD1D8E0),
             surfaceMuted = Color(0xFFC0C9D3), text = Color(0xFF0E1C30),
             textSoft = Color(0xFF2A3B52), line = Color(0xFF7A8CA2),
+            // 夜間仍是淺色底：沿用深色夜間的淺粉／淺綠狀態色只有 1.5–1.9:1，改用深色狀態字
+            success = Color(0xFF2F5244), danger = Color(0xFF86302B),
             characterArt = true, artworkStyle = VisualStyle.SPIDERMAN,
         ) else base.copy(
             bg = Color(0xFFF1F5FA), bgDeep = Color(0xFFDCE6F2),
@@ -138,7 +149,7 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             bg = Color(0xFF24221F), bgDeep = Color(0xFF191815),
             surface = Color(0xFF302D28), surfaceStrong = Color(0xFF3B3731),
             surfaceMuted = Color(0xFF292621), text = Color(0xFFF3EEE4),
-            textSoft = Color(0xFFC0B7A8), line = Color(0xFF524C42),
+            textSoft = Color(0xFFC0B7A8), line = Color(0xFF524C42), danger = NightStatusDanger,
         ) else base.copy(
             bg = Color(0xFFEDE8DE), bgDeep = Color(0xFFE1DACD),
             surface = Color(0xFFF7F3EA), surfaceStrong = Color(0xFFFFFCF5),
@@ -149,7 +160,7 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
             bg = Color(0xFF1C1E21), bgDeep = Color(0xFF121416),
             surface = Color(0xFF272A2E), surfaceStrong = Color(0xFF33373C),
             surfaceMuted = Color(0xFF222529), text = Color(0xFFF4F5F6),
-            textSoft = Color(0xFFBAC0C7), line = Color(0xFF494F57),
+            textSoft = Color(0xFFBAC0C7), line = Color(0xFF494F57), danger = NightStatusDanger,
         ) else base.copy(
             bg = Color(0xFFF4F5F7), bgDeep = Color(0xFFE7E9ED),
             surface = Color(0xFFFFFFFF), surfaceStrong = Color(0xFFFFFFFF),

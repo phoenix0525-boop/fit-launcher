@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tw.fitcar.launcher.DeviceSupport
 import tw.fitcar.launcher.data.AppEntry
 import tw.fitcar.launcher.data.DisplaySettings
 import tw.fitcar.launcher.data.LauncherState
@@ -100,13 +101,32 @@ class SettingsActions(
     val openTestTab: ((Int) -> Unit)? = null,
 )
 
+/**
+ * 設定頁的導覽狀態，由 Activity 持有：進入檢測、選 App 等子畫面再返回時，分類、捲動位置與尚未儲存的
+ * 天氣授權碼草稿都保留；從桌面重新開啟設定時才重設。切換分類時捲動歸零。
+ * 授權碼草稿只在記憶體中，不寫入 SavedState／檔案。
+ */
+class SettingsNavState {
+    var section by mutableStateOf(SETTINGS_SECTIONS.first())
+        private set
+    var scroll by mutableStateOf(androidx.compose.foundation.ScrollState(0))
+        private set
+    var weatherKeyDraft by mutableStateOf("")
+    fun select(name: String) {
+        if (name !in SETTINGS_SECTIONS || name == section) return
+        section = name; scroll = androidx.compose.foundation.ScrollState(0)
+    }
+    fun reset() { section = SETTINGS_SECTIONS.first(); scroll = androidx.compose.foundation.ScrollState(0); weatherKeyDraft = "" }
+}
+
 // 依使用頻率排序：常用設定在前，檢測與資訊在後
+internal val SETTINGS_SECTIONS get() = SECTIONS
 private val SECTIONS = listOf("外觀與配色", "亮度與日夜", "App 綁定", "導航", "音量與音效", "天氣", "啟動設定", "返回原廠桌面", "權限", "實機檢測", "備份與還原", "實機資訊", "更新", "關於")
 
 @Composable
-fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
+fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNavState = remember { SettingsNavState() }) {
     val p = LocalPalette.current
-    var section by rememberSaveable { mutableStateOf(0) }
+    val section = SECTIONS.indexOf(nav.section).coerceAtLeast(0)
     val context = androidx.compose.ui.platform.LocalContext.current
     val characterTaps = remember { HiddenCharacterThemeTaps() }
     ThemePageFrame(ThemePage.SETTINGS) {
@@ -125,8 +145,8 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     android.widget.Toast.makeText(context, "角色主題已開啟", android.widget.Toast.LENGTH_SHORT).show()
                 }
             } else characterTaps.reset()
-            section = chosen
-        }, footer = {
+            nav.select(SECTIONS[chosen])
+        }, contentScrollState = nav.scroll, footer = {
             if (p.characterArt && LocalThemeAppearance.current.smallArt) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ThemeArtwork(112.dp, ThemeArtPose.MUSIC) }
         }) {
                 key(SECTIONS.getOrNull(section)) {
@@ -134,7 +154,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                 when (SECTIONS.getOrNull(section)) {
                     "外觀與配色" -> AppearanceSection(data, actions)
                     "亮度與日夜" -> DisplaySection(data, actions)
-                    "天氣" -> WeatherSettings()
+                    "天氣" -> WeatherSettings(nav)
                     "音量與音效" -> AudioIntegrationSection(actions)
                     "App 綁定" -> BindingSection(data, actions)
                     "導航" -> NavSection(data, actions)
@@ -148,11 +168,11 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     else -> AboutSection(data)
                 }
                 val test = when (SECTIONS.getOrNull(section)) {
-                    "亮度與日夜" -> "測試亮度" to 4
-                    "App 綁定", "導航" -> "測試導航與播放器" to 7
-                    "權限" -> "重新檢測權限與功能" to 1
-                    "啟動設定", "返回原廠桌面" -> "測試桌面接管與喚醒" to 7
-                    "實機檢測" -> "開啟功能測試按鈕" to 7
+                    "亮度與日夜" -> "測試亮度" to CheckerTabs.index(CheckerTabs.BRIGHTNESS)
+                    "App 綁定", "導航" -> "測試導航與播放器" to CheckerTabs.index(CheckerTabs.MANUAL)
+                    "權限" -> "重新檢測權限與功能" to CheckerTabs.index("全部結果")
+                    "啟動設定", "返回原廠桌面" -> "測試桌面接管與喚醒" to CheckerTabs.index(CheckerTabs.MANUAL)
+                    "實機檢測" -> "開啟功能測試按鈕" to CheckerTabs.index(CheckerTabs.MANUAL)
                     else -> null
                 }
                 if (test != null && actions.openTestTab != null) {
@@ -186,11 +206,12 @@ private fun StatusLine(ok: Boolean, okText: String, badText: String) {
 }
 
 @Composable
-private fun WeatherSettings() {
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+private fun WeatherSettings(nav: SettingsNavState) {
     val p = LocalPalette.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val w by tw.fitcar.launcher.weather.WeatherRepository.state.collectAsState()
-    var key by remember { mutableStateOf("") }
+    var draft by nav::weatherKeyDraft
     Section("天氣（中央氣象署開放資料）") {
         ToggleRow("狀態列顯示天氣", "依 GPS 選最近的氣象署測站，30 分鐘更新一次，保留 5 天紀錄", w.enabled) { v ->
             tw.fitcar.launcher.weather.WeatherRepository.setEnabled(ctx, v)
@@ -198,12 +219,12 @@ private fun WeatherSettings() {
         Hint("需要自己到 opendata.cwa.gov.tw 註冊會員，在「取得授權碼」複製後貼在下方（免費）。授權碼只存在車機，不寫入任何專案檔案；只向氣象署下載測站資料，不上傳位置。", size = 13)
         StatusLine(w.hasKey, "已填寫授權碼", "尚未填寫授權碼")
         androidx.compose.material3.OutlinedTextField(
-            key, { key = it }, Modifier.fillMaxWidth(),
+            draft, { draft = it }, Modifier.fillMaxWidth(),
             label = { Text(if (w.hasKey) "更換授權碼" else "授權碼") }, singleLine = true,
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PrimaryButton("儲存授權碼", { tw.fitcar.launcher.weather.WeatherRepository.setKey(ctx, key); key = "" }, enabled = key.isNotBlank())
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PrimaryButton("儲存授權碼", { tw.fitcar.launcher.weather.WeatherRepository.setKey(ctx, draft); draft = "" }, enabled = draft.isNotBlank())
             SecondaryButton("立即更新", { tw.fitcar.launcher.weather.WeatherRepository.refresh(ctx, force = true) }, enabled = w.enabled && w.hasKey && !w.loading)
         }
         w.error?.let { Text(it, color = p.danger, fontSize = 14.sp) }
@@ -579,22 +600,30 @@ private fun DiagnosticsSection(data: SettingsData) {
 
 @Composable
 internal fun AboutSection(data: SettingsData) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val installedCode = remember(context) { tw.fitcar.launcher.BuildInfo.versionCode(context) }
     Section("關於") {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
-                Hint("版本 ${data.versionName}（${tw.fitcar.launcher.BuildInfo.versionCode(androidx.compose.ui.platform.LocalContext.current)}）", size = 16)
+                Hint("版本 ${data.versionName}（版本代碼 $installedCode，讀自已安裝套件）", size = 16)
             }
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
-        Hint("適用機型", size = 18, color = LocalPalette.current.text)
-        Hint("基本桌面：Android 8.0（API 26）以上，可安裝 App 並允許選擇預設桌面的橫向 Android 車機。正式版提供 ARM64（64 位元）安裝包；是否能接管實體 Home，仍依原廠系統而定。", size = 16)
-        Hint("已有實機檢測：Honda Fit 搭載的 UNISOC UIS7870SC 車機，裝置 uis7870sc_2h10_nosec／Android 13／2000×1200。此為目前回報裝置，不代表同晶片、同車款的所有車機都已驗證。", size = 16)
-        Hint("車輛年份、車機廠牌與原廠協議不同，功能可能有差異。手機互聯、倒車影像、DSP／EQ 等功能由原廠 App 提供。", size = 16)
-        Hint("整合驗證中：原廠音量、方向盤按鍵、導航固定嵌入與熄火喚醒。綁定 App 或系統數值正常，不等於實際功能已通過。", size = 16)
-        Hint("目前裝置：${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}／Android ${android.os.Build.VERSION.RELEASE}", size = 14)
-        val text = LocalPalette.current.text
+        val ink = LocalPalette.current.text
+        Hint("適用條件", size = 18, color = ink)
+        Hint(DeviceSupport.basics(), size = 16)
+        Hint("已回報實測機型", size = 18, color = ink)
+        DeviceSupport.TESTED.forEach { d -> Hint("• ${d.name}：${d.detail}（裝置代號 ${d.device}）。", size = 16) }
+        Hint("此機型曾安裝並回報實機檢測；各功能是否通過，以「實機檢測」中本版結果為準。同晶片或同車款的其他車機尚未驗證，不代表支援。", size = 16)
+        Hint("待驗證功能（本版未通過實車驗收）", size = 18, color = ink)
+        DeviceSupport.PENDING.forEach { Hint("• $it", size = 16) }
+        Hint("綁定 App 或 Android 數值正常，不等於實際功能已通過。手機互聯、倒車影像、DSP／EQ 等仍由原廠 App 提供。", size = 16)
+        Hint(DeviceSupport.current(android.os.Build.MANUFACTURER, android.os.Build.MODEL, android.os.Build.DEVICE,
+            android.os.Build.VERSION.SDK_INT, android.os.Build.VERSION.RELEASE), size = 14)
+        val text = ink
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.31：設定返回時保留分類與捲動、狀態字在所有風格清楚、音量檢測以聽感判定、原廠 DSP 入口先檢查是否可開啟。", size = 16)
         Hint("• 0.4.30：設定依用途分頁，新增運動風與動感風、原廠音效入口，以及版本代碼與適用機型說明。", size = 16)
         Hint("• 0.4.29：實機檢測結果依版本與情境保留歷史，增加功能測試入口。", size = 16)
         Hint("• 0.4.27：新增桌面接管：預設桌面確認、adb 指令、原廠桌面切回、喚醒開啟、浮動回桌面鍵、桌面小工具。", size = 16)
