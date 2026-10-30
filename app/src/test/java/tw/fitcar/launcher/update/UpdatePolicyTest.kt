@@ -19,6 +19,11 @@ class UpdatePolicyTest {
             assertFalse(UpdatePolicy.valid(22, 21, 1000, hash, it, url))
         }
     }
+    @Test fun newProductionCertificateReplacesRetiredProductionKey() {
+        assertEquals("B693B2503C22ADE93323CDEA35483B5084784581BB730D393D332D6D008E4DD8", UpdatePolicy.CERTIFICATE)
+        assertTrue(UpdatePolicy.valid(40, 39, 1000, hash, "B693B2503C22ADE93323CDEA35483B5084784581BB730D393D332D6D008E4DD8", url))
+        assertFalse(UpdatePolicy.valid(40, 39, 1000, hash, "274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF", url))
+    }
     @Test fun lookalikeHostsOtherReposAndTraversalAreRejected() {
         listOf(url.replace("https:", "http:"), url.replace("github.com", "github.com.attacker.test"), url.replace("phoenix0525-boop", "another-owner"), url.replace("releases/download/", "releases/download/../"), "$url?token=untrusted", url.replace("github.com", "user@github.com"), url.replace("vehicle-launcher.apk", "%2e%2e/file.apk")).forEach { assertFalse(it, UpdatePolicy.trustedAsset(it)) }
     }

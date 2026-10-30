@@ -4,7 +4,7 @@ import java.net.URI
 
 object UpdatePolicy {
     const val PACKAGE = "tw.fitcar.launcher"
-    const val CERTIFICATE = "274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF"
+    const val CERTIFICATE = "B693B2503C22ADE93323CDEA35483B5084784581BB730D393D332D6D008E4DD8"
     const val REPO = "phoenix0525-boop/fit-launcher"
     const val MAX_BYTES = 120L * 1024 * 1024
     fun trustedAsset(url: String): Boolean = runCatching {

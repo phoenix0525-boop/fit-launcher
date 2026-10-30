@@ -6,7 +6,7 @@ import re
 import subprocess
 import sys
 
-EXPECTED = '274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF'
+EXPECTED = 'B693B2503C22ADE93323CDEA35483B5084784581BB730D393D332D6D008E4DD8'
 
 def certificate_matches(output: str) -> bool:
     digests = re.findall(r'certificate SHA-256 digest:\s*([0-9a-fA-F:]+)', output)
