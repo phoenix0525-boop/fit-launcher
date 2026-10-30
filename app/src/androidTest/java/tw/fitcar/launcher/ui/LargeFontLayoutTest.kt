@@ -59,13 +59,18 @@ class LargeFontLayoutTest {
                 compose.onNodeWithText(it).performScrollTo(); fullLabel(it)
             }
             compose.onNodeWithText("沒有變化").performClick()
-            compose.onNodeWithText("已儲存聲音回報；不代表程式已修復。").performScrollTo()
-            fullLabel("已儲存聲音回報；不代表程式已修復。")
+            // 0.4.31：已回報後不再要求回報；本程式送出控制但聲音沒變，必須記為有問題
+            compose.onNodeWithText("✓ 沒有變化").performScrollTo(); fullLabel("✓ 沒有變化")
+            compose.onNodeWithText("已儲存：有問題。這是聽感紀錄，不代表程式已修復。").performScrollTo()
+            fullLabel("已儲存：有問題。這是聽感紀錄，不代表程式已修復。")
+            compose.onAllNodesWithText("請回報這一項測試的實際聲音：").assertCountEquals(0)
             screenshot("audio-current-report-125")
             compose.runOnIdle {
                 assertTrue(currentCalls == 1)
                 val r = tw.fitcar.launcher.check.CheckStore.results.value.getValue("audio_probe_CURRENT")
-                assertTrue(r.status == tw.fitcar.launcher.check.Status.INFO)
+                assertTrue(r.status == tw.fitcar.launcher.check.Status.FAIL)
+                assertTrue(!r.finding.contains("請另行回報"))
+                assertTrue(tw.fitcar.launcher.check.CheckStore.improvements(tw.fitcar.launcher.check.CheckStore.results.value).any { it.id == "audio_probe_CURRENT" })
                 assertTrue(r.notes.contains("沒有變化（使用者回報"))
                 assertTrue(tw.fitcar.launcher.check.Report.text(context, tw.fitcar.launcher.check.CheckStore.results.value)
                     .contains("請求曾嘗試=true（非成功確認）"))
@@ -760,7 +765,7 @@ class LargeFontLayoutTest {
         fullLabel("設定"); fullLabel("返回桌面")
         compose.onNodeWithContentDescription("蜘蛛人飛躍插畫").assertIsDisplayed()
         compose.onNodeWithText("關於").performScrollTo().performClick()
-        fullLabel("個人化啟動器"); fullLabel("版本 ${tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext)}（${tw.fitcar.launcher.BuildInfo.versionCode(InstrumentationRegistry.getInstrumentation().targetContext)}）")
+        fullLabel("個人化啟動器"); fullLabel("版本 ${tw.fitcar.launcher.BuildInfo.versionName(InstrumentationRegistry.getInstrumentation().targetContext)}（版本代碼 ${tw.fitcar.launcher.BuildInfo.versionCode(InstrumentationRegistry.getInstrumentation().targetContext)}，讀自已安裝套件）")
         compose.onNodeWithContentDescription("蜘蛛人蹲姿插畫").assertIsDisplayed()
         screenshot("settings-about-spiderman-light-night-125")
     }

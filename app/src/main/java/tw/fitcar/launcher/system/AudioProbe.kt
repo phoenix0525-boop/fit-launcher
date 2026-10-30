@@ -2,6 +2,7 @@ package tw.fitcar.launcher.system
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import tw.fitcar.launcher.check.Status
 
 enum class AudioProbeMethod(val label: String) {
     ABSOLUTE("桌面絕對設定：降低一格"), RELATIVE("桌面相對調整：降低一格"),
@@ -32,13 +33,15 @@ data class AudioProbeReport(val method: AudioProbeMethod, val samples: List<Audi
     val skipReason: String? = null, val requestAttempted: Boolean = false,
     val settingsDiff: SettingsDiffResult? = null, val volumeEvents: List<String> = emptyList()) {
     val verifiesVehicleSound get() = false
-    fun summary(): String {
+    /** [audibleReported] 為 true 時不再要求「請另行回報」。 */
+    fun summary(audibleReported: Boolean = false): String {
         if (error != null) return "檢測未完成：$error；不能判定控制有效或故障原因。"
         if (skipReason != null) return "未送出音量請求：$skipReason"
         val before = samples.firstOrNull()?.reading ?: return "尚無樣本，不能判定。"
         val after = samples.last().reading
         if (samples.any { it.reading.mode != before.mode || it.reading.musicActive != before.musicActive }) {
-            return "觀察期間播放活動或音訊模式變動；不能把取樣變化直接歸因為調整音量。請另行回報實際聲音。"
+            return "觀察期間播放活動或音訊模式變動；不能把取樣變化直接歸因為調整音量。" +
+                if (audibleReported) "" else "請另行回報實際聲音。"
         }
         if (method.observesOnly || method == AudioProbeMethod.CURRENT) {
             val changed = samples.any { it.reading.streams != before.streams }
@@ -47,15 +50,16 @@ data class AudioProbeReport(val method: AudioProbeMethod, val samples: List<Audi
                 (if (changed) "觀察期間 Android 音量數值有變化。" else "未觀察到 Android 音量數值變化。") +
                 (if (mutedChanged) "靜音旗標有變化。" else "") +
                 (settingsDiff?.let { if (it.audioChanges.isEmpty()) "系統設定未見音訊相關變化。" else "系統設定有 ${it.audioChanges.size} 項音訊相關變化（見報告）。" } ?: "") +
-                "不能據此判定實際聲音是否改變，請另行回報；無法僅憑此判定原廠介面、權限或硬體原因。"
+                "Android 數值不能代表實際聲音" + (if (audibleReported) "，以上方聽感回報為準" else "，請另行回報實際聽感") +
+                "；無法僅憑此判定原廠介面、權限或硬體原因。"
         }
         val target = (before.music - 1).coerceAtLeast(before.minimumMusic)
         val reachedEarly = samples.drop(1).dropLast(1).any { it.reading.music == target }
         return VolumeVerification.check(before.music, target, if (reachedEarly) target else before.music,
             after.music, before.fixed).message
     }
-    fun text() = "${method.label}\n請求曾嘗試=$requestAttempted（非成功確認）\n${summary()}\n" +
-        samples.joinToString("\n") { "+${it.elapsedMs}ms ${it.reading.text()}" } +
+    fun text() = "${method.label}\n請求曾嘗試=$requestAttempted（非成功確認）\n${summary()}\n" + details()
+    fun details() = samples.joinToString("\n") { "+${it.elapsedMs}ms ${it.reading.text()}" } +
         (if (method.observesOnly) "\n系統音量廣播 ${volumeEvents.size} 次" + volumeEvents.joinToString("") { "\n$it" } else "") +
         (settingsDiff?.let { "\n" + it.text() } ?: "")
 }
@@ -96,5 +100,38 @@ object AudioProbe {
         } catch (e: CancellationException) { if (method.observesOnly) port.endEvents(); throw e }
         catch (e: Exception) { if (method.observesOnly) port.endEvents(); return AudioProbeReport(method, samples, e.javaClass.simpleName, requestAttempted = attempted) }
         return AudioProbeReport(method, samples, requestAttempted = attempted)
+    }
+}
+
+/** 使用者回報的實際聽感；null 表示尚未回報。 */
+enum class AudibleAnswer(val label: String) { QUIETER("有變小"), UNCHANGED("沒有變化"), UNSURE("不確定") }
+
+/**
+ * 把一次音量檢測與使用者聽感合成為檢測結果。Android 數值只當旁證：
+ * - 本程式實際送出控制、使用者回報「沒有變化」→ 有問題（不能被 0 問題掩蓋）。
+ * - 尚未回報或不確定 → 待測試，不算正常。
+ * - 觀察原廠按鍵／小芳時本程式沒有送出控制，結果只記錄為資訊。
+ */
+data class AudioVerdict(val status: Status, val finding: String, val suggestion: String)
+
+object AudioVerdicts {
+    fun of(report: AudioProbeReport, answer: AudibleAnswer?): AudioVerdict {
+        val heard = answer?.let { "實際聲音：${it.label}（使用者回報）。" } ?: "實際聲音：尚未回報。"
+        val numbers = report.summary(answer != null)
+        val body = "${report.method.label}\n請求曾嘗試=${report.requestAttempted}（非成功確認）\n$heard$numbers\n${report.details()}"
+        if (report.error != null) return AudioVerdict(Status.FAIL, body, "檢測本身失敗（${report.error}），請重測；若重複失敗，匯出報告分析。")
+        if (report.skipReason != null) return AudioVerdict(Status.TODO, body, "條件不符未送出請求，依提示調整後再測。")
+        if (!report.method.observesOnly && !report.requestAttempted)
+            return AudioVerdict(Status.TODO, body, "這次沒有送出音量控制（已在最低值或固定音量），不能判定控制是否有效。")
+        if (report.method.observesOnly) return AudioVerdict(
+            if (answer == null || answer == AudibleAnswer.UNSURE) Status.TODO else Status.INFO, body,
+            if (answer == null) "請按「有變小／沒有變化／不確定」回報實際聽感。" else "觀察原廠功能，本程式未送出音量控制。")
+        return when (answer) {
+            null -> AudioVerdict(Status.TODO, body, "請按「有變小／沒有變化／不確定」回報實際聽感。")
+            AudibleAnswer.UNSURE -> AudioVerdict(Status.TODO, body, "聽感不確定，請在安靜環境重測一次。")
+            AudibleAnswer.QUIETER -> AudioVerdict(Status.PASS, body, "實際聲音有變化（使用者回報）；Android 數值僅供對照。")
+            AudibleAnswer.UNCHANGED -> AudioVerdict(Status.FAIL, body,
+                "本程式已送出控制但實際聲音沒有變化：這個控制方式在本車機無效，請改用原廠音量鍵；不要依 Android 數值判斷成功。")
+        }
     }
 }

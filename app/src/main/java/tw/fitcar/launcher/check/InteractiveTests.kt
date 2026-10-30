@@ -262,6 +262,7 @@ fun manualResult(item: ManualItem, ok: Boolean?, note: String = "", scenario: St
 
 /* ---------------- 匯出報告 ---------------- */
 
+
 object Report {
     fun text(context: Context, results: Map<String, CheckResult>): String {
         val sb = StringBuilder()
@@ -273,7 +274,7 @@ object Report {
         sb.appendLine(counts)
         sb.appendLine()
         val imp = CheckStore.improvements(results)
-        sb.appendLine("【可改進的地方】${if (imp.isEmpty()) "目前沒有" else "${imp.size} 項"}")
+        sb.appendLine("【可改進的地方】" + ReportSummary.headline(imp.size, results.values.count { it.status == Status.TODO }))
         imp.forEachIndexed { i, r ->
             sb.appendLine("${i + 1}. ${r.status.mark} [${r.group}] ${r.title}")
             sb.appendLine("   發現：${r.finding}")

@@ -93,7 +93,7 @@ object CheckStore {
         val next = LinkedHashMap(_results.value.filterKeys { it !in projectedKeys })
         val keys = mutableSetOf<String>()
         records.orEmpty().groupBy { it.id }.forEach { (id, history) ->
-            val latest = history.lastOrNull { ResultValidity.matches(it.appVersion, it.contextKey, version(context), scenario(context)) &&
+            val latest = history.lastOrNull { ResultValidity.matches(it.appVersion, it.contextKey, version(context), scenario(context), id) &&
                 (id != "m_reverse" || "FIT預設=true" in it.contextKey) }
             history.forEachIndexed { index, result ->
                 if (result !== latest) {
@@ -104,7 +104,7 @@ object CheckStore {
                 }
             }
             next[id] = latest ?: history.last().copy(status = Status.TODO, fix = null,
-                finding = "本情境待測試：既有結果版本或測試情境不符。", suggestion = "舊結果保留於歷史結果。",
+                finding = "本情境待測試：既有結果的版本或影響此項的情境（${ResultValidity.relevantFields(id)?.joinToString("、")?.ifEmpty { "僅版本" } ?: "全部情境"}）不符。", suggestion = "舊結果保留於歷史結果。",
                 appVersion = version(context), scenario = scenario(context), notes = "", time = 0L)
             keys += id
         }

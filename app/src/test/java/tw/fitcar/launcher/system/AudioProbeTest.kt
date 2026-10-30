@@ -65,7 +65,9 @@ class AudioProbeTest {
     @Test fun ignoredRequestPreserves36To36AsNotApplied() {
         val p = Port(ignore = true); val r = run(AudioProbeMethod.ABSOLUTE, p)
         assertEquals(1, p.writes); assertTrue(r.samples.all { it.reading.music == 36 })
-        assertTrue(r.summary().contains("未生效")); assertFalse(r.verifiesVehicleSound)
+        // Android 數值沒變只是旁證，不能據此宣稱實際聲音未變
+        assertTrue(r.summary().contains("Android 數值未改變")); assertFalse(r.summary().contains("未生效"))
+        assertTrue(r.summary().contains("聽感")); assertFalse(r.verifiesVehicleSound)
     }
     @Test fun unavailableReadCannotLookLikeNormalVolume() = runBlocking {
         val p = object : AudioProbePort {
