@@ -8,7 +8,7 @@ import subprocess
 import os
 import glob
 
-CERT = '274D805BDD01F01D0F8A711D9EE77B593E161BCAEA1897AC7A487327AA389AFF'
+CERT = 'B693B2503C22ADE93323CDEA35483B5084784581BB730D393D332D6D008E4DD8'
 apk = Path('app/build/outputs/apk/release/app-release.apk')
 # Verify the exact file again here, not a stale sidecar or filename assertion.
 subprocess.run(['python', 'scripts/verify_release_certificate.py', str(apk)], check=True)
@@ -30,6 +30,6 @@ manifest = {
     'packageName': 'tw.fitcar.launcher', 'versionName': version, 'versionCode': code,
     'apkUrl': f'https://github.com/phoenix0525-boop/fit-launcher/releases/download/v{version}/{name}',
     'size': apk.stat().st_size, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
-    'certificateSha256': CERT, 'notes': Path('docs/release-0.4.32.md').read_text(),
+    'certificateSha256': CERT, 'notes': Path('docs/release-0.4.33.md').read_text(),
 }
 (out / 'update.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
