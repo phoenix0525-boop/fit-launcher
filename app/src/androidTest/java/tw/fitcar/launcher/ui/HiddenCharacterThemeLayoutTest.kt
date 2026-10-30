@@ -128,7 +128,7 @@ class HiddenCharacterThemeLayoutTest {
         compose.onNode(hasText("亮度與日夜") and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText("系統背光權限").assertIsDisplayed()
         compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
-        compose.onNodeWithText("全版主題與插畫").assertIsDisplayed()
+        compose.onNodeWithText("畫面風格").assertIsDisplayed()
         snapshot("settings-appearance-0430-125")
     }
 

@@ -215,8 +215,6 @@ private fun WeatherSettings() {
 @Composable
 private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
-    Section("全版主題與插畫") { ThemeAppearanceSettings() }
-    Section("自訂桌布") { WallpaperSettings() }
     actions.setStyle?.let { setStyle ->
         Section("畫面風格") {
             val unlocked = CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)
@@ -283,6 +281,8 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
             }
         }
     }
+    Section("全版主題與插畫") { ThemeAppearanceSettings() }
+    Section("自訂桌布") { WallpaperSettings() }
     Hint("想調整螢幕明暗或自動切換時間，請到「亮度與日夜」。", size = 14)
 }
 
@@ -588,7 +588,7 @@ internal fun AboutSection(data: SettingsData) {
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
         Hint("適用機型", size = 18, color = LocalPalette.current.text)
-        Hint("基本桌面：Android 8.0（API 26）以上，可安裝 App 並允許選擇預設桌面的橫向 Android 車機。是否能接管實體 Home，仍依原廠系統而定。", size = 16)
+        Hint("基本桌面：Android 8.0（API 26）以上，可安裝 App 並允許選擇預設桌面的橫向 Android 車機。正式版提供 ARM64（64 位元）安裝包；是否能接管實體 Home，仍依原廠系統而定。", size = 16)
         Hint("已有實機檢測：Honda Fit 搭載的 UNISOC UIS7870SC 車機，裝置 uis7870sc_2h10_nosec／Android 13／2000×1200。此為目前回報裝置，不代表同晶片、同車款的所有車機都已驗證。", size = 16)
         Hint("車輛年份、車機廠牌與原廠協議不同，功能可能有差異。手機互聯、倒車影像、DSP／EQ 等功能由原廠 App 提供。", size = 16)
         Hint("整合驗證中：原廠音量、方向盤按鍵、導航固定嵌入與熄火喚醒。綁定 App 或系統數值正常，不等於實際功能已通過。", size = 16)
