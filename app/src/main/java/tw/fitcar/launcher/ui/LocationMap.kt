@@ -249,19 +249,25 @@ internal fun FreeMapPanel(gps: GpsState, modifier: Modifier = Modifier) {
         }
     }
     LaunchedEffect(online) { if (online && (failed || slow && !loaded)) { nightFailed = false; marker = null; retry++ } }
-    val driving = LocalDriving.current
-    val trip by tw.fitcar.launcher.system.TripMeter.state.collectAsState()
     Column(modifier) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Hint(if (!gps.permission) "請先允許定位" else if (!gps.providerEnabled) "GPS 已關閉" else if (!hasPosition && canHold) "訊號較弱 · 上次位置" else if (!hasPosition) "等待 GPS 定位…" else if (controls.following) "跟隨位置 · 行進方向朝上" else "自由瀏覽", size = 14,
-                    essential = !gps.permission || !gps.providerEnabled || !hasPosition)
-                // 本次行程（GPS 估算）：有里程才顯示
-                if (trip.distanceM >= 100.0) Text("本次 " + tw.fitcar.launcher.system.Trip.format(trip), color = LocalPalette.current.text,
-                    fontSize = if (driving) 20.sp else 17.sp, maxLines = 1)
+        // Let the map use the full panel height. Only exceptional GPS states need a label;
+        // overlay it so neither normal following nor trip statistics reserve a header row.
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+            val gpsWarning = when {
+                !gps.permission -> "請先允許定位"
+                !gps.providerEnabled -> "GPS 已關閉"
+                !hasPosition && canHold -> "訊號較弱 · 上次位置"
+                !hasPosition -> "等待 GPS 定位…"
+                else -> null
+            }
+            if (gpsWarning != null) Box(Modifier
+                .align(androidx.compose.ui.Alignment.TopStart)
+                .background(LocalPalette.current.surface)
+                .padding(horizontal = 8.dp, vertical = 4.dp)) {
+                Hint(gpsWarning, size = 14, essential = true)
             }
         }
-        AndroidView(factory = { view }, modifier = Modifier.weight(1f).fillMaxWidth())
         if (failed || slow && !loaded) {
             Hint("底圖暫時無法載入，請確認網路後重試；GPS 與外部導航仍可使用。", size = 14)
             SecondaryButton("重試載入", { nightFailed = false; marker = null; retry++ })
