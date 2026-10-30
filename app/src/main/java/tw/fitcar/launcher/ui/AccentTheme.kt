@@ -22,6 +22,10 @@ enum class AccentTheme(val id: String, val label: String, val day: AccentColors,
         AccentColors(0xFF7A4234L, 0xFF602E24L, 0xFFF4DEC4L), AccentColors(0xFFE9BA75L, 0xFFF4D19AL, 0xFF4D3423L)),
     HERO_RED("hero_red", "英雄紅",
         AccentColors(0xFFC62828L, 0xFFA51920L, 0xFFFBE0E2L), AccentColors(0xFFFF7B7BL, 0xFFFFA2A2L, 0xFF43242FL)),
+    SPORT("sport", "運動紅",
+        AccentColors(0xFFB72E28L, 0xFF92251FL, 0xFFF5DEDBL), AccentColors(0xFFFF9386L, 0xFFFFB2A8L, 0xFF472C2BL)),
+    DYNAMIC("dynamic", "動感紫",
+        AccentColors(0xFF713FB5L, 0xFF58308FL, 0xFFE9DFF7L), AccentColors(0xFFC4A1FFL, 0xFFD8BEFFL, 0xFF392B50L)),
     SAND("sand", "沙棕",
         AccentColors(0xFF8A6A3FL, 0xFF6F5430L, 0xFFF0E5D5L), AccentColors(0xFFC9A877L, 0xFFD8BC92L, 0xFF4A3B26L));
 

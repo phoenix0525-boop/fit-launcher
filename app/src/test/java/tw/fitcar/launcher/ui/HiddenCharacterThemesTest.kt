@@ -27,9 +27,9 @@ class HiddenCharacterThemesTest {
         assertTrue(CharacterThemeAccess.isUnlocked(false, "spiderman"))
         assertTrue(CharacterThemeAccess.isUnlocked(false, "pompompurin"))
         assertTrue(CharacterThemeAccess.isUnlocked(true, "original"))
-        assertEquals(3, CharacterThemeAccess.visibleStyles(false, "original").size)
+        assertEquals(5, CharacterThemeAccess.visibleStyles(false, "original").size)
         assertTrue(CharacterThemeAccess.visibleStyles(false, "original").contains(VisualStyle.WHITE))
-        assertEquals(5, CharacterThemeAccess.visibleStyles(false, "pompompurin").size)
-        assertEquals(5, CharacterThemeAccess.visibleStyles(true, "original").size)
+        assertEquals(7, CharacterThemeAccess.visibleStyles(false, "pompompurin").size)
+        assertEquals(7, CharacterThemeAccess.visibleStyles(true, "original").size)
     }
 }

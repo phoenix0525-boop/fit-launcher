@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -100,7 +101,7 @@ class SettingsActions(
 )
 
 // 依使用頻率排序：常用設定在前，檢測與資訊在後
-private val SECTIONS = listOf("顯示與亮度", "App 綁定", "導航", "權限", "備份與還原", "實機檢測", "啟動設定", "返回原廠桌面", "實機資訊", "更新", "關於")
+private val SECTIONS = listOf("外觀與配色", "亮度與日夜", "App 綁定", "導航", "音量與音效", "天氣", "啟動設定", "返回原廠桌面", "權限", "實機檢測", "備份與還原", "實機資訊", "更新", "關於")
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
@@ -128,9 +129,13 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
         }, footer = {
             if (p.characterArt && LocalThemeAppearance.current.smallArt) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ThemeArtwork(112.dp, ThemeArtPose.MUSIC) }
         }) {
+                key(SECTIONS.getOrNull(section)) {
                 // 以名稱對應，之後調整順序不會接錯頁
                 when (SECTIONS.getOrNull(section)) {
-                    "顯示與亮度" -> DisplaySection(data, actions)
+                    "外觀與配色" -> AppearanceSection(data, actions)
+                    "亮度與日夜" -> DisplaySection(data, actions)
+                    "天氣" -> WeatherSettings()
+                    "音量與音效" -> AudioIntegrationSection(actions)
                     "App 綁定" -> BindingSection(data, actions)
                     "導航" -> NavSection(data, actions)
                     "權限" -> PermissionSection(data, actions)
@@ -143,7 +148,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                     else -> AboutSection(data)
                 }
                 val test = when (SECTIONS.getOrNull(section)) {
-                    "顯示與亮度" -> "測試亮度" to 4
+                    "亮度與日夜" -> "測試亮度" to 4
                     "App 綁定", "導航" -> "測試導航與播放器" to 7
                     "權限" -> "重新檢測權限與功能" to 1
                     "啟動設定", "返回原廠桌面" -> "測試桌面接管與喚醒" to 7
@@ -152,6 +157,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions) {
                 }
                 if (test != null && actions.openTestTab != null) {
                     SecondaryButton(test.first, { actions.openTestTab.invoke(test.second) })
+                }
                 }
             }
     }
@@ -207,16 +213,8 @@ private fun WeatherSettings() {
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
+private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
-    val d = data.state.display
-    Section("系統背光權限") {
-        StatusLine(data.canWriteBrightness, "已允許修改系統亮度", "尚未允許：亮度排程不會生效")
-        Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請在實機診斷記錄。", size = 13)
-        if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
-        data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
-    }
-    DesktopDimSettings()
     Section("全版主題與插畫") { ThemeAppearanceSettings() }
     Section("自訂桌布") { WallpaperSettings() }
     actions.setStyle?.let { setStyle ->
@@ -235,6 +233,8 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
                                 setStyle(style)
                                 if (style == VisualStyle.POMPOMPURIN) actions.setAccent?.invoke(AccentTheme.CARAMEL)
                                 if (style == VisualStyle.SPIDERMAN) actions.setAccent?.invoke(AccentTheme.HERO_RED)
+                                if (style == VisualStyle.SPORT) actions.setAccent?.invoke(AccentTheme.SPORT)
+                                if (style == VisualStyle.DYNAMIC) actions.setAccent?.invoke(AccentTheme.DYNAMIC)
                             }.padding(16.dp),
                     ) {
                         if (preview.characterArt) CompositionLocalProvider(LocalPalette provides preview) {
@@ -283,7 +283,21 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
             }
         }
     }
-    WeatherSettings()
+    Hint("想調整螢幕明暗或自動切換時間，請到「亮度與日夜」。", size = 14)
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
+    val p = LocalPalette.current
+    val d = data.state.display
+    Section("系統背光權限") {
+        StatusLine(data.canWriteBrightness, "已允許修改系統亮度", "尚未允許：亮度排程不會生效")
+        Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請在實機診斷記錄。", size = 13)
+        if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
+        data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
+    }
+    DesktopDimSettings()
     Section("自動排程") {
         ToggleRow("亮度自動排程", "依下列時段調整系統背光", d.autoSchedule) { v -> actions.updateDisplay { it.copy(autoSchedule = v) } }
         ToggleRow("日夜主題自動切換", "夜間時段使用夜間配色", d.autoTheme) { v -> actions.updateDisplay { it.copy(autoTheme = v) } }
@@ -569,12 +583,20 @@ internal fun AboutSection(data: SettingsData) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Hint("個人化啟動器", size = 20, color = LocalPalette.current.text)
-                Hint("版本 ${data.versionName}", size = 16)
+                Hint("版本 ${data.versionName}（${tw.fitcar.launcher.BuildInfo.versionCode(androidx.compose.ui.platform.LocalContext.current)}）", size = 16)
             }
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
+        Hint("適用機型", size = 18, color = LocalPalette.current.text)
+        Hint("基本桌面：Android 8.0（API 26）以上，可安裝 App 並允許選擇預設桌面的橫向 Android 車機。是否能接管實體 Home，仍依原廠系統而定。", size = 16)
+        Hint("已有實機檢測：Honda Fit 搭載的 UNISOC UIS7870SC 車機，裝置 uis7870sc_2h10_nosec／Android 13／2000×1200。此為目前回報裝置，不代表同晶片、同車款的所有車機都已驗證。", size = 16)
+        Hint("車輛年份、車機廠牌與原廠協議不同，功能可能有差異。手機互聯、倒車影像、DSP／EQ 等功能由原廠 App 提供。", size = 16)
+        Hint("整合驗證中：原廠音量、方向盤按鍵、導航固定嵌入與熄火喚醒。綁定 App 或系統數值正常，不等於實際功能已通過。", size = 16)
+        Hint("目前裝置：${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}／Android ${android.os.Build.VERSION.RELEASE}", size = 14)
         val text = LocalPalette.current.text
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.30：設定依用途分頁，新增運動風與動感風、原廠音效入口，以及版本代碼與適用機型說明。", size = 16)
+        Hint("• 0.4.29：實機檢測結果依版本與情境保留歷史，增加功能測試入口。", size = 16)
         Hint("• 0.4.27：新增桌面接管：預設桌面確認、adb 指令、原廠桌面切回、喚醒開啟、浮動回桌面鍵、桌面小工具。", size = 16)
         Hint("• 0.4.26：Google 導航提示不再頻繁顯示已過期；等紅燈時保留提示，行駛中久未更新才過期。", size = 16)
         Hint("• 0.4.25：導航王與Google地圖並排在工具列，點一下即切換；音量檢測加記系統音量廣播與設定值變化。", size = 16)

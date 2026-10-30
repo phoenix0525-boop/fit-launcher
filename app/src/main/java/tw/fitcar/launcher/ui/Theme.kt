@@ -71,6 +71,8 @@ val NightPalette = Palette(
 enum class VisualStyle(val id: String, val label: String, val description: String) {
     ORIGINAL("original", "原有", "暖灰底色，保留目前配色"),
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
+    SPORT("sport", "運動風", "冷灰分層與競速紅，俐落清楚"),
+    DYNAMIC("dynamic", "動感風", "冰紫底色與電光紫，日夜各有層次"),
     WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
     POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫"),
     SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、中灰藍夜間與插畫");
@@ -84,6 +86,28 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
     val base = if (night) NightPalette else DayPalette
     return when (style) {
         VisualStyle.ORIGINAL -> base
+        VisualStyle.SPORT -> if (night) base.copy(
+            bg = Color(0xFF1D2026), bgDeep = Color(0xFF12151A),
+            surface = Color(0xFF292D34), surfaceStrong = Color(0xFF353A43),
+            surfaceMuted = Color(0xFF242830), text = Color(0xFFF5F3F1),
+            textSoft = Color(0xFFC2BDBB), line = Color(0xFF55505A),
+        ) else base.copy(
+            bg = Color(0xFFE8EAEE), bgDeep = Color(0xFFD7DBE2),
+            surface = Color(0xFFF4F5F8), surfaceStrong = Color(0xFFFFFFFF),
+            surfaceMuted = Color(0xFFE2E5EB), text = Color(0xFF242933),
+            textSoft = Color(0xFF5A606C), line = Color(0xFFB7BDC8),
+        )
+        VisualStyle.DYNAMIC -> if (night) base.copy(
+            bg = Color(0xFF211D2E), bgDeep = Color(0xFF15121F),
+            surface = Color(0xFF2C273D), surfaceStrong = Color(0xFF39324E),
+            surfaceMuted = Color(0xFF252135), text = Color(0xFFF5F0FF),
+            textSoft = Color(0xFFC4BAD6), line = Color(0xFF584D70),
+        ) else base.copy(
+            bg = Color(0xFFEDE8F7), bgDeep = Color(0xFFDCD4EF),
+            surface = Color(0xFFF7F3FD), surfaceStrong = Color(0xFFFFFFFF),
+            surfaceMuted = Color(0xFFE7E0F2), text = Color(0xFF302540),
+            textSoft = Color(0xFF655773), line = Color(0xFFC4B6D8),
+        )
         VisualStyle.POMPOMPURIN -> if (night) base.copy(
             bg = Color(0xFF241A14), bgDeep = Color(0xFF17110D),
             surface = Color(0xFF30231A), surfaceStrong = Color(0xFF3B2A1F),
