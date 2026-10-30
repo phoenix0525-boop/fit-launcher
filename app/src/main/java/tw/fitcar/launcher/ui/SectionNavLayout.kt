@@ -18,7 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,15 +36,22 @@ import androidx.compose.ui.unit.sp
  * 內容區保留完整寬度。
  */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun SectionNavLayout(
     items: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,
     footer: (@Composable () -> Unit)? = null,
+    /** 呼叫端保存的內容捲動位置（例如從檢測返回設定時還原）；未提供時切換分類即歸零。 */
+    contentScrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
-    val contentScroll = remember(selected) { ScrollState(0) }
+    val ownScroll = remember(selected) { ScrollState(0) }
+    val contentScroll = contentScrollState ?: ownScroll
+    // 分類清單會捲動：還原或切換後，確保選取的分類在可見範圍內
+    val selectedRequester = remember(selected) { BringIntoViewRequester() }
+    LaunchedEffect(selected) { runCatching { selectedRequester.bringIntoView() } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 900.dp && maxWidth > maxHeight * 0.95f
         val sidebarWidth = if (maxWidth < 1200.dp) 200.dp else 250.dp
@@ -56,7 +67,7 @@ fun SectionNavLayout(
                         val on = i == selected
                         Text(
                             name,
-                            Modifier.fillMaxWidth().clip(RadiusMd)
+                            Modifier.fillMaxWidth().then(if (on) Modifier.bringIntoViewRequester(selectedRequester) else Modifier).clip(RadiusMd)
                                 .background(if (on) p.accentSoft else Color.Transparent)
                                 .clickable { onSelect(i) }
                                 .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -85,7 +96,7 @@ fun SectionNavLayout(
                         val on = i == selected
                         Text(
                             name,
-                            Modifier.clip(RadiusMd)
+                            Modifier.then(if (on) Modifier.bringIntoViewRequester(selectedRequester) else Modifier).clip(RadiusMd)
                                 .background(if (on) p.accentSoft else Color.Transparent)
                                 .clickable { onSelect(i) }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),

@@ -92,6 +92,8 @@ class MainActivity : ComponentActivity() {
     private var activityResumed by mutableStateOf(false)
     private var resumeTick by mutableIntStateOf(0)
     private var screen by mutableStateOf<Screen>(Screen.Home)
+    /** 設定分類與捲動位置；從子畫面返回設定時保留，從桌面開啟時重設。 */
+    private val settingsNav = tw.fitcar.launcher.ui.SettingsNavState()
     /** 「所有 App」上方的系統小工具；必須在 onCreate 前註冊 Activity 結果。 */
     private val widgets = tw.fitcar.launcher.ui.DesktopWidgets(this)
 
@@ -460,7 +462,7 @@ class MainActivity : ComponentActivity() {
         val homeActions = remember {
             HomeActions(
                 openAllApps = { screen = Screen.AllApps },
-                openSettings = { screen = Screen.Settings },
+                openSettings = { settingsNav.reset(); screen = Screen.Settings },
                 openNav = { handleNav(NavLauncher.open(this@MainActivity)) },
                 openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
                 bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
@@ -659,7 +661,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         SettingsScreen(
-                            data,
+                            nav = settingsNav,
+                            data = data,
+                            actions =
                             SettingsActions(
                                 back = { screen = Screen.Home },
                                 setStartOnBoot = { enabled -> prefs.update { it.copy(startOnBoot = enabled) } },

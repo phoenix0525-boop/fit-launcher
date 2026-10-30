@@ -29,7 +29,7 @@ class HiddenCharacterThemeLayoutTest {
                 FitTheme(DayPalette) {
                     SettingsScreen(
                         SettingsData(state, null, null, null, true, 50, true, true,
-                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.30"),
+                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.31"),
                         SettingsActions(back = {}, setStyle = { state = state.copy(visualStyle = it.id) },
                             setCharacterThemesUnlocked = { unlocked -> state = state.copy(
                                 characterThemesUnlocked = unlocked,
@@ -129,18 +129,21 @@ class HiddenCharacterThemeLayoutTest {
         compose.onNodeWithText("系統背光權限").assertIsDisplayed()
         compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText("畫面風格").assertIsDisplayed()
-        snapshot("settings-appearance-0430-125")
+        snapshot("settings-appearance-0431-125")
     }
 
     @Test fun aboutShowsVersionAndSeparatesCompatibilityFromTestedHardware() {
         state = LauncherState()
         screen()
         compose.onNode(hasText("關於") and hasClickAction()).performScrollTo().performClick()
-        compose.onNode(hasText("版本 0.4.30（", substring = true)).assertIsDisplayed()
-        compose.onNodeWithText("適用機型").assertIsDisplayed()
+        compose.onNode(hasText("版本 0.4.31（版本代碼 ", substring = true)).assertIsDisplayed()
+        compose.onNodeWithText("適用條件").assertIsDisplayed()
         compose.onNode(hasText("Android 8.0（API 26）", substring = true)).performScrollTo().assertIsDisplayed()
-        compose.onNode(hasText("已有實機檢測：Honda Fit", substring = true)).performScrollTo().assertIsDisplayed()
-        snapshot("settings-about-0430-125")
+        compose.onNodeWithText("已回報實測機型").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("愛客思 AKZ ZX09", substring = true)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("待驗證功能（本版未通過實車驗收）").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("原廠實際音量", substring = true)).performScrollTo().assertIsDisplayed()
+        snapshot("settings-about-0431-125")
     }
 
 }

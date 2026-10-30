@@ -73,7 +73,8 @@ class CheckerActions(
     val runManualAction: (String) -> String? = { "此測試入口尚未連接" },
 )
 
-private val TABS = listOf("可改進的地方", "全部結果", "手勢測試", "按鍵測試", "亮度測試", "分割畫面", "GPS 測試", "手動檢查", "音量檢測", "匯出報告")
+private val TABS = CheckerTabs.ALL
+
 
 @Composable
 fun CheckerScreen(actions: CheckerActions, initialTab: Int = 0) {
@@ -147,7 +148,7 @@ fun ResultCard(r: CheckResult, onFix: ((Fix) -> Unit)?) {
 private fun ImprovementsTab(list: List<CheckResult>, todo: Int, actions: CheckerActions) {
     Section("可改進的地方") {
         if (list.isEmpty()) {
-            Hint("目前沒有需要改進的項目。" + if (todo > 0) "還有 $todo 項待測試，請完成互動測試與手動檢查。" else "", size = 16)
+            Hint(if (todo > 0) "目前沒有已確認的問題，但還有 $todo 項待測試，不代表全部正常；請完成互動測試與手動檢查。" else "目前沒有需要改進的項目。", size = 16)
         } else {
             Hint("依嚴重程度排列。有按鈕的項目可以直接在 車機桌面套用建議；其他項目請匯出報告交給 AI 處理。", size = 14)
         }
