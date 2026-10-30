@@ -23,7 +23,9 @@ class CurrentVolumeProbeTest {
         assertEquals(listOf("current"), p.calls)
         assertTrue(r.requestAttempted); assertFalse(r.verifiesVehicleSound)
         assertTrue(r.summary().contains("未觀察到 Android 音量數值變化"))
-        assertTrue(r.summary().contains("不能據此判定實際聲音"))
+        assertTrue(r.summary().contains("Android 數值不能代表實際聲音"))
+        assertTrue(r.summary().contains("請另行回報實際聽感"))
+        assertFalse(r.summary().contains("這個控制方式未生效"))
     }
     @Test fun callOrNoMusicOrFixedOrMinimumDoesNotSendCommand() {
         val blocked = listOf(
