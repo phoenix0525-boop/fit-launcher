@@ -15,3 +15,13 @@
 
 ## 測試
 靜態政策檢查另記交接。當前環境無 Android SDK，Gradle 下載因網路不可達失敗；單元及模擬器測試待 CI，不得記為通過。
+
+## CI 回驗完成
+
+已驗證的程式提交：e62ab30ffd4d14788f5f67dde588094b54ab622c；tree=ee11e48675616de267fa820ebcf579a31d7f1657，與原本機 082b839 的 tree 相同。
+- Build APK：41215628735，success；單元測試、Debug APK、Release 稽核通過。
+- UI：41215628727，success；Android 13 XML 結果 114 tests、0 failures、0 errors、0 skipped；Android 29 視窗測試 2 項通過。
+- 已目視核對日間、夜間、行車三張 Google 導航提示截圖，提示文字完整，與測試底圖分區。測試使用假通知及底圖替身，不能取代原生地圖及真實通知的實車驗收。
+- 尚未發布新版 Release；音量 Binder 及真正導航嵌入仍未整合。
+
+此後僅同步驗證文件，不更動已測程式。
