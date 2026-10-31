@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -25,6 +27,9 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +49,8 @@ fun SectionNavLayout(
     footer: (@Composable () -> Unit)? = null,
     /** 呼叫端保存的內容捲動位置（例如從檢測返回設定時還原）；未提供時切換分類即歸零。 */
     contentScrollState: ScrollState? = null,
+    /** 寬螢幕側欄的群組小標：分類索引 → 標題；窄螢幕分頁列以分隔線區隔。 */
+    groupLabels: Map<Int, String> = emptyMap(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = LocalPalette.current
@@ -65,6 +72,11 @@ fun SectionNavLayout(
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items.forEachIndexed { i, name ->
                         val on = i == selected
+                        groupLabels[i]?.let { group ->
+                            Text(group, Modifier.fillMaxWidth().padding(start = 16.dp, top = if (i == 0) 4.dp else 14.dp, bottom = 2.dp)
+                                .semantics { heading() },
+                                color = p.textSoft, fontSize = TypeScale.NOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        }
                         Text(
                             name,
                             Modifier.fillMaxWidth().then(if (on) Modifier.bringIntoViewRequester(selectedRequester) else Modifier).clip(RadiusMd)
@@ -94,6 +106,8 @@ fun SectionNavLayout(
                 ) {
                     items.forEachIndexed { i, name ->
                         val on = i == selected
+                        if (i > 0 && groupLabels.containsKey(i))
+                            Box(Modifier.align(Alignment.CenterVertically).width(1.dp).height(28.dp).background(p.line))
                         Text(
                             name,
                             Modifier.then(if (on) Modifier.bringIntoViewRequester(selectedRequester) else Modifier).clip(RadiusMd)

@@ -609,7 +609,7 @@ class MainActivity : ComponentActivity() {
                             requestWriteSettings = { safeStart(BrightnessController.permissionIntent(this@MainActivity), "車機沒有提供修改系統設定頁") },
                             runManualAction = { action ->
                                 fun launchTest(intent: Intent?): String? {
-                                    if (intent == null) return "找不到對應 App；請先安裝或在 App 綁定選擇，測試仍待確認。"
+                                    if (intent == null) return "找不到對應 App；請先安裝，或到設定的「導航」或「音樂與音效」選擇，測試仍待確認。"
                                     return try { startActivity(intent); null }
                                     catch (_: Exception) { "開啟失敗；請檢查 App 與系統限制，測試仍待確認。" }
                                 }
@@ -624,7 +624,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         val actual = AppRepository.resolve(this@MainActivity, state.bindings.music)
                                         if (actual?.component?.packageName != expected)
-                                            "目前綁定播放器不符合本項；請先到 App 綁定選擇對應播放器，不會自動更改你的設定。"
+                                            "目前綁定播放器不符合本項；請先到設定 → 音樂與音效 選擇對應播放器，不會自動更改你的設定。"
                                         else bound(state.bindings.music)
                                     }
                                     "shield" -> bound(state.bindings.shield)

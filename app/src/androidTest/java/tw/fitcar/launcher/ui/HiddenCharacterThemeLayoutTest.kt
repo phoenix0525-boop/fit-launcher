@@ -29,7 +29,7 @@ class HiddenCharacterThemeLayoutTest {
                 FitTheme(DayPalette) {
                     SettingsScreen(
                         SettingsData(state, null, null, null, true, 50, true, true,
-                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.31"),
+                            otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.34"),
                         SettingsActions(back = {}, setStyle = { state = state.copy(visualStyle = it.id) },
                             setCharacterThemesUnlocked = { unlocked -> state = state.copy(
                                 characterThemesUnlocked = unlocked,
@@ -71,7 +71,7 @@ class HiddenCharacterThemeLayoutTest {
     @Test fun selectingAnotherSectionResetsUnlockSequence() {
         state = LauncherState()
         screen()
-        val info = compose.onNode(hasText("實機資訊") and hasClickAction())
+        val info = compose.onNode(hasText("關於") and hasClickAction())
         val display = compose.onNode(hasText("外觀與配色") and hasClickAction())
         info.performScrollTo().performClick()
         repeat(2) { info.performClick() }
@@ -97,8 +97,9 @@ class HiddenCharacterThemeLayoutTest {
         screen()
         compose.onNode(styleLabel("布丁狗")).assertDoesNotExist()
         compose.onNode(styleLabel("蜘蛛人")).assertDoesNotExist()
-        compose.onNode(hasText("實機資訊") and hasClickAction()).performScrollTo().performClick()
-        repeat(4) { compose.onNode(hasText("實機資訊") and hasClickAction()).performClick() }
+        // 0.4.34：「實機資訊」併入實機檢測，隱藏入口改為連點「關於」五下
+        compose.onNode(hasText("關於") and hasClickAction()).performScrollTo().performClick()
+        repeat(4) { compose.onNode(hasText("關於") and hasClickAction()).performClick() }
         compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
         compose.onNode(styleLabel("布丁狗")).performScrollTo()
         fullLabel("布丁狗"); fullLabel("蜘蛛人")
@@ -136,12 +137,15 @@ class HiddenCharacterThemeLayoutTest {
         state = LauncherState()
         screen()
         compose.onNode(hasText("關於") and hasClickAction()).performScrollTo().performClick()
-        compose.onNode(hasText("版本 0.4.31（版本代碼 ", substring = true)).assertIsDisplayed()
-        compose.onNodeWithText("適用條件").assertIsDisplayed()
+        compose.onNode(hasText("版本 0.4.34（版本代碼 ", substring = true)).assertIsDisplayed()
+        compose.onNodeWithText("測試機型與相容性").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("UNISOC UIS7870SC", substring = true) and hasText("相容性問題", substring = true)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("適用條件").performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("Android 8.0（API 26）", substring = true)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("已回報實測機型").performScrollTo().assertIsDisplayed()
-        compose.onNode(hasText("愛客思 AKZ ZX09", substring = true)).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("• 愛客思 AKZ ZX09：", substring = true)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("待驗證功能（本版未通過實車驗收）").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("不提供，改用原廠功能").performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("原廠實際音量", substring = true)).performScrollTo().assertIsDisplayed()
         snapshot("settings-about-0431-125")
     }

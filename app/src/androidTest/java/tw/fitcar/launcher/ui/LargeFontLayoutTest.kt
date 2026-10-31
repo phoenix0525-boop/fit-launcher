@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -218,13 +219,16 @@ class LargeFontLayoutTest {
         show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "晴天", artist = "周杰倫", playbackState = PlaybackState.STATE_PLAYING))
         compose.onAllNodesWithContentDescription("這是一個很長的應用程式捷徑名稱")[0].assertIsDisplayed()
         compose.onAllNodesWithText("這是一個很長的應用程式捷徑名稱").assertCountEquals(0)
-        val audio = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
-        fullLabel(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString())
-        compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
-        compose.onNodeWithContentDescription("調整媒體音量").assertIsDisplayed()
-        listOf("降低", "提高", "系統音量", "關閉").forEach(::fullLabel)
+        // 0.4.34：主畫面音量鈕只顯示說明與原廠入口，不顯示 Android 數值、不提供降低／提高
+        compose.onNodeWithContentDescription(tw.fitcar.launcher.system.VolumeGuidance.BUTTON_DESCRIPTION).performClick()
+        listOf(tw.fitcar.launcher.system.VolumeGuidance.FACTORY_EQ, tw.fitcar.launcher.system.VolumeGuidance.SYSTEM_PANEL, "關閉").forEach(::fullLabel)
+        tw.fitcar.launcher.system.VolumeGuidance.WAYS.forEach { fullLabel("• $it") }
+        compose.onAllNodesWithText("降低").assertCountEquals(0)
+        compose.onAllNodesWithText("提高").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("調整媒體音量").assertCountEquals(0)
         screenshot("home-volume-125", dialog = true)
     }
+
     @Test fun permissionCardButtonAt125Percent() {
         show(MediaUiState())
         compose.onNodeWithText("前往授權").performScrollTo()
@@ -257,24 +261,22 @@ class LargeFontLayoutTest {
         assertTrue("行車中應隱藏「GPS km/h」完整標籤", compose.onAllNodesWithText("GPS km/h").fetchSemanticsNodes().isEmpty())
         screenshot("home-driving-125")
     }
-    @Test fun drivingVolumeValueAt125PercentKeepsMinimumFont() {
+    @Test fun drivingVolumeButtonAt125PercentHasNoMisleadingNumber() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
         val value = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toString()
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, 1.25f), LocalDriving provides true) {
-                FitTheme(DayPalette) { VolumeControl() }
+                FitTheme(DayPalette) { VolumeControl(56.dp) }
             }
         }
-        compose.onAllNodesWithText("音量", useUnmergedTree = true).assertCountEquals(0)
-        fullLabel(value)
-        val layouts = mutableListOf<TextLayoutResult>()
-        compose.onNodeWithText(value, useUnmergedTree = true)
-            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        assertTrue("行車音量數值不得小於 19.2 sp", layouts.isNotEmpty() &&
-            layouts.all { it.layoutInput.style.fontSize.value >= 19.2f })
+        val node = compose.onNodeWithContentDescription(tw.fitcar.launcher.system.VolumeGuidance.BUTTON_DESCRIPTION)
+        node.assertIsDisplayed()
+        node.assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        compose.onAllNodesWithText(value, useUnmergedTree = true).assertCountEquals(0)
     }
+
     @Test fun playingCardAt125Percent() {
         show(MediaUiState(permissionGranted = true, packageName = "app.morphe.android.apps.youtube.music", playerName = "Morphe Music", title = "晴天", artist = "周杰倫",
             playbackState = PlaybackState.STATE_PAUSED, durationMs = 240000,
@@ -372,26 +374,18 @@ class LargeFontLayoutTest {
         } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
     }
 
-    @Test fun relativeVolumeReportsOnlyAndroidReadback() {
+    @Test fun volumeButtonNeverChangesAndroidVolume() {
+        // 0.4.34：實車證實桌面音量指令無效，主畫面不再送出任何音量指令
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
         val before = audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
-        val max = audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-        val initial = (max / 2).coerceAtLeast(2)
-        try {
-            audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, initial, 0)
-            show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲"))
-            compose.onNodeWithContentDescription("媒體音量", substring = true).performClick()
-            compose.onNodeWithText("降低").performClick()
-            compose.waitUntil(5000) { audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == initial - 1 }
-            val message = tw.fitcar.launcher.system.VolumeReadback.NUMERIC_ONLY.message
-            compose.waitUntil(5000) { compose.onAllNodesWithText(message).fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText(message).performScrollTo()
-            fullLabel(message)
-            assertTrue(context.getSharedPreferences("volume_diagnostics", android.content.Context.MODE_PRIVATE)
-                .getString("last_readback", "")!!.startsWith("相對增減"))
-            screenshot("volume-readback-125", dialog = true)
-        } finally { audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, before, 0) }
+        show(MediaUiState(permissionGranted = true, packageName = "test.music", playerName = "KKBOX", title = "測試曲"))
+        compose.onNodeWithContentDescription(tw.fitcar.launcher.system.VolumeGuidance.BUTTON_DESCRIPTION).performClick()
+        compose.onNodeWithText(tw.fitcar.launcher.system.VolumeGuidance.NOTE).performScrollTo()
+        fullLabel(tw.fitcar.launcher.system.VolumeGuidance.NOTE)
+        compose.onNodeWithText("關閉").performClick()
+        compose.waitForIdle()
+        assertEquals(before, audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC))
     }
 
     @Test fun spidermanDayAt125Percent() = pompompurin(false, spider = true)
@@ -715,7 +709,7 @@ class LargeFontLayoutTest {
                 }
             }
         }
-        compose.onNodeWithText("啟動設定").performScrollTo().performClick()
+        compose.onNode(hasText("桌面接管") and hasClickAction()).performScrollTo().performClick()
         fullLabel("開機時嘗試開啟車機桌面")
         compose.onNodeWithContentDescription("開機時嘗試開啟車機桌面").assertIsOff().performClick().assertIsOn()
         fullLabel("尚無開機啟動紀錄")
@@ -735,18 +729,22 @@ class LargeFontLayoutTest {
                     FitTheme(DayPalette) { SettingsScreen(settingsFixture(), settingsActionsFixture()) }
                 }
             }
-            compose.onNodeWithText("啟動設定").performScrollTo().performClick()
+            compose.onNode(hasText("桌面接管") and hasClickAction()).performScrollTo().performClick()
             // 0.4.27：桌面接管的各項都預設關閉，開關只改本機設定
-            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面", "導航 App 在前景時顯示「⌂ 桌面」").forEach { label ->
+            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面").forEach { label ->
                 compose.onNodeWithContentDescription(label).performScrollTo().assertIsOff()
                 fullLabel(label)
             }
-            // The loop above scrolls to the last option; bring the first switch back before tapping.
+            // The loop above scrolls to the last takeover option; bring the first switch back before tapping.
             compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performScrollTo().assertIsOff().performClick().assertIsOn()
             compose.runOnIdle { assertTrue(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context)) }
             compose.onNodeWithText("設為預設桌面").performScrollTo()
             fullLabel("設為預設桌面")
             screenshot("settings-desktop-takeover-125")
+            compose.onNode(hasText("導航") and hasClickAction()).performScrollTo().performClick()
+            val overlay = "導航 App 在前景時顯示「⌂ 桌面」"
+            compose.onNodeWithContentDescription(overlay).performScrollTo().assertIsOff()
+            fullLabel(overlay)
         } finally {
             tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, before.first)
             tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, before.second)

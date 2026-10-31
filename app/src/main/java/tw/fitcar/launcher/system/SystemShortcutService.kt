@@ -29,8 +29,8 @@ class SystemShortcutService : AccessibilityService() {
             if (intent.action == Intent.ACTION_SCREEN_ON && DesktopGuard.wakeLaunch(context)) {
                 // 等系統與原廠桌面先完成喚醒，再開啟一次；不重試。
                 handler.postDelayed({
-                    val ok = DesktopGuard.launchDesktop(context)
-                    DesktopGuard.recordEvent(context, if (ok) "螢幕喚醒：已開啟車機桌面" else "螢幕喚醒：開啟失敗")
+                    val (ok, note) = DesktopGuard.autoLaunch(context, LaunchGate.Reason.SCREEN_ON, foreground)
+                    DesktopGuard.recordEvent(context, if (ok) "螢幕喚醒：已開啟車機桌面" else "螢幕喚醒：未開啟（$note）")
                 }, 1500)
             }
         }
@@ -42,10 +42,10 @@ class SystemShortcutService : AccessibilityService() {
         try { androidx.core.content.ContextCompat.registerReceiver(this, screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) } catch (_: Exception) { }
         // 開機後系統會重新連上本服務；若使用者開啟「開機啟動」，在開機 3 分鐘內補開一次。
-        if (SystemClock.elapsedRealtime() < 180_000 && Prefs.get(this).state.value.startOnBoot) {
+        if (SystemClock.elapsedRealtime() < LaunchGate.BOOT_WINDOW_MS && Prefs.get(this).state.value.startOnBoot) {
             handler.postDelayed({
-                val ok = DesktopGuard.launchDesktop(this)
-                DesktopGuard.recordEvent(this, if (ok) "開機：已由系統服務開啟車機桌面" else "開機：系統服務開啟失敗")
+                val (ok, note) = DesktopGuard.autoLaunch(this, LaunchGate.Reason.BOOT_SERVICE, foreground)
+                DesktopGuard.recordEvent(this, if (ok) "開機：已由系統服務開啟車機桌面" else "開機：系統服務未開啟（$note）")
             }, 3000)
         }
     }
@@ -62,8 +62,8 @@ class SystemShortcutService : AccessibilityService() {
         returns = d.returns
         when (d.action) {
             DesktopGuardPolicy.Action.RETURN -> {
-                val ok = DesktopGuard.launchDesktop(this)
-                DesktopGuard.recordEvent(this, "偵測到 $pkg/$cls，${if (ok) d.reason else "切回失敗"}")
+                val (ok, note) = DesktopGuard.autoLaunch(this, LaunchGate.Reason.FACTORY_RETURN, pkg)
+                DesktopGuard.recordEvent(this, "偵測到 $pkg/$cls，${if (ok) d.reason else "未切回（$note）"}")
             }
             DesktopGuardPolicy.Action.PAUSE_LOOP -> {
                 DesktopGuard.setPausedUntil(this, d.pausedUntil)

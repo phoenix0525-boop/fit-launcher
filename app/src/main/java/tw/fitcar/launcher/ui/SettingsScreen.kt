@@ -113,15 +113,16 @@ class SettingsNavState {
         private set
     var weatherKeyDraft by mutableStateOf("")
     fun select(name: String) {
-        if (name !in SETTINGS_SECTIONS || name == section) return
-        section = name; scroll = androidx.compose.foundation.ScrollState(0)
+        val target = SettingsSections.resolve(name) ?: return
+        if (target == section) return
+        section = target; scroll = androidx.compose.foundation.ScrollState(0)
     }
     fun reset() { section = SETTINGS_SECTIONS.first(); scroll = androidx.compose.foundation.ScrollState(0); weatherKeyDraft = "" }
 }
 
-// 依使用頻率排序：常用設定在前，檢測與資訊在後
-internal val SETTINGS_SECTIONS get() = SECTIONS
-private val SECTIONS = listOf("外觀與配色", "亮度與日夜", "App 綁定", "導航", "音量與音效", "天氣", "啟動設定", "返回原廠桌面", "權限", "實機檢測", "備份與還原", "實機資訊", "更新", "關於")
+// 分類與群組見 SettingsSections（日常 → 初次設定 → 維護 → 診斷）
+internal val SETTINGS_SECTIONS get() = SettingsSections.ALL
+private val SECTIONS get() = SettingsSections.ALL
 
 @Composable
 fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNavState = remember { SettingsNavState() }) {
@@ -129,6 +130,8 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNa
     val section = SECTIONS.indexOf(nav.section).coerceAtLeast(0)
     val context = androidx.compose.ui.platform.LocalContext.current
     val characterTaps = remember { HiddenCharacterThemeTaps() }
+    // 桌面接管、權限、導航浮動鍵、最近使用共用同一份狀態；回到前景時重讀
+    val takeover = rememberTakeoverStatus()
     ThemePageFrame(ThemePage.SETTINGS) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -139,40 +142,62 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNa
         }
         Spacer(Modifier.height(16.dp))
         SectionNavLayout(SECTIONS, section, { chosen ->
-            if (SECTIONS[chosen] == "實機資訊" && !CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)) {
+            if (SECTIONS[chosen] == SettingsSections.CHARACTER_UNLOCK && !CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)) {
                 if (characterTaps.onTap(android.os.SystemClock.elapsedRealtime())) {
                     actions.setCharacterThemesUnlocked?.invoke(true)
                     android.widget.Toast.makeText(context, "角色主題已開啟", android.widget.Toast.LENGTH_SHORT).show()
                 }
             } else characterTaps.reset()
             nav.select(SECTIONS[chosen])
-        }, contentScrollState = nav.scroll, footer = {
+        }, contentScrollState = nav.scroll, groupLabels = SettingsSections.GROUP_LABELS, footer = {
             if (p.characterArt && LocalThemeAppearance.current.smallArt) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ThemeArtwork(112.dp, ThemeArtPose.MUSIC) }
         }) {
                 key(SECTIONS.getOrNull(section)) {
                 // 以名稱對應，之後調整順序不會接錯頁
                 when (SECTIONS.getOrNull(section)) {
-                    "外觀與配色" -> AppearanceSection(data, actions)
-                    "亮度與日夜" -> DisplaySection(data, actions)
-                    "天氣" -> WeatherSettings(nav)
-                    "音量與音效" -> AudioIntegrationSection(actions)
-                    "App 綁定" -> BindingSection(data, actions)
-                    "導航" -> NavSection(data, actions)
-                    "權限" -> PermissionSection(data, actions)
-                    "備份與還原" -> BackupSection()
-                    "實機檢測" -> CheckerEntrySection(actions)
-                    "啟動設定" -> StartupSection(data, actions)
-                    "返回原廠桌面" -> FactoryHomeSection(data, actions)
-                    "實機資訊" -> DiagnosticsSection(data)
-                    "更新" -> UpdateSection()
+                    SettingsSections.APPEARANCE -> AppearanceSection(data, actions)
+                    SettingsSections.DISPLAY -> DisplaySection(data, actions)
+                    SettingsSections.NAV -> {
+                        NavBindingSection(data, actions)
+                        NavSection(data, actions)
+                        NavOverlaySettings(takeover)
+                    }
+                    SettingsSections.MUSIC -> {
+                        MusicBindingSection(data, actions)
+                        AudioIntegrationSection(actions)
+                    }
+                    SettingsSections.APPS -> {
+                        ShortcutSection(data, actions)
+                        UsageAndWidgetSettings(takeover)
+                    }
+                    SettingsSections.WEATHER -> WeatherSettings(nav)
+                    SettingsSections.TAKEOVER -> {
+                        CompatibilityNotice()
+                        StartupSection(data, actions)
+                        DesktopTakeoverSettings(takeover)
+                        FactoryHomeSection(data, actions)
+                    }
+                    SettingsSections.PERMISSIONS -> {
+                        PermissionSection(data, actions)
+                        BatterySettings(takeover)
+                        AccessibilityCard(takeover.status)
+                    }
+                    SettingsSections.MAINTENANCE -> {
+                        BackupSection()
+                        UpdateSection()
+                    }
+                    SettingsSections.CHECKER -> {
+                        CheckerEntrySection(actions)
+                        DiagnosticsSection(data)
+                    }
                     else -> AboutSection(data)
                 }
                 val test = when (SECTIONS.getOrNull(section)) {
-                    "亮度與日夜" -> "測試亮度" to CheckerTabs.index(CheckerTabs.BRIGHTNESS)
-                    "App 綁定", "導航" -> "測試導航與播放器" to CheckerTabs.index(CheckerTabs.MANUAL)
-                    "權限" -> "重新檢測權限與功能" to CheckerTabs.index("全部結果")
-                    "啟動設定", "返回原廠桌面" -> "測試桌面接管與喚醒" to CheckerTabs.index(CheckerTabs.MANUAL)
-                    "實機檢測" -> "開啟功能測試按鈕" to CheckerTabs.index(CheckerTabs.MANUAL)
+                    SettingsSections.DISPLAY -> "測試亮度" to CheckerTabs.index(CheckerTabs.BRIGHTNESS)
+                    SettingsSections.NAV -> "測試導航與播放器" to CheckerTabs.index(CheckerTabs.MANUAL)
+                    SettingsSections.PERMISSIONS -> "重新檢測權限與功能" to CheckerTabs.index("全部結果")
+                    SettingsSections.TAKEOVER -> "測試桌面接管與喚醒" to CheckerTabs.index(CheckerTabs.MANUAL)
+                    SettingsSections.CHECKER -> "開啟功能測試按鈕" to CheckerTabs.index(CheckerTabs.MANUAL)
                     else -> null
                 }
                 if (test != null && actions.openTestTab != null) {
@@ -199,11 +224,6 @@ private fun ToggleRow(title: String, desc: String, checked: Boolean, onChange: (
     }
 }
 
-@Composable
-private fun StatusLine(ok: Boolean, okText: String, badText: String) {
-    val p = LocalPalette.current
-    Text(if (ok) "● $okText" else "● $badText", color = if (ok) p.success else p.danger, fontSize = 15.sp)
-}
 
 @Composable
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -427,22 +447,40 @@ private fun BindingRow(target: BindingTarget, entry: AppEntry?, key: String?, ac
 }
 
 @Composable
-private fun BindingSection(data: SettingsData, actions: SettingsActions) {
+private fun NavBindingSection(data: SettingsData, actions: SettingsActions) {
     val b = data.state.bindings
-    Section("從車機實際安裝的 App 綁定") {
-        Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 13)
+    Section("導航 App 與神盾") {
+        Hint("請從車機實際安裝清單選擇。", size = 13)
         BindingRow(BindingTarget.NAVIGATION, data.nav, b.navigation, actions, "左側導航區的開啟對象")
-        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式記住最後實際播放的 App")
         BindingRow(BindingTarget.SHIELD, data.shield, b.shield, actions, "狀態列入口；警示由神盾官方浮動窗顯示")
+        StatusLine(data.locationGranted, "定位已允許：顯示 GPS 車速與目前位置", "定位未允許：不顯示車速與目前位置")
+        if (!data.locationGranted) SecondaryButton("允許定位", actions.requestLocation)
+        if (data.nav?.component?.packageName == "com.google.android.apps.maps")
+            StatusLine(data.notificationGranted, "通知存取已開啟：可顯示 Google 轉彎提示", "通知存取未開啟：不顯示 Google 轉彎提示")
+    }
+}
+
+@Composable
+private fun MusicBindingSection(data: SettingsData, actions: SettingsActions) {
+    val b = data.state.bindings
+    Section("播放器") {
+        Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 13)
+        BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式記住最後實際播放的 App")
         tw.fitcar.launcher.data.MediaMode.entries.forEach { mode ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = data.state.mediaMode == mode, onClick = { actions.setMediaMode(mode) })
                 Text(if (mode == tw.fitcar.launcher.data.MediaMode.FIXED) "固定播放器" else "跟隨目前播放", color = LocalPalette.current.text, fontSize = 17.sp)
             }
         }
-        LyricsSetting()
         Hint("跟隨模式：記住最後實際播放的 App，喚醒或重開桌面時優先連接；其他 App 開始播放時可跟隨切換。若播放器已被系統關閉，可用「連接上次播放器」重新開啟。", size = 13)
+        StatusLine(data.notificationGranted, "通知存取已開啟：可顯示歌曲與控制播放", "通知存取未開啟：無法顯示歌曲與控制播放")
+        if (!data.notificationGranted) SecondaryButton("開啟通知存取", actions.requestNotificationAccess)
+        LyricsSetting()
     }
+}
+
+@Composable
+private fun ShortcutSection(data: SettingsData, actions: SettingsActions) {
     actions.setShortcutPages?.let { setPages ->
         val pages = data.state.shortcutPages
         Section("主畫面捷徑") {
@@ -558,21 +596,28 @@ private fun StartupSection(data: SettingsData, actions: SettingsActions) {
         }
         Hint("只在真正開機後嘗試一次，預設關閉。Android 或原廠可能限制自動開啟；休眠喚醒不一定會觸發。", size = 16)
         Hint(data.startupStatus, size = 16)
-        Hint("此選項不會改變預設桌面，也不保證修復原廠 Home 接管。", size = 16)
-        PrimaryButton("變更預設桌面", actions.openHomeSettings)
+        Hint("此選項不會改變預設桌面；預設桌面請用下方「設為預設桌面」。", size = 16)
     }
-    DesktopTakeoverSettings()
 }
 
 @Composable
 private fun FactoryHomeSection(data: SettingsData, actions: SettingsActions) {
-    Section("返回原廠桌面") {
-        Hint("下列為車機上的其他桌面。開啟後若要永久改回，請到「預設桌面」設定選擇原廠桌面。", size = 13)
+    Section("開啟原廠桌面") {
+        Hint("要使用原廠桌面內的功能時從這裡開啟，自動切回會暫停 10 分鐘。若要永久改回原廠桌面，請用上方「設為預設桌面」在系統視窗中選擇原廠桌面。", size = 13)
         if (data.otherHomes.isEmpty()) Hint("找不到其他桌面。", size = 15)
         data.otherHomes.forEach { home ->
             SecondaryButton("開啟 ${home.label}", { actions.openOtherHome(home) }, Modifier.fillMaxWidth(), icon = { AppIcon(home.icon, 32.dp) })
         }
-        PrimaryButton("變更預設桌面", actions.openHomeSettings)
+    }
+}
+
+/** 桌面接管最依賴原廠系統：不在已回報實測機型上時，先顯示相容性提醒。 */
+@Composable
+private fun CompatibilityNotice() {
+    val tested = remember { DeviceSupport.isTested(android.os.Build.DEVICE, android.os.Build.VERSION.SDK_INT) }
+    Section(if (tested) "測試機型" else "相容性提醒") {
+        Hint(DeviceSupport.COMPATIBILITY_NOTE, size = 16, color = if (tested) null else LocalPalette.current.danger)
+        if (!tested) Hint("目前裝置（${android.os.Build.MODEL}／${android.os.Build.DEVICE}／Android ${android.os.Build.VERSION.RELEASE}）不在實測清單。", size = 16)
     }
 }
 
@@ -611,6 +656,8 @@ internal fun AboutSection(data: SettingsData) {
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
         val ink = LocalPalette.current.text
+        Hint("測試機型與相容性", size = 18, color = ink)
+        Hint(DeviceSupport.COMPATIBILITY_NOTE, size = 16, color = LocalPalette.current.danger)
         Hint("適用條件", size = 18, color = ink)
         Hint(DeviceSupport.basics(), size = 16)
         Hint("已回報實測機型", size = 18, color = ink)
@@ -618,11 +665,14 @@ internal fun AboutSection(data: SettingsData) {
         Hint("此機型曾安裝並回報實機檢測；各功能是否通過，以「實機檢測」中本版結果為準。同晶片或同車款的其他車機尚未驗證，不代表支援。", size = 16)
         Hint("待驗證功能（本版未通過實車驗收）", size = 18, color = ink)
         DeviceSupport.PENDING.forEach { Hint("• $it", size = 16) }
+        Hint("不提供，改用原廠功能", size = 18, color = ink)
+        DeviceSupport.NOT_PROVIDED.forEach { Hint("• $it", size = 16) }
         Hint("綁定 App 或 Android 數值正常，不等於實際功能已通過。手機互聯、倒車影像、DSP／EQ 等仍由原廠 App 提供。", size = 16)
         Hint(DeviceSupport.current(android.os.Build.MANUFACTURER, android.os.Build.MODEL, android.os.Build.DEVICE,
             android.os.Build.VERSION.SDK_INT, android.os.Build.VERSION.RELEASE), size = 14)
         val text = ink
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.34：設定改為「日常／初次設定／維護／診斷」四群 11 類；主畫面音量改為說明與原廠入口，不再送出音量指令。", size = 16)
         Hint("• 0.4.31：設定返回時保留分類與捲動、狀態字在所有風格清楚、音量檢測以聽感判定、原廠 DSP 入口先檢查是否可開啟。", size = 16)
         Hint("• 0.4.30：設定依用途分頁，新增運動風與動感風、原廠音效入口，以及版本代碼與適用機型說明。", size = 16)
         Hint("• 0.4.29：實機檢測結果依版本與情境保留歷史，增加功能測試入口。", size = 16)

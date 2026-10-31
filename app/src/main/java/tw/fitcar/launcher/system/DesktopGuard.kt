@@ -50,6 +50,42 @@ object DesktopGuard {
     fun ownHomeComponent(context: Context) = ComponentName(context, MainActivity::class.java)
 
     /** 以公開 HOME Intent 開啟車機桌面；呼叫端必須是使用者已開啟的系統服務或前景畫面。 */
+    private fun gatePrefs(context: Context) = context.getSharedPreferences("desktop_launch_gate", Context.MODE_PRIVATE)
+
+    /** 依 [LaunchGate] 判斷這次自動開啟是否可以進行（不開啟）。 */
+    fun gate(context: Context, reason: LaunchGate.Reason, foreground: String?): LaunchGate.Verdict {
+        val p = gatePrefs(context)
+        val now = SystemClock.elapsedRealtime()
+        val wall = System.currentTimeMillis()
+        fun stored(key: String) = if (p.contains(key)) p.getLong(key, 0) else null
+        val bootHandled = LaunchGate.sameBoot(stored("boot_at"), wall, now)
+        // last_at 是開機後經過時間，只有同一次開機才有意義
+        val last = if (LaunchGate.sameBoot(stored("last_boot"), wall, now)) stored("last_at") else null
+        val homes = factoryHomes(context).map { it.substringBefore('/') }.toSet()
+        return LaunchGate.decide(reason, now, foreground, context.packageName, last, bootHandled, homes)
+    }
+
+    /** 記錄一次成功的自動開啟，供下一次判斷間隔與「本次開機已開過」。 */
+    fun markLaunched(context: Context, reason: LaunchGate.Reason) {
+        val now = SystemClock.elapsedRealtime()
+        val bootAt = System.currentTimeMillis() - now
+        val e = gatePrefs(context).edit().putLong("last_at", now).putLong("last_boot", bootAt)
+        if (reason == LaunchGate.Reason.BOOT_BROADCAST || reason == LaunchGate.Reason.BOOT_SERVICE) e.putLong("boot_at", bootAt)
+        e.apply()
+    }
+
+    /**
+     * 自動開啟車機桌面（系統服務的開機補開、螢幕喚醒、原廠切回共用）。
+     * 不在倒車／相機畫面時開啟，同一次開機只開一次；回傳是否開啟與原因。
+     */
+    fun autoLaunch(context: Context, reason: LaunchGate.Reason, foreground: String?): Pair<Boolean, String> {
+        val v = gate(context, reason, foreground)
+        if (!v.launch) return false to v.note
+        val ok = launchDesktop(context)
+        if (ok) markLaunched(context, reason)
+        return ok to (if (ok) v.note else "開啟失敗")
+    }
+
     fun launchDesktop(context: Context): Boolean = try {
         context.startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             .setComponent(ownHomeComponent(context))

@@ -57,7 +57,7 @@ object NavLauncher {
             .setPackage(packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     fun openPlace(context: Context, address: String?): LaunchResult {
-        val clean = Places.clean(address) ?: return LaunchResult.Failed("還沒設定這個地點，請到 設定 → App 綁定 → 常用地點 填寫地址。")
+        val clean = Places.clean(address) ?: return LaunchResult.Failed("還沒設定這個地點，請到 設定 → 導航 → 常用地點 填寫地址。")
         val navPkg = Prefs.get(context).state.value.bindings.navigation
             ?.let { android.content.ComponentName.unflattenFromString(it)?.packageName }
         val geo = placeIntent(clean, navPkg)
