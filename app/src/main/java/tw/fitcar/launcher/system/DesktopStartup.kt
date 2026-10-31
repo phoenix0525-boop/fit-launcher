@@ -15,11 +15,15 @@ object DesktopStartup {
         "requested" -> "上次已送出開啟請求，尚未確認進入桌面"
         "confirmed" -> "上次開機請求曾進入桌面前景"
         "rejected" -> "上次開啟請求失敗，請使用系統桌面設定"
+        "skipped" -> "上次開機未開啟：${prefs(context).getString("note", "") ?: ""}"
         else -> "尚無開機啟動紀錄"
     }
 
     fun request(context: Context, action: String?, enabled: Boolean) {
         if (!enabled || action != Intent.ACTION_BOOT_COMPLETED) return
+        // 與系統服務的開機補開共用判斷：倒車畫面在前景或本次開機已開過就不再開
+        val verdict = DesktopGuard.gate(context, LaunchGate.Reason.BOOT_BROADCAST, SystemShortcutService.foreground)
+        if (!verdict.launch) { prefs(context).edit().putString("status", "skipped").putString("note", verdict.note).commit(); return }
         val token = UUID.randomUUID().toString()
         prefs(context).edit().putString("token", token).putString("status", "requested").commit()
         val launch = Intent(context, MainActivity::class.java)
@@ -27,6 +31,7 @@ object DesktopStartup {
             .putExtra(EXTRA_REQUEST, token)
         try {
             context.startActivity(launch)
+            DesktopGuard.markLaunched(context, LaunchGate.Reason.BOOT_BROADCAST)
             // A background launch can be silently blocked. Returning here is NOT success.
         } catch (_: Exception) {
             prefs(context).edit().putString("status", "rejected").commit()

@@ -47,3 +47,57 @@ object AdbCommands {
     fun showHome() = "adb shell cmd role get-role-holders android.app.role.HOME"
     fun dumpAudio() = "adb shell dumpsys audio > audio.txt"
 }
+
+/**
+ * 0.4.34：開機廣播、系統服務補開、螢幕喚醒、原廠桌面切回四條路徑都會開啟車機桌面，原本各自判斷，
+ * 可能同一次開機開兩次、在使用者已進入其他 App 後又被拉回，或在倒車影像出現時蓋過它。
+ * 統一由這裡判斷；純邏輯，方便測試。
+ */
+object LaunchGate {
+    enum class Reason { BOOT_BROADCAST, BOOT_SERVICE, SCREEN_ON, FACTORY_RETURN }
+
+    /** 兩次自動開啟至少間隔（任何路徑合計）。 */
+    const val MIN_GAP_MS = 5_000L
+    /** 系統服務在開機後多久內可補開。 */
+    const val BOOT_WINDOW_MS = 180_000L
+
+    /** 倒車／環景／行車影像等原廠相機畫面：出現時一律不開啟車機桌面（固定決策：不得搶佔倒車畫面）。 */
+    val CAMERA_PACKAGES = setOf(
+        "com.syu.fourcamera2", "com.syu.doublecamera", "com.syu.rightcamera", "com.syu.frontvideo",
+        "com.syu.camera360", "com.ivicar.avm", "com.baony.avm360",
+    )
+
+    fun isCamera(pkg: String?): Boolean = pkg != null &&
+        (pkg in CAMERA_PACKAGES || pkg.contains("camera", ignoreCase = true) || pkg.contains("avm", ignoreCase = true))
+
+    data class Verdict(val launch: Boolean, val note: String)
+
+    /** 以「開機時刻」辨識同一次開機：牆上時間減去開機經過時間，誤差 60 秒內視為同一次。 */
+    fun sameBoot(storedBootAt: Long?, wallNow: Long, elapsed: Long): Boolean =
+        storedBootAt != null && kotlin.math.abs((wallNow - elapsed) - storedBootAt) < 60_000L
+
+    /**
+     * @param foreground 目前前景套件（由系統服務得知；未知時為 null）
+     * @param lastLaunchAt 上次任何路徑自動開啟的 elapsedRealtime；從未開啟為 null
+     * @param bootHandled 本次開機是否已由任一路徑開啟過
+     */
+    fun decide(reason: Reason, now: Long, foreground: String?, ownPackage: String, lastLaunchAt: Long?, bootHandled: Boolean,
+               factoryHomePackages: Set<String> = emptySet()): Verdict {
+        if (isCamera(foreground)) return Verdict(false, "相機／倒車畫面在前景，不開啟")
+        if (foreground == ownPackage) return Verdict(false, "車機桌面已在前景")
+        // 原廠切回有自己的 2 秒間隔與防迴圈；其餘路徑合計至少間隔 5 秒，避免同一次開機開兩次
+        if (reason != Reason.FACTORY_RETURN && lastLaunchAt != null && now - lastLaunchAt in 0 until MIN_GAP_MS)
+            return Verdict(false, "距離上次自動開啟不到 5 秒")
+        return when (reason) {
+            Reason.BOOT_BROADCAST -> if (bootHandled) Verdict(false, "本次開機已開啟過") else Verdict(true, "開機")
+            Reason.BOOT_SERVICE -> when {
+                now >= BOOT_WINDOW_MS -> Verdict(false, "已超過開機 3 分鐘，系統服務重新連線不再補開")
+                bootHandled -> Verdict(false, "本次開機已開啟過")
+                // 使用者在開機後已主動進入其他 App（非原廠桌面）時，不要把他拉回
+                foreground != null && foreground !in factoryHomePackages -> Verdict(false, "開機後已在使用其他畫面（$foreground），不補開")
+                else -> Verdict(true, "開機補開")
+            }
+            Reason.SCREEN_ON, Reason.FACTORY_RETURN -> Verdict(true, "")
+        }
+    }
+}
