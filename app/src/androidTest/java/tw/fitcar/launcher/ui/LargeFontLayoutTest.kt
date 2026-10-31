@@ -731,16 +731,20 @@ class LargeFontLayoutTest {
             }
             compose.onNode(hasText("桌面接管") and hasClickAction()).performScrollTo().performClick()
             // 0.4.27：桌面接管的各項都預設關閉，開關只改本機設定
-            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面", "導航 App 在前景時顯示「⌂ 桌面」").forEach { label ->
+            listOf("原廠桌面出現時自動回到車機桌面", "熄火喚醒後開啟車機桌面").forEach { label ->
                 compose.onNodeWithContentDescription(label).performScrollTo().assertIsOff()
                 fullLabel(label)
             }
-            // The loop above scrolls to the last option; bring the first switch back before tapping.
+            // The loop above scrolls to the last takeover option; bring the first switch back before tapping.
             compose.onNodeWithContentDescription("原廠桌面出現時自動回到車機桌面").performScrollTo().assertIsOff().performClick().assertIsOn()
             compose.runOnIdle { assertTrue(tw.fitcar.launcher.system.DesktopGuard.autoReturn(context)) }
             compose.onNodeWithText("設為預設桌面").performScrollTo()
             fullLabel("設為預設桌面")
             screenshot("settings-desktop-takeover-125")
+            compose.onNode(hasText("導航") and hasClickAction()).performScrollTo().performClick()
+            val overlay = "導航 App 在前景時顯示「⌂ 桌面」"
+            compose.onNodeWithContentDescription(overlay).performScrollTo().assertIsOff()
+            fullLabel(overlay)
         } finally {
             tw.fitcar.launcher.system.DesktopGuard.setAutoReturn(context, before.first)
             tw.fitcar.launcher.system.DesktopGuard.setWakeLaunch(context, before.second)
