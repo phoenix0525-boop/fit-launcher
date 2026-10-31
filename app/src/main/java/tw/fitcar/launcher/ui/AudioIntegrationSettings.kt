@@ -26,10 +26,10 @@ internal fun AudioIntegrationSection(actions: SettingsActions) {
     val p = LocalPalette.current
     val scope = rememberCoroutineScope()
     Section("音量控制") {
-        Hint("原廠音量鍵可改變聲音，但 Android 媒體數值可能維持不變。請以實際聽感記錄結果。", size = 16)
-        Hint("目前桌面音量控制仍待實機驗證；若沒有作用，請使用原廠音量鍵。", size = 14)
+        Hint("本車機的實際音量由原廠主機控制：請用方向盤音量鍵或原廠語音助手。", size = 16)
+        Hint("實車已確認桌面以 Android 公開方法調整音量不會改變聲音，所以車機桌面不提供音量滑桿；主畫面音量鈕只顯示說明與原廠入口。", size = 14)
         actions.openTestTab?.let { open ->
-            SecondaryButton("開啟音量對照檢測", { open(CheckerTabs.index(CheckerTabs.VOLUME)) })
+            SecondaryButton("開啟音量對照檢測（只讀）", { open(CheckerTabs.index(CheckerTabs.VOLUME)) })
         }
     }
     Section("原廠 DSP／EQ") {
