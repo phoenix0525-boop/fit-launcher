@@ -143,7 +143,7 @@ class HiddenCharacterThemeLayoutTest {
         compose.onNodeWithText("適用條件").performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("Android 8.0（API 26）", substring = true)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("已回報實測機型").performScrollTo().assertIsDisplayed()
-        compose.onNode(hasText("愛客思 AKZ ZX09", substring = true)).performScrollTo().assertIsDisplayed()
+        compose.onNode(hasText("• 愛客思 AKZ ZX09：", substring = true)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("待驗證功能（本版未通過實車驗收）").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("不提供，改用原廠功能").performScrollTo().assertIsDisplayed()
         compose.onNode(hasText("原廠實際音量", substring = true)).performScrollTo().assertIsDisplayed()
