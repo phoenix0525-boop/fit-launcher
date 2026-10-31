@@ -1,6 +1,8 @@
 # FIT 桌面（Android 啟動器 APK）
 
 Honda FIT4 2022 台灣油電／愛客思 AKZ ZX09（UIS7870SC、Android 13、2000×1200）的個人化桌面。
+
+> **相容性**：只在愛客思 AKZ ZX09（UNISOC UIS7870SC、FYT／SYU 原廠系統、Android 13）測試。其他機種、晶片或原廠系統可能有相容性問題，請先用「實機檢測」確認。
 免費即時地圖與目前位置版（v0.2.0），由第一階段 Web 原型 `launcher-prototype` 移植為原生 Android。
 
 - 語言／框架：Kotlin 2.0.20、Jetpack Compose（BOM 2024.09.00）、AGP 8.5.2、Gradle 8.9

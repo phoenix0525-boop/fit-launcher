@@ -172,6 +172,7 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNa
                     }
                     SettingsSections.WEATHER -> WeatherSettings(nav)
                     SettingsSections.TAKEOVER -> {
+                        CompatibilityNotice()
                         StartupSection(data, actions)
                         DesktopTakeoverSettings(takeover)
                         FactoryHomeSection(data, actions)
@@ -610,6 +611,16 @@ private fun FactoryHomeSection(data: SettingsData, actions: SettingsActions) {
     }
 }
 
+/** 桌面接管最依賴原廠系統：不在已回報實測機型上時，先顯示相容性提醒。 */
+@Composable
+private fun CompatibilityNotice() {
+    val tested = remember { DeviceSupport.isTested(android.os.Build.DEVICE, android.os.Build.VERSION.SDK_INT) }
+    Section(if (tested) "測試機型" else "相容性提醒") {
+        Hint(DeviceSupport.COMPATIBILITY_NOTE, size = 16, color = if (tested) null else LocalPalette.current.danger)
+        if (!tested) Hint("目前裝置（${android.os.Build.MODEL}／${android.os.Build.DEVICE}／Android ${android.os.Build.VERSION.RELEASE}）不在實測清單。", size = 16)
+    }
+}
+
 @Composable
 private fun CheckerEntrySection(actions: SettingsActions) {
     Section("實機檢測") {
@@ -645,6 +656,8 @@ internal fun AboutSection(data: SettingsData) {
             if (LocalPalette.current.characterArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(120.dp, ThemeArtPose.SHORTCUTS)
         }
         val ink = LocalPalette.current.text
+        Hint("測試機型與相容性", size = 18, color = ink)
+        Hint(DeviceSupport.COMPATIBILITY_NOTE, size = 16, color = LocalPalette.current.danger)
         Hint("適用條件", size = 18, color = ink)
         Hint(DeviceSupport.basics(), size = 16)
         Hint("已回報實測機型", size = 18, color = ink)

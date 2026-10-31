@@ -22,4 +22,14 @@ class DeviceSupportTest {
         assertTrue(DeviceSupport.NOT_PROVIDED.any { it.contains("嵌入") })
         assertTrue(DeviceSupport.PENDING.none { it.contains("方向盤") })
     }
+
+    @Test fun compatibilityNoteNamesModelChipAndWarnsOthers() {
+        val n = DeviceSupport.COMPATIBILITY_NOTE
+        assertTrue(n.contains("AKZ ZX09")); assertTrue(n.contains("UIS7870SC")); assertTrue(n.contains("Android 13"))
+        assertTrue(n.contains("相容性問題")); assertTrue(n.contains("實機檢測"))
+        assertTrue(DeviceSupport.isTested("uis7870sc_2h10_nosec", 33))
+        assertFalse(DeviceSupport.isTested("uis7870sc_2h10_nosec", 34))
+        assertFalse(DeviceSupport.isTested("other_device", 33))
+        assertTrue(DeviceSupport.current("X", "Y", "other_device", 33, "13").contains("相容性問題"))
+    }
 }

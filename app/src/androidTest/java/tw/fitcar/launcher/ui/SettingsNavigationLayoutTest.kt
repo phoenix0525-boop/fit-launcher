@@ -107,7 +107,7 @@ class SettingsNavigationLayoutTest {
             "備份與更新" to listOf("備份與還原"),
             "實機檢測" to listOf("實機資訊"),
             "天氣" to listOf("天氣（中央氣象署開放資料）", "儲存授權碼", "立即更新"),
-            "關於" to listOf("適用條件", "已回報實測機型", "待驗證功能（本版未通過實車驗收）", "不提供，改用原廠功能"),
+            "關於" to listOf("測試機型與相容性", "適用條件", "已回報實測機型", "待驗證功能（本版未通過實車驗收）", "不提供，改用原廠功能"),
         ).forEach { (name, texts) ->
             section(name).performScrollTo().performClick()
             section(name).assertIsDisplayed()
