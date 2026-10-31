@@ -47,7 +47,7 @@ object OemAssessment {
 
     fun taskView(manageTasksProtection: String?, granted: Boolean): OemFinding {
         val verdict = if (granted) "權限已持有（不預期）：仍需系統簽章的 WMShell 介面，未實作。"
-        else "不可行：TaskView／WMShell 是隱藏 API，需 MANAGE_ACTIVITY_TASKS（${manageTasksProtection ?: "系統保護"}），第三方桌面無法取得；維持分割畫面／全螢幕。"
+        else "直接 TaskView 路徑受限：未持有 MANAGE_ACTIVITY_TASKS（${manageTasksProtection ?: "系統保護"}）。原廠嵌入宿主／橋接入口尚未驗證，不能據此判定所有嵌入方式不可行；目前使用分割畫面／全螢幕。"
         return OemFinding("導航 TaskView 嵌入", verdict, "MANAGE_ACTIVITY_TASKS 保護等級=${manageTasksProtection ?: "查不到"}；持有=$granted")
     }
 

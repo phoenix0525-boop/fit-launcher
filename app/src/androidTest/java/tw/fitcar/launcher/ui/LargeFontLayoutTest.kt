@@ -596,6 +596,10 @@ class LargeFontLayoutTest {
         compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
         if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist() else fullLabel("自動縮放")
         listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "導航王", "Google 地圖", "更多", "回到目前位置").forEach(::fullLabel)
+        val guidanceBounds = compose.onNodeWithContentDescription("Google 導航通知面板", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val mapBounds = compose.onNodeWithContentDescription("定位底圖區域", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("The native map must not overlap turn guidance", mapBounds.top >= guidanceBounds.bottom - 1f)
+        assertTrue("The free map remains usable", mapBounds.height > 0f)
         screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()

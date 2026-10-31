@@ -17,8 +17,11 @@ class OemAssessmentTest {
         val open = OemAssessment.binderVolume(ComponentFacts(true, true, null)).verdict
         assertTrue(open.contains("未驗證")); assertTrue(open.contains("不發送"))
     }
-    @Test fun taskViewNotFeasibleWithoutSystemPermission() {
-        assertTrue(OemAssessment.taskView("signature|privileged", false).verdict.startsWith("不可行"))
+    @Test fun missingTaskPermissionDoesNotRuleOutAnOemHost() {
+        val finding = OemAssessment.taskView("signature|privileged", false)
+        assertTrue(finding.verdict.startsWith("直接 TaskView 路徑受限"))
+        assertTrue(finding.verdict.contains("尚未驗證"))
+        assertFalse(finding.evidence.contains("持有=true"))
     }
     @Test fun dspAutoApplyNeverClaimedAvailable() {
         assertTrue(OemAssessment.dspAutoApply(FactoryAppState.MISSING, 0, 0).verdict.startsWith("不可行"))

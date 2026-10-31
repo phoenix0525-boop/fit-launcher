@@ -274,21 +274,25 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
         val currentGuidance = guidanceOverride ?: guidance
-        // Keep the same map composition during active/expired/removed notification updates.
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            mapContent(gps, Modifier.fillMaxSize())
+        // Separate bounds prevent the native map surface from covering turn instructions.
+        // Keep the map mounted when notifications change, but never draw it behind guidance.
+        Column(Modifier.weight(1f).fillMaxWidth()) {
             if (NavigationPanelPolicy.showGooglePanel(googleSelected)) {
                 var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
                 LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
                 GoogleGuidanceCard(currentGuidance, notificationAccess, guidanceNow ?: now,
                     actions.grantNotificationAccess,
-                    Modifier.align(Alignment.TopCenter).fillMaxWidth().height(168.dp)
+                    Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 200.dp)
                         .clip(RadiusMd).background(LocalPalette.current.surfaceStrong.copy(alpha = .96f))
                         .border(1.dp, LocalPalette.current.line, RadiusMd), compact = true,
                     speedKmh = gps.speedKmh.takeIf { gps.isFresh() })
             }
-            // 縮放與回到定位改成浮在地圖右下角，不再佔用下方工具列與地圖高度
-            MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))
+            Box(Modifier.weight(1f).fillMaxWidth().clip(RadiusMd)
+                .semantics { contentDescription = "定位底圖區域" }) {
+                mapContent(gps, Modifier.fillMaxSize())
+                // Map controls stay inside the map bounds, away from turn instructions.
+                MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))
+            }
         }
         Spacer(Modifier.height(10.dp))
         // 下方只留最常用的動作；其餘收進「更多」，避免換成兩排吃掉地圖高度
