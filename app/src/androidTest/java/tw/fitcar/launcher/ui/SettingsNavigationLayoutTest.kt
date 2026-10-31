@@ -41,7 +41,8 @@ class SettingsNavigationLayoutTest {
                             SettingsActions(back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
                                 pickTime = { _, _ -> }, requestWriteSettings = {}, requestNotificationAccess = {},
                                 requestLocation = {}, bind = {}, clearBinding = {}, setNavMode = {}, setMediaMode = {},
-                                testSplit = {}, openOtherHome = {}, openHomeSettings = {}, openChecker = {}, openTestTab = {}),
+                                testSplit = {}, openOtherHome = {}, openHomeSettings = {}, openChecker = {},
+                                savePlaces = { _, _ -> }, openTestTab = {}),
                             nav,
                         )
                     }
