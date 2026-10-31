@@ -546,7 +546,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                     if (!compactTitle) Text(media.title ?: "（App 未提供歌名）", color = p.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, maxLines = if (spacious) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, lineHeight = 29.sp, modifier = Modifier.fillMaxWidth())
                     if (!lyricsEnabled) Text(listOfNotNull(media.artist, if (spacious && !lyricsEnabled && !driving) media.album else null).joinToString(" · ").ifEmpty { "（App 未提供歌手）" }, color = p.textSoft, fontSize = if (driving) 20.sp else 18.sp, maxLines = if (driving || lyricsEnabled) 1 else 2, overflow = TextOverflow.Ellipsis)
                     if (lyricsEnabled) { if (lyricsContent != null) lyricsContent(media) else LyricsLines(requireNotNull(lyricResult), media) }
-                    else if (spacious) Hint("可在設定 → App 綁定啟用桌面歌詞", size = 14)
+                    else if (spacious) Hint("可在設定 → 音樂與音效 啟用桌面歌詞", size = 14)
                 }
             }
         }

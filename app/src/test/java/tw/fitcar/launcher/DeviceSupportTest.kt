@@ -16,7 +16,10 @@ class DeviceSupportTest {
     @Test fun basicsDoNotImplyIntegrations() {
         assertTrue(DeviceSupport.basics().contains("Android 8.0（API 26）"))
         assertTrue(DeviceSupport.basics().contains("不代表車機專屬整合可用"))
-        assertTrue(DeviceSupport.PENDING.any { it.contains("原廠實際音量") })
-        assertTrue(DeviceSupport.PENDING.any { it.contains("DSP") })
+        // 0.4.34：實車與權限分析確認做不到的整合列為「不提供」，不再列為待驗證
+        assertTrue(DeviceSupport.NOT_PROVIDED.any { it.contains("原廠實際音量") })
+        assertTrue(DeviceSupport.NOT_PROVIDED.any { it.contains("DSP") })
+        assertTrue(DeviceSupport.NOT_PROVIDED.any { it.contains("嵌入") })
+        assertTrue(DeviceSupport.PENDING.none { it.contains("方向盤") })
     }
 }

@@ -178,7 +178,7 @@ object AutoChecks {
                 "請重新選擇$appName。", candidates.firstOrNull()?.let { Fix("綁定 ${it.label}", kind, it.key) })
             candidates.isNotEmpty() -> CheckResult(id, group, title, Status.INFO, "尚未綁定；偵測到可能的$appName：$names。",
                 "綁定後才能從 車機桌面直接開啟。", Fix("綁定 ${candidates.first().label}", kind, candidates.first().key))
-            else -> CheckResult(id, group, title, Status.INFO, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定 → App 綁定手動選擇。")
+            else -> CheckResult(id, group, title, Status.INFO, "尚未綁定，也找不到名稱含「$appName」的 App。", "請確認已安裝，或到設定的「導航」或「音樂與音效」手動選擇。")
         }
     }
 
@@ -239,7 +239,7 @@ object AutoChecks {
             else -> CheckResult("media", "音樂", "目前播放器工作階段", Status.PASS, source,
                 "報告、卡片與播放控制共用同一工作階段；未提供的控制按鈕停用。仍需實機確認控制結果。")
         }
-        return listOf(bind, check, CheckResult("lyrics", "音樂", "歌詞", Status.INFO, if (context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).getBoolean("lrclib", false)) "LRCLIB 桌面歌詞已啟用，實際收錄與同步需逐曲確認" else "桌面歌詞未啟用，可至 App 綁定開啟"))
+        return listOf(bind, check, CheckResult("lyrics", "音樂", "歌詞", Status.INFO, if (context.getSharedPreferences("desktop_lyrics", Context.MODE_PRIVATE).getBoolean("lrclib", false)) "LRCLIB 桌面歌詞已啟用，實際收錄與同步需逐曲確認" else "桌面歌詞未啟用，可至 設定 → 音樂與音效 開啟"))
     }
 
     private fun brightness(context: Context): CheckResult {

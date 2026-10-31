@@ -37,7 +37,7 @@ class SettingsNavigationLayoutTest {
                     FitTheme(DayPalette) {
                         if (visible) SettingsScreen(
                             SettingsData(LauncherState(), null, null, null, true, 50, true, true,
-                                otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.31"),
+                                otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.34"),
                             SettingsActions(back = {}, updateDisplay = {}, setManualBrightness = {}, restoreAuto = {}, applyNow = {},
                                 pickTime = { _, _ -> }, requestWriteSettings = {}, requestNotificationAccess = {},
                                 requestLocation = {}, bind = {}, clearBinding = {}, setNavMode = {}, setMediaMode = {},
@@ -99,9 +99,15 @@ class SettingsNavigationLayoutTest {
         val nav = SettingsNavState()
         show(nav, DpSize(w.dp, h.dp))
         mapOf(
-            "音量與音效" to listOf("音量控制", "原廠 DSP／EQ", "原廠整合可行性（只讀檢查）"),
+            "導航" to listOf("導航 App 與神盾", "常用地點（回家／去公司）", "導航時浮動回桌面鍵"),
+            "音樂與音效" to listOf("播放器", "音量控制", "原廠 DSP／EQ", "原廠整合可行性（只讀檢查）"),
+            "捷徑與 App" to listOf("最近使用的 App", "桌面小工具"),
+            "桌面接管" to listOf("開機啟動", "預設桌面", "原廠桌面出現時切回", "開啟原廠桌面"),
+            "權限總覽" to listOf("通知存取（音樂資訊）", "背景不被關閉", "系統服務（無障礙）"),
+            "備份與更新" to listOf("備份與還原"),
+            "實機檢測" to listOf("實機資訊"),
             "天氣" to listOf("天氣（中央氣象署開放資料）", "儲存授權碼", "立即更新"),
-            "關於" to listOf("適用條件", "已回報實測機型", "待驗證功能（本版未通過實車驗收）"),
+            "關於" to listOf("適用條件", "已回報實測機型", "待驗證功能（本版未通過實車驗收）", "不提供，改用原廠功能"),
         ).forEach { (name, texts) ->
             section(name).performScrollTo().performClick()
             section(name).assertIsDisplayed()
@@ -114,4 +120,14 @@ class SettingsNavigationLayoutTest {
     @Test fun common1024x600At125Percent() = checkSize(1024, 600)
     @Test fun hd853x480At125Percent() = checkSize(853, 480)
     @Test fun portrait720x1280At125Percent() = checkSize(720, 1280)
+
+    /** 0.4.34：寬螢幕側欄顯示四個群組小標，順序為日常 → 初次設定 → 維護 → 診斷。 */
+    @Test fun sidebarShowsGroupHeadingsInOrder() {
+        show(SettingsNavState())
+        val tops = SettingsSections.GROUPS.map { g ->
+            compose.onNode(hasText(g.title) and isHeading(), useUnmergedTree = true).performScrollTo().fetchSemanticsNode().boundsInRoot.top
+        }
+        compose.runOnIdle { assertEquals(tops.sorted(), tops) }
+        compose.onAllNodes(hasText("App 綁定") and hasClickAction()).assertCountEquals(0)
+    }
 }
