@@ -58,19 +58,39 @@ object DesktopGuard {
         val now = SystemClock.elapsedRealtime()
         val wall = System.currentTimeMillis()
         fun stored(key: String) = if (p.contains(key)) p.getLong(key, 0) else null
-        val bootHandled = LaunchGate.sameBoot(stored("boot_at"), wall, now)
+        fun storedId(key: String) = if (p.contains(key)) p.getInt(key, -1) else null
+        val bootId = bootCount(context)
+        val bootHandled = LaunchGate.sameBootId(storedId("boot_id"), bootId, stored("boot_at"), wall, now)
         // last_at 是開機後經過時間，只有同一次開機才有意義
-        val last = if (LaunchGate.sameBoot(stored("last_boot"), wall, now)) stored("last_at") else null
+        val last = if (LaunchGate.sameBootId(storedId("last_boot_id"), bootId, stored("last_boot"), wall, now)) stored("last_at") else null
         val homes = factoryHomes(context).map { it.substringBefore('/') }.toSet()
-        return LaunchGate.decide(reason, now, foreground, context.packageName, last, bootHandled, homes)
+        return LaunchGate.decide(reason, now, foreground, context.packageName, last, bootHandled, homes, navigationPackages(context))
     }
 
-    /** 記錄一次成功的自動開啟，供下一次判斷間隔與「本次開機已開過」。 */
+    /** 系統開機次數（公開 API，API 24 起）；讀不到時為 -1。 */
+    fun bootCount(context: Context): Int = try {
+        android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1)
+    } catch (_: Exception) { -1 }
+
+    /** Google 地圖、導航王（已確認套件）與使用者綁定的導航 App。 */
+    fun navigationPackages(context: Context): Set<String> = setOfNotNull(
+        tw.fitcar.launcher.nav.GoogleNavigation.PACKAGE, tw.fitcar.launcher.nav.NavigationKingShortcut.VERIFIED_PACKAGE,
+        tw.fitcar.launcher.data.Prefs.get(context).state.value.bindings.navigation?.let { ComponentName.unflattenFromString(it)?.packageName })
+
+    /** 只記錄「送出了開啟請求」：用來計算 5 秒間隔，不代表本次開機已開過（請求可能被系統默默擋下）。 */
+    fun markRequested(context: Context) {
+        val now = SystemClock.elapsedRealtime()
+        gatePrefs(context).edit().putLong("last_at", now).putLong("last_boot", System.currentTimeMillis() - now)
+            .putInt("last_boot_id", bootCount(context)).apply()
+    }
+
+    /** 記錄一次確認成功的自動開啟，供下一次判斷間隔與「本次開機已開過」。 */
     fun markLaunched(context: Context, reason: LaunchGate.Reason) {
         val now = SystemClock.elapsedRealtime()
         val bootAt = System.currentTimeMillis() - now
-        val e = gatePrefs(context).edit().putLong("last_at", now).putLong("last_boot", bootAt)
-        if (reason == LaunchGate.Reason.BOOT_BROADCAST || reason == LaunchGate.Reason.BOOT_SERVICE) e.putLong("boot_at", bootAt)
+        val id = bootCount(context)
+        val e = gatePrefs(context).edit().putLong("last_at", now).putLong("last_boot", bootAt).putInt("last_boot_id", id)
+        if (reason == LaunchGate.Reason.BOOT_BROADCAST || reason == LaunchGate.Reason.BOOT_SERVICE) e.putLong("boot_at", bootAt).putInt("boot_id", id)
         e.apply()
     }
 

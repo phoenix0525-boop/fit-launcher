@@ -28,6 +28,8 @@
 
     <!-- 套件可見性：只查詢可啟動 App 與其他桌面，不使用 QUERY_ALL_PACKAGES -->
     <queries>
+        <!-- 0.4.35：偵測 Shizuku 是否安裝（使用者自行安裝的開源授權工具） -->
+        <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.syu.eq" />
         <!-- 只讀 metadata：原廠音量服務是否匯出、需要哪個權限；不連接、不送命令 -->
         <package android:name="com.syu.ms" />
@@ -125,6 +127,15 @@
             </intent-filter>
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/system_shortcuts" />
         </service>
+
+        <!-- 0.4.35：Shizuku 傳入授權通道用；INTERACT_ACROSS_USERS_FULL 只有系統可持有，一般 App 無法存取 -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <receiver
             android:name=".system.BrightnessReceiver"

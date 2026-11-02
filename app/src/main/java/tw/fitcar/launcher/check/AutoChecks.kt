@@ -159,7 +159,7 @@ object AutoChecks {
             context.packageName -> CheckResult("home", "桌面", "預設桌面", Status.PASS, "車機桌面已是預設桌面。其他桌面：$others。",
                 "請完成「手動檢查」中的 Home 鍵、休眠喚醒、倒車影像項目。")
             else -> CheckResult("home", "桌面", "預設桌面", Status.TODO, "目前預設桌面：${pkg ?: "未選擇"}。其他桌面：$others。",
-                "其他項目都檢查過後，再到設定 → 返回原廠桌面 → 變更預設桌面，選 車機桌面並做手動檢查。")
+                "其他項目都檢查過後，再到 設定 → 桌面接管 →「設為預設桌面」（或「一鍵授權」），選車機桌面並做手動檢查。")
         }
     }
 

@@ -212,6 +212,7 @@ class MainActivity : ComponentActivity() {
         tw.fitcar.launcher.weather.WeatherRepository.refresh(this)
         CheckStore.load(this)
         MediaListenerService.rescanNavigation()
+        tw.fitcar.launcher.system.SecureSettingsHeal.ensureAccessibility(this)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 26
         targetSdk = 34
-        versionCode = 41
-        versionName = "0.4.34"
+        versionCode = 42
+        versionName = "0.4.35"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
@@ -83,6 +83,9 @@ dependencies {
     implementation(composeBom)
     implementation("org.maplibre.gl:android-sdk:11.8.0")
     implementation("androidx.core:core-ktx:1.13.1")
+    // 0.4.35：Shizuku（開源，Apache-2.0）。使用者自行安裝並啟動後，代為執行一次性授權；未安裝時不影響其他功能。
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     // 側載安裝也能套用 Compose 與本 App 的 Baseline Profile，減少首次開啟與首次滑動卡頓
     implementation("androidx.profileinstaller:profileinstaller:1.3.1")
     implementation("androidx.activity:activity-compose:1.9.2")

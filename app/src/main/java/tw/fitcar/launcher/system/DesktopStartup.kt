@@ -31,7 +31,9 @@ object DesktopStartup {
             .putExtra(EXTRA_REQUEST, token)
         try {
             context.startActivity(launch)
-            DesktopGuard.markLaunched(context, LaunchGate.Reason.BOOT_BROADCAST)
+            // 0.4.35：Android 10 以上背景開啟常被默默擋下；這裡只記錄請求，等 confirm() 確認進入前景才算「本次開機已開過」，
+            // 否則系統服務的開機補開會被誤擋，冷開機兩條路都沒開到桌面。
+            DesktopGuard.markRequested(context)
             // A background launch can be silently blocked. Returning here is NOT success.
         } catch (_: Exception) {
             prefs(context).edit().putString("status", "rejected").commit()
@@ -44,6 +46,7 @@ object DesktopStartup {
         val p = prefs(context)
         if (p.getString("status", "none") != "requested" || token != p.getString("token", null)) return false
         p.edit().putString("status", "confirmed").remove("token").commit()
+        DesktopGuard.markLaunched(context, LaunchGate.Reason.BOOT_BROADCAST)
         intent.removeExtra(EXTRA_REQUEST)
         return true
     }
