@@ -94,7 +94,7 @@ internal fun DesktopTakeoverSettings(holder: TakeoverStatusHolder = rememberTake
     }
 
     Section("用電腦 adb 指定（進階）") {
-        Hint("不需要 root。車機以 USB 或無線偵錯連到電腦後，在電腦執行下列指令；本 App 不會執行任何指令。", size = 16)
+        Hint("不需要 root。下列指令供你在電腦上手動執行；上方 Shizuku 功能則需你另行允許，才會代為執行授權指令。", size = 16)
         val own = DesktopGuard.ownHomeComponent(context).flattenToShortString()
         val commands = buildList {
             add("設為車機桌面" to AdbCommands.setHome(own))
