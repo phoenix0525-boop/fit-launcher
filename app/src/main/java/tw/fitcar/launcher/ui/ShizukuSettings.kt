@@ -143,7 +143,8 @@ internal fun FactoryDisableSection(holder: TakeoverStatusHolder) {
             SecondaryButton("停用 $pkg", { confirm = pkg }, Modifier.fillMaxWidth(),
                 enabled = state == ShizukuShell.State.READY && ShellPlan.canDisable(status.isDefault, pkg, candidates))
         }
-        if (candidates.isEmpty() && disabled.isEmpty()) Hint("沒有可停用的其他桌面。", size = 16)
+        if (recents == null) Hint("無法辨識最近使用畫面的提供者，暫不提供停用，避免影響多工與分割畫面。", size = 16, essential = true)
+        else if (candidates.isEmpty() && disabled.isEmpty()) Hint("沒有可停用的其他桌面。", size = 16)
         disabled.forEach { pkg ->
             Hint("已停用：$pkg　電腦還原指令：${ShellPlan.restoreByAdb(pkg)}", size = 16)
             PrimaryButton("還原 $pkg", { scope.launch {

@@ -55,7 +55,8 @@ object ShellPlan {
     val PROTECTED = setOf("android", "com.android.settings", "com.android.systemui", "com.android.provision")
 
     fun disableCandidates(homePackages: Collection<String>, own: String, recentsPackage: String?): List<String> =
-        homePackages.filter { it != own && it !in PROTECTED && it != recentsPackage }.distinct().sorted()
+        if (recentsPackage.isNullOrBlank()) emptyList() else
+            homePackages.filter { it != own && it !in PROTECTED && it != recentsPackage }.distinct().sorted()
 
     /** 停用前的條件：車機桌面必須已是預設桌面，避免停用後沒有可用桌面。 */
     fun canDisable(isDefaultHome: Boolean, candidate: String, candidates: List<String>): Boolean = isDefaultHome && candidate in candidates

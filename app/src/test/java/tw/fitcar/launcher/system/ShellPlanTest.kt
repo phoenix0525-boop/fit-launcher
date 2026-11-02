@@ -46,4 +46,9 @@ class ShellPlanTest {
         assertFalse(ShellPlan.Result("x", 255, "").ok)
         assertTrue(ShellPlan.Result("x", 0, "").ok)
     }
+
+    @Test fun unknownRecentsProviderDoesNotOfferDisabling() {
+        assertTrue(ShellPlan.disableCandidates(listOf("com.syu.launcher"), pkg, null).isEmpty())
+        assertTrue(ShellPlan.disableCandidates(listOf("com.syu.launcher"), pkg, "").isEmpty())
+    }
 }
