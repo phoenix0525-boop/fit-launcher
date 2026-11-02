@@ -21,6 +21,8 @@ class BrightnessReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in ALLOWED_ACTIONS) return
+        // 0.4.35：開機或 App 更新後，若系統服務被關掉且已授權，先自動恢復，開機補開與原廠切回才有作用
+        SecureSettingsHeal.ensureAccessibility(context)
         DesktopStartup.request(context, intent.action, Prefs.get(context).state.value.startOnBoot)
         val pending = goAsync()
         BrightnessController.applyScheduled(context) {

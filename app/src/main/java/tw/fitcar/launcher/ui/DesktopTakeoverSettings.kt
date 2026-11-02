@@ -90,11 +90,11 @@ internal fun DesktopTakeoverSettings(holder: TakeoverStatusHolder = rememberTake
 
     Section("螢幕喚醒時開啟") {
         TakeoverToggle("熄火喚醒後開啟車機桌面", status.wakeLaunch) { DesktopGuard.setWakeLaunch(context, it); holder.refresh() }
-        Hint("螢幕亮起約 1.5 秒後開啟一次，不重試；需開啟系統服務。開機時若已開「開機時嘗試開啟車機桌面」，系統服務也會補開一次。", size = 16)
+        Hint("螢幕亮起約 1.5 秒後開啟一次，不重試；需開啟系統服務。導航 App 在前景或倒車畫面出現時不開啟。開機補開只在本次開機尚未開過、且你沒有在使用其他 App 時進行。", size = 16)
     }
 
     Section("用電腦 adb 指定（進階）") {
-        Hint("不需要 root。車機以 USB 或無線偵錯連到電腦後，在電腦執行下列指令；本 App 不會執行任何指令。", size = 16)
+        Hint("不需要 root。下列指令供你在電腦上手動執行；上方 Shizuku 功能則需你另行允許，才會代為執行授權指令。", size = 16)
         val own = DesktopGuard.ownHomeComponent(context).flattenToShortString()
         val commands = buildList {
             add("設為車機桌面" to AdbCommands.setHome(own))
@@ -166,7 +166,7 @@ internal fun BatterySettings(holder: TakeoverStatusHolder) {
 }
 
 @Composable
-private fun TakeoverToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun TakeoverToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(title, color = LocalPalette.current.text, fontSize = 18.sp, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.semantics { contentDescription = title })

@@ -174,8 +174,10 @@ fun SettingsScreen(data: SettingsData, actions: SettingsActions, nav: SettingsNa
                     SettingsSections.TAKEOVER -> {
                         CompatibilityNotice()
                         StartupSection(data, actions)
+                        ShizukuSetupSection(takeover)
                         DesktopTakeoverSettings(takeover)
                         FactoryHomeSection(data, actions)
+                        FactoryDisableSection(takeover)
                     }
                     SettingsSections.PERMISSIONS -> {
                         PermissionSection(data, actions)
@@ -215,7 +217,7 @@ private fun ToggleRow(title: String, desc: String, checked: Boolean, onChange: (
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, color = p.text, fontSize = 17.sp)
-            Hint(desc, size = 13)
+            Hint(desc, size = 14)
         }
         Switch(
             checked = checked, onCheckedChange = onChange,
@@ -236,7 +238,7 @@ private fun WeatherSettings(nav: SettingsNavState) {
         ToggleRow("狀態列顯示天氣", "依 GPS 選最近的氣象署測站，30 分鐘更新一次，保留 5 天紀錄", w.enabled) { v ->
             tw.fitcar.launcher.weather.WeatherRepository.setEnabled(ctx, v)
         }
-        Hint("需要自己到 opendata.cwa.gov.tw 註冊會員，在「取得授權碼」複製後貼在下方（免費）。授權碼只存在車機，不寫入任何專案檔案；只向氣象署下載測站資料，不上傳位置。", size = 13)
+        Hint("需要自己到 opendata.cwa.gov.tw 註冊會員，在「取得授權碼」複製後貼在下方（免費）。授權碼只存在車機，不寫入任何專案檔案；只向氣象署下載測站資料，不上傳位置。", size = 14)
         StatusLine(w.hasKey, "已填寫授權碼", "尚未填寫授權碼")
         androidx.compose.material3.OutlinedTextField(
             draft, { draft = it }, Modifier.fillMaxWidth(),
@@ -260,7 +262,7 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
         Section("畫面風格") {
             val unlocked = CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)
             var confirmHide by remember { mutableStateOf(false) }
-            Hint(if (unlocked) "風格與強調色可分別搭配；角色風格沿用日夜排程。" else "風格與強調色可分別搭配；各風格沿用日夜排程。", size = 13)
+            Hint(if (unlocked) "風格與強調色可分別搭配；角色風格沿用日夜排程。" else "風格與強調色可分別搭配；各風格沿用日夜排程。", size = 14)
             val current = VisualStyle.fromId(data.state.visualStyle)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 CharacterThemeAccess.visibleStyles(data.state.characterThemesUnlocked, data.state.visualStyle).forEach { style ->
@@ -304,7 +306,7 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
     }
     actions.setAccent?.let { setAccent ->
         Section("主題強調色") {
-            Hint("按鈕、選取項目與進度條的顏色；日間與夜間會自動調整亮度，文字對比都符合 4.5:1。", size = 13)
+            Hint("按鈕、選取項目與進度條的顏色；日間與夜間會自動調整亮度，文字對比都符合 4.5:1。", size = 14)
             val current = AccentTheme.fromId(data.state.accentTheme)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AccentTheme.entries.forEach { t ->
@@ -334,7 +336,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     val d = data.state.display
     Section("系統背光權限") {
         StatusLine(data.canWriteBrightness, "已允許修改系統亮度", "尚未允許：亮度排程不會生效")
-        Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請在實機診斷記錄。", size = 13)
+        Hint("App 主題（日／夜配色）與系統背光是兩件事。背光只透過 Android「修改系統設定」授權調整，不用黑色遮罩冒充。若原廠車燈調光會覆蓋設定，請到 設定 → 實機檢測 記錄。", size = 14)
         if (!data.canWriteBrightness) PrimaryButton("前往允許", actions.requestWriteSettings)
         data.currentBrightness?.let { Hint("目前系統亮度約 $it%", size = 14) }
     }
@@ -355,7 +357,7 @@ private fun DisplaySection(data: SettingsData, actions: SettingsActions) {
     }
     Section("時段") {
         d.periods.forEachIndexed { index, period -> PeriodRow(index, period, actions) }
-        Hint("時段可跨日（例如 18:30 → 07:00）。區間邊界、開機與系統時間變更時會重新計算。", size = 13)
+        Hint("時段可跨日（例如 18:30 → 07:00）。區間邊界、開機與系統時間變更時會重新計算。", size = 14)
     }
     Section("手動亮度") {
         val active = Schedule.activePeriod(d, tw.fitcar.launcher.system.BrightnessController.nowMinutes())
@@ -439,7 +441,7 @@ private fun BindingRow(target: BindingTarget, entry: AppEntry?, key: String?, ac
                 },
                 color = if (key != null && entry == null) p.danger else p.text, fontSize = 18.sp,
             )
-            Hint(note, size = 12)
+            Hint(note, size = 14)
         }
         PrimaryButton(if (key == null) "選擇" else "更換", { actions.bind(target) })
         if (key != null) SecondaryButton("清除", { actions.clearBinding(target) })
@@ -450,7 +452,7 @@ private fun BindingRow(target: BindingTarget, entry: AppEntry?, key: String?, ac
 private fun NavBindingSection(data: SettingsData, actions: SettingsActions) {
     val b = data.state.bindings
     Section("導航 App 與神盾") {
-        Hint("請從車機實際安裝清單選擇。", size = 13)
+        Hint("請從車機實際安裝清單選擇。", size = 14)
         BindingRow(BindingTarget.NAVIGATION, data.nav, b.navigation, actions, "左側導航區的開啟對象")
         BindingRow(BindingTarget.SHIELD, data.shield, b.shield, actions, "狀態列入口；警示由神盾官方浮動窗顯示")
         StatusLine(data.locationGranted, "定位已允許：顯示 GPS 車速與目前位置", "定位未允許：不顯示車速與目前位置")
@@ -464,7 +466,7 @@ private fun NavBindingSection(data: SettingsData, actions: SettingsActions) {
 private fun MusicBindingSection(data: SettingsData, actions: SettingsActions) {
     val b = data.state.bindings
     Section("播放器") {
-        Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 13)
+        Hint("請從實際安裝清單選擇。官方 YT Music 與 Morphe Music 視為不同 App。", size = 14)
         BindingRow(BindingTarget.MUSIC, data.music, b.music, actions, "固定模式只控制此 App；跟隨模式記住最後實際播放的 App")
         tw.fitcar.launcher.data.MediaMode.entries.forEach { mode ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -472,7 +474,7 @@ private fun MusicBindingSection(data: SettingsData, actions: SettingsActions) {
                 Text(if (mode == tw.fitcar.launcher.data.MediaMode.FIXED) "固定播放器" else "跟隨目前播放", color = LocalPalette.current.text, fontSize = 17.sp)
             }
         }
-        Hint("跟隨模式：記住最後實際播放的 App，喚醒或重開桌面時優先連接；其他 App 開始播放時可跟隨切換。若播放器已被系統關閉，可用「連接上次播放器」重新開啟。", size = 13)
+        Hint("跟隨模式：記住最後實際播放的 App，喚醒或重開桌面時優先連接；其他 App 開始播放時可跟隨切換。若播放器已被系統關閉，可用「連接上次播放器」重新開啟。", size = 14)
         StatusLine(data.notificationGranted, "通知存取已開啟：可顯示歌曲與控制播放", "通知存取未開啟：無法顯示歌曲與控制播放")
         if (!data.notificationGranted) SecondaryButton("開啟通知存取", actions.requestNotificationAccess)
         LyricsSetting()
@@ -489,7 +491,7 @@ private fun ShortcutSection(data: SettingsData, actions: SettingsActions) {
                 Text("$pages 頁（${pages * tw.fitcar.launcher.data.ShortcutSlots.PER_PAGE} 格）", color = LocalPalette.current.text, fontSize = 18.sp)
                 SecondaryButton("＋", { setPages(pages + 1) }, enabled = pages < tw.fitcar.launcher.data.ShortcutSlots.MAX_PAGES)
             }
-            Hint("最多 6 頁 24 格，在主畫面左右滑動換頁。減少頁數時，後面的捷徑只是隱藏，不會刪除。長按捷徑可更換、移除或調整順序。", size = 13)
+            Hint("最多 6 頁 24 格，在主畫面左右滑動換頁。減少頁數時，後面的捷徑只是隱藏，不會刪除。長按捷徑可更換、移除或調整順序。", size = 14)
             if (tw.fitcar.launcher.system.ShortcutPagesAdvice.warn(pages))
                 Hint("超過 3 頁時行車中要多次滑動，建議把常用 App 放前 2 頁。", color = LocalPalette.current.danger, size = 14)
         }
@@ -501,7 +503,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
     actions.savePlaces?.let { save ->
         Section("常用地點（回家／去公司）") {
-            Hint("常用地址只存在車機。Google 地圖可直接導航；導航王的住家／公司需另外在導航王內設定，兩邊不會自動同步。不支援時可複製地址開啟導航王，或改用其他地圖。", size = 13)
+            Hint("常用地址只存在車機。Google 地圖可直接導航；導航王的住家／公司需另外在導航王內設定，兩邊不會自動同步。不支援時可複製地址開啟導航王，或改用其他地圖。", size = 14)
             var home by remember(data.state.homeAddress) { mutableStateOf(data.state.homeAddress.orEmpty()) }
             var work by remember(data.state.workAddress) { mutableStateOf(data.state.workAddress.orEmpty()) }
             OutlinedTextField(home, { home = it }, Modifier.fillMaxWidth(), label = { Text("住家地址") }, singleLine = true)
@@ -512,7 +514,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
     actions.setSpeedAlert?.let { setAlert ->
         val kmh = data.state.speedAlertKmh
         Section("自訂超速提醒") {
-            Hint("只比對 GPS 車速與你自訂的門檻，超過時主畫面車速變警示色。不是測速照相或道路速限資料。", size = 13)
+            Hint("只比對 GPS 車速與你自訂的門檻，超過時主畫面車速變警示色。不是測速照相或道路速限資料。", size = 14)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 SecondaryButton("－10", { setAlert(if (kmh <= tw.fitcar.launcher.system.SpeedAlert.MIN) 0 else kmh - 10) }, enabled = kmh > 0)
                 Text(if (kmh <= 0) "關閉" else "$kmh km/h", color = p.text, fontSize = 18.sp)
@@ -523,7 +525,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
     Section("本次行程") {
         val trip by tw.fitcar.launcher.system.TripMeter.state.collectAsState()
         Text(tw.fitcar.launcher.system.Trip.format(trip), color = p.text, fontSize = 18.sp)
-        Hint("以 GPS 估算行駛里程與時間，只存在記憶體；停車超過 30 分鐘後再出發會自動重新計算。主畫面地圖上方在里程超過 0.1 km 後顯示。", size = 13)
+        Hint("以 GPS 估算行駛里程與時間，只存在記憶體；停車超過 30 分鐘後再出發會自動重新計算。主畫面地圖上方在里程超過 0.1 km 後顯示。", size = 14)
         SecondaryButton("歸零", { tw.fitcar.launcher.system.TripMeter.reset() })
     }
     SplitArrangementSettings()
@@ -554,7 +556,7 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
             },
             color = p.text, fontSize = 16.sp,
         )
-        Hint("需先綁定導航 App。測試會開啟側欄並嘗試把導航王開在旁邊，約 2 秒後記錄結果。", size = 13)
+        Hint("需先綁定導航 App。測試會開啟側欄並嘗試把導航王開在旁邊，約 2 秒後記錄結果。", size = 14)
         PrimaryButton("測試分割畫面", actions.testSplit, enabled = data.state.bindings.navigation != null)
     }
 }
@@ -563,21 +565,21 @@ private fun NavSection(data: SettingsData, actions: SettingsActions) {
 private fun PermissionSection(data: SettingsData, actions: SettingsActions) {
     Section("通知存取（音樂資訊）") {
         StatusLine(data.notificationGranted, "已開啟", "未開啟：無法讀取 KKBOX 播放資訊")
-        Hint("用於 Android MediaSession 讀取歌曲與控制播放；選定 Google 地圖時也會讀取導航通知文字，只留在記憶體，不保存或上傳。", size = 13)
+        Hint("用於 Android MediaSession 讀取歌曲與控制播放；選定 Google 地圖時也會讀取導航通知文字，只留在記憶體，不保存或上傳。", size = 14)
         SecondaryButton("開啟系統設定", actions.requestNotificationAccess)
     }
     Section("語音控制") {
-        Hint("主畫面點「語音」後，使用車機的 Android 語音辨識。支援開啟導航／音樂／神盾、播放／暫停、切歌及亮度調整。", size = 13)
-        Hint("Google 地圖可用「導航到某地」，辨識後先確認目的地。語音服務可能需要網路與麥克風權限；本程式不會持續監聽或保存辨識內容。", size = 13)
+        Hint("主畫面點「語音」後，使用車機的 Android 語音辨識。支援開啟導航／音樂／神盾、播放／暫停、切歌及亮度調整。", size = 14)
+        Hint("Google 地圖可用「導航到某地」，辨識後先確認目的地。語音服務可能需要網路與麥克風權限；本程式不會持續監聽或保存辨識內容。", size = 14)
     }
     Section("定位（GPS 車速）") {
         StatusLine(data.locationGranted, "已允許", "未允許：狀態列不顯示車速")
-        Hint("車速由本桌面以 GPS 計算並標示「GPS 車速」，不是神盾的資料。", size = 13)
+        Hint("車速由本桌面以 GPS 計算並標示「GPS 車速」，不是神盾的資料。", size = 14)
         if (!data.locationGranted) SecondaryButton("允許定位", actions.requestLocation)
     }
     Section("附近裝置（藍牙連線狀態）") {
         StatusLine(data.bluetoothGranted, "已允許", "未允許：狀態列只顯示藍牙開關")
-        Hint("只用來判斷手機是否已用藍牙連上車機，顯示在狀態列；不掃描、不連線其他裝置。", size = 13)
+        Hint("只用來判斷手機是否已用藍牙連上車機，顯示在狀態列；不掃描、不連線其他裝置。", size = 14)
         if (!data.bluetoothGranted) actions.requestBluetooth?.let { SecondaryButton("允許", it) }
     }
     Section("修改系統設定（背光）") {
@@ -594,7 +596,7 @@ private fun StartupSection(data: SettingsData, actions: SettingsActions) {
             Switch(checked = data.state.startOnBoot, onCheckedChange = actions.setStartOnBoot,
                 modifier = Modifier.semantics { contentDescription = "開機時嘗試開啟車機桌面" })
         }
-        Hint("只在真正開機後嘗試一次，預設關閉。Android 或原廠可能限制自動開啟；休眠喚醒不一定會觸發。", size = 16)
+        Hint("開機時開啟一次，預設關閉。開啟系統服務後，若開機請求被系統擋下，會在開機 3 分鐘內補開一次；倒車畫面出現時一律不開啟。熄火喚醒請用下方「螢幕喚醒時開啟」。", size = 16)
         Hint(data.startupStatus, size = 16)
         Hint("此選項不會改變預設桌面；預設桌面請用下方「設為預設桌面」。", size = 16)
     }
@@ -603,7 +605,7 @@ private fun StartupSection(data: SettingsData, actions: SettingsActions) {
 @Composable
 private fun FactoryHomeSection(data: SettingsData, actions: SettingsActions) {
     Section("開啟原廠桌面") {
-        Hint("要使用原廠桌面內的功能時從這裡開啟，自動切回會暫停 10 分鐘。若要永久改回原廠桌面，請用上方「設為預設桌面」在系統視窗中選擇原廠桌面。", size = 13)
+        Hint("要使用原廠桌面內的功能時從這裡開啟，自動切回會暫停 10 分鐘。若要永久改回原廠桌面，請用上方「設為預設桌面」在系統視窗中選擇原廠桌面。", size = 14)
         if (data.otherHomes.isEmpty()) Hint("找不到其他桌面。", size = 15)
         data.otherHomes.forEach { home ->
             SecondaryButton("開啟 ${home.label}", { actions.openOtherHome(home) }, Modifier.fillMaxWidth(), icon = { AppIcon(home.icon, 32.dp) })
@@ -625,7 +627,7 @@ private fun CompatibilityNotice() {
 private fun CheckerEntrySection(actions: SettingsActions) {
     Section("實機檢測") {
         Hint("自動檢查車機硬體、螢幕、權限、KKBOX、分割畫面、亮度與 GPS，並提供手勢、按鍵、背光等互動測試與手動檢查清單，整理出「可改進的地方」。部分建議可一鍵套用，也可匯出報告交給 AI。", size = 14)
-        Hint("檢測不會修改系統設定；只有背光測試會暫時調整亮度 4 秒並自動恢復。", size = 13)
+        Hint("檢測不會修改系統設定；只有背光測試會暫時調整亮度 4 秒並自動恢復。", size = 14)
         PrimaryButton("開啟實機檢測", actions.openChecker)
     }
 }
@@ -672,6 +674,7 @@ internal fun AboutSection(data: SettingsData) {
             android.os.Build.VERSION.SDK_INT, android.os.Build.VERSION.RELEASE), size = 14)
         val text = ink
         Hint("最近改版", size = 18, color = text)
+        Hint("• 0.4.35：Shizuku 一鍵授權、可停用／還原原廠桌面；修正冷開機可能沒開到桌面、喚醒時把導航拉走。", size = 16)
         Hint("• 0.4.34：設定改為「日常／初次設定／維護／診斷」四群 11 類；主畫面音量改為說明與原廠入口，不再送出音量指令。", size = 16)
         Hint("• 0.4.31：設定返回時保留分類與捲動、狀態字在所有風格清楚、音量檢測以聽感判定、原廠 DSP 入口先檢查是否可開啟。", size = 16)
         Hint("• 0.4.30：設定依用途分頁，新增運動風與動感風、原廠音效入口，以及版本代碼與適用機型說明。", size = 16)

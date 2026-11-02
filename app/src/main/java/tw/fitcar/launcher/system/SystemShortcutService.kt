@@ -54,6 +54,7 @@ class SystemShortcutService : AccessibilityService() {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString()
         val cls = event.className?.toString()
+        if (pkg != null && pkg != foreground) remember(pkg, cls)
         foreground = pkg ?: foreground
         val now = SystemClock.elapsedRealtime()
         if (now - homesLoaded > 60_000) { homes = DesktopGuard.factoryHomes(this); homesLoaded = now }
@@ -101,6 +102,18 @@ class SystemShortcutService : AccessibilityService() {
             private set
         fun request(): ShortcutResult = instance.get()?.openSplitOrRecents() ?: ShortcutResult.NOT_ENABLED
         fun connected() = instance.get() != null
+
+        /** 0.4.35：最近 10 次前景切換（只記時間、套件與畫面名稱，只在記憶體）；用來確認倒車畫面與原廠桌面的實際名稱。 */
+        private val recent = ArrayDeque<String>()
+        private fun remember(pkg: String, cls: String?) {
+            val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.TAIWAN).format(java.util.Date())
+            synchronized(recent) {
+                recent.addFirst("$time $pkg${cls?.let { "/" + it.substringAfterLast('.') } ?: ""}" +
+                    if (LaunchGate.isCamera(pkg)) "（相機）" else "")
+                while (recent.size > 10) recent.removeLast()
+            }
+        }
+        fun recentForeground(): List<String> = synchronized(recent) { recent.toList() }
     }
 }
 

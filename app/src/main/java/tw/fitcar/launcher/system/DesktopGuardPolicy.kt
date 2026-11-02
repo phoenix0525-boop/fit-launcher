@@ -77,12 +77,23 @@ object LaunchGate {
         storedBootAt != null && kotlin.math.abs((wallNow - elapsed) - storedBootAt) < 60_000L
 
     /**
+     * 0.4.35：優先用系統開機次數（Settings.Global.BOOT_COUNT）辨識同一次開機。
+     * 車機多半沒有時鐘電池，開機後才 GPS／網路校時，牆上時間會整段跳動；只有讀不到開機次數時才退回 [sameBoot]。
+     */
+    fun sameBootId(storedId: Int?, currentId: Int, storedBootAt: Long?, wallNow: Long, elapsed: Long): Boolean =
+        if (currentId >= 0 && storedId != null && storedId >= 0) storedId == currentId else sameBoot(storedBootAt, wallNow, elapsed)
+
+    /** 開機初期常在最上層、但不代表使用者在用其他 App 的畫面（狀態列、系統、原廠服務提示、輸入法）。 */
+    val NEUTRAL_PACKAGES = setOf("android", "com.android.systemui", "com.syu.ms")
+    fun isNeutral(pkg: String?): Boolean = pkg != null && (pkg in NEUTRAL_PACKAGES || pkg.contains("inputmethod", ignoreCase = true))
+
+    /**
      * @param foreground 目前前景套件（由系統服務得知；未知時為 null）
      * @param lastLaunchAt 上次任何路徑自動開啟的 elapsedRealtime；從未開啟為 null
      * @param bootHandled 本次開機是否已由任一路徑開啟過
      */
     fun decide(reason: Reason, now: Long, foreground: String?, ownPackage: String, lastLaunchAt: Long?, bootHandled: Boolean,
-               factoryHomePackages: Set<String> = emptySet()): Verdict {
+               factoryHomePackages: Set<String> = emptySet(), navigationPackages: Set<String> = emptySet()): Verdict {
         if (isCamera(foreground)) return Verdict(false, "相機／倒車畫面在前景，不開啟")
         if (foreground == ownPackage) return Verdict(false, "車機桌面已在前景")
         // 原廠切回有自己的 2 秒間隔與防迴圈；其餘路徑合計至少間隔 5 秒，避免同一次開機開兩次
@@ -94,10 +105,14 @@ object LaunchGate {
                 now >= BOOT_WINDOW_MS -> Verdict(false, "已超過開機 3 分鐘，系統服務重新連線不再補開")
                 bootHandled -> Verdict(false, "本次開機已開啟過")
                 // 使用者在開機後已主動進入其他 App（非原廠桌面）時，不要把他拉回
-                foreground != null && foreground !in factoryHomePackages -> Verdict(false, "開機後已在使用其他畫面（$foreground），不補開")
+                foreground != null && foreground !in factoryHomePackages && !isNeutral(foreground) ->
+                    Verdict(false, "開機後已在使用其他畫面（$foreground），不補開")
                 else -> Verdict(true, "開機補開")
             }
-            Reason.SCREEN_ON, Reason.FACTORY_RETURN -> Verdict(true, "")
+            // 0.4.35：FYT 熄火喚醒常恢復熄火前的導航畫面，導航中不拉回桌面
+            Reason.SCREEN_ON -> if (foreground != null && foreground in navigationPackages) Verdict(false, "導航中（$foreground），不切回")
+                else Verdict(true, "")
+            Reason.FACTORY_RETURN -> Verdict(true, "")
         }
     }
 }
