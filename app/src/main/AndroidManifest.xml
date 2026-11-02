@@ -13,6 +13,8 @@
 
     <!-- 系統亮度：須由使用者在「修改系統設定」頁面手動允許 -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- Shizuku／adb 只能授予已在 Manifest 宣告的權限；僅供使用者授權後恢復本 App 系統服務 -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <!-- GPS 車速：只在使用者於設定頁按下授權後才要求 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
