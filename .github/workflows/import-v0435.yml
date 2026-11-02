@@ -1,0 +1,266 @@
+name: Import verified v0.4.35 bundle and validate
+on:
+  push:
+    branches: ['import/shizuku-v0435']
+permissions:
+  contents: read
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and push original commit without rewriting history
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '389f70ab1353ebd81e7689a5f2b0d178daf6c1b69b2d352796fbad9d89d83edf  .codex-import/shizuku-v0435.bundle' | sha256sum -c -
+          git bundle verify .codex-import/shizuku-v0435.bundle
+          git fetch .codex-import/shizuku-v0435.bundle claude/shizuku-v0435:refs/heads/claude/shizuku-v0435
+          test "$(git rev-parse claude/shizuku-v0435)" = 27fdbdbf38fa93a775052dacaaf90101247b3a61
+          test "$(git rev-parse claude/shizuku-v0435^)" = 0ea10d4f55cb92cb6952d6abf58b635b5da02cbf
+          remote_head=$(git ls-remote origin refs/heads/claude/shizuku-v0435 | cut -f1)
+          test -z "$remote_head" || test "$remote_head" = 27fdbdbf38fa93a775052dacaaf90101247b3a61
+          git push origin claude/shizuku-v0435:refs/heads/claude/shizuku-v0435
+          echo 'Validated source: 27fdbdbf38fa93a775052dacaaf90101247b3a61; parent: 0ea10d4f55cb92cb6952d6abf58b635b5da02cbf' >> "$GITHUB_STEP_SUMMARY"
+  build:
+    needs: import-source
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FIT_SIGNING_AVAILABLE: ${{ secrets.FIT_KEYSTORE_BASE64 != '' && secrets.FIT_KEYSTORE_PASSWORD != '' && secrets.FIT_KEY_ALIAS != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 27fdbdbf38fa93a775052dacaaf90101247b3a61
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Signing policy check
+        run: |
+          python scripts/check_signing_policy.py
+          python scripts/check_test_signing.py
+          python scripts/check_version_progression.py
+          python scripts/check_release_configuration.py
+          python scripts/check_ui_workflow.py
+          python scripts/check_companion_return.py
+          python scripts/check_theme_artwork.py
+      - name: Unit tests
+        run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest --stacktrace
+      - name: Build debug APK
+        env:
+          FIT_TEST_KEYSTORE_BASE64: ${{ secrets.FIT_TEST_KEYSTORE_BASE64 }}
+          FIT_TEST_KEYSTORE_PASSWORD: ${{ secrets.FIT_TEST_KEYSTORE_PASSWORD }}
+          FIT_TEST_KEY_ALIAS: ${{ secrets.FIT_TEST_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set +x
+          export FIT_TEST_KEYSTORE_PATH="$RUNNER_TEMP/vehicle-test.p12"
+          trap 'rm -f "$FIT_TEST_KEYSTORE_PATH"' EXIT
+          if [ -n "$FIT_TEST_KEYSTORE_BASE64" ] && [ -n "$FIT_TEST_KEYSTORE_PASSWORD" ] && [ -n "$FIT_TEST_KEY_ALIAS" ]; then
+            python - <<'PYKEY'
+          import os, base64
+          from pathlib import Path
+          path=Path(os.environ['FIT_TEST_KEYSTORE_PATH'])
+          path.write_bytes(base64.b64decode(os.environ['FIT_TEST_KEYSTORE_BASE64'],validate=True))
+          path.chmod(0o600)
+          PYKEY
+            ./gradlew --no-daemon assembleDebug
+            python scripts/verify_test_certificate.py app/build/outputs/apk/debug/app-debug.apk
+            echo 'Debug 測試版：已驗證固定測試憑證；不是正式版。' >> "$GITHUB_STEP_SUMMARY"
+          else
+            unset FIT_TEST_KEYSTORE_PATH FIT_TEST_KEYSTORE_PASSWORD FIT_TEST_KEY_ALIAS
+            ./gradlew --no-daemon assembleDebug
+            echo '未使用固定測試金鑰，無法覆蓋安裝' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Record verified Debug APK provenance
+        shell: bash
+        run: |
+          python - <<'PYPROVENANCE'
+          import hashlib, json, os, re, subprocess
+          from pathlib import Path
+          folder = Path('app/build/outputs/apk/debug')
+          apk = folder / 'app-debug.apk'
+          signer = sorted((Path(os.environ['ANDROID_HOME']) / 'build-tools').glob('*/apksigner'))[-1]
+          verified = subprocess.run([str(signer), 'verify', '--verbose', '--print-certs', str(apk)], capture_output=True, text=True, check=True)
+          print(verified.stdout)
+          certificates = re.findall(r'certificate SHA-256 digest:\s*([a-fA-F0-9:]+)', verified.stdout)
+          assert len(certificates) == 1, 'Expected one verified APK signing certificate'
+          certificate = certificates[0].replace(':', '').upper()
+          assert re.fullmatch('[0-9A-F]{64}', certificate), 'Invalid certificate fingerprint'
+          expected = Path('docs/test-certificate.sha256').read_text().strip().replace(':', '').upper()
+          digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+          config = Path('app/build.gradle.kts').read_text()
+          version_name = re.search('versionName *= *"([^"]+)"', config).group(1)
+          version_code = int(re.search('versionCode *= *([0-9]+)', config).group(1))
+          report = dict(versionName=version_name, versionCode=version_code, package='tw.fitcar.launcher', head=os.environ['GITHUB_SHA'], run=os.environ['GITHUB_RUN_ID'], sha256=digest, sizeBytes=apk.stat().st_size, certificateSha256=certificate, fixedTestSigning=(certificate == expected), cryptographicVerification='apksigner verify passed', buildType='Debug test only')
+          (folder / 'signing-provenance.json').write_text(json.dumps(report, indent=2) + '\n')
+          (folder / 'app-debug.apk.sha256').write_text(digest + '  app-debug.apk\n')
+          (folder / 'certificate-sha256.txt').write_text(certificate + '\n')
+          print(json.dumps(report))
+          PYPROVENANCE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fit-launcher-debug-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/*.sha256
+            app/build/outputs/apk/debug/signing-provenance.json
+            app/build/outputs/apk/debug/certificate-sha256.txt
+          if-no-files-found: error
+      - name: Build clean unsigned release APK and AAB for policy audit
+        run: ./gradlew --no-daemon assembleRelease bundleRelease --stacktrace
+      - name: Audit release manifest, ABI, debug residue and size
+        shell: bash
+        run: |
+          RELEASE_APK=$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          RELEASE_AAB=$(find app/build/outputs/bundle/release -maxdepth 1 -name '*.aab' -print -quit)
+          test -n "$RELEASE_APK" && test -n "$RELEASE_AAB"
+          python scripts/check_release_artifact.py --apk "$RELEASE_APK" --aab "$RELEASE_AAB" --report release-artifact-report.json
+      - name: Upload release audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-launcher-release-audit
+          path: release-artifact-report.json
+          if-no-files-found: error
+      - name: Prepare unsigned release for offline signing
+        run: |
+          mkdir -p local-signing-inputs/tools
+          cp app/build/outputs/apk/release/*.apk local-signing-inputs/
+          cp app/build/outputs/bundle/release/*.aab local-signing-inputs/
+          cp release-artifact-report.json local-signing-inputs/
+          TOOLS=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          cp "$(dirname "$TOOLS")/lib/apksigner.jar" local-signing-inputs/tools/
+          cp "$(dirname "$TOOLS")/aapt" local-signing-inputs/tools/
+          sha256sum local-signing-inputs/*apk local-signing-inputs/tools/* > local-signing-inputs/SHA256SUMS.txt
+      - name: Upload public offline signing inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-release-local-signing
+          path: local-signing-inputs/
+          if-no-files-found: error
+      - name: Build and verify signed release
+        if: env.FIT_SIGNING_AVAILABLE == 'true'
+        env:
+          FIT_KEYSTORE_BASE64: ${{ secrets.FIT_KEYSTORE_BASE64 }}
+          FIT_KEYSTORE_PASSWORD: ${{ secrets.FIT_KEYSTORE_PASSWORD }}
+          FIT_KEY_ALIAS: ${{ secrets.FIT_KEY_ALIAS }}
+          FIT_KEYSTORE_PATH: ${{ runner.temp }}/fit-signing.p12
+        shell: bash
+        run: |
+          trap 'rm -f "$FIT_KEYSTORE_PATH"' EXIT
+          python - <<'PYKEY'
+          import os, base64
+          from pathlib import Path
+          path = Path(os.environ['FIT_KEYSTORE_PATH'])
+          path.write_bytes(base64.b64decode(os.environ['FIT_KEYSTORE_BASE64'], validate=True))
+          path.chmod(0o600)
+          PYKEY
+          ./gradlew --no-daemon assembleRelease bundleRelease
+          python scripts/check_release_artifact.py --apk app/build/outputs/apk/release/app-release.apk --aab app/build/outputs/bundle/release/app-release.aab --report signed-release-artifact-report.json
+          python scripts/verify_release_certificate.py app/build/outputs/apk/release/app-release.apk
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+      - name: Upload verified signed release
+        if: env.FIT_SIGNING_AVAILABLE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-launcher-signed-release
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release.certificate.txt
+            app/build/outputs/bundle/release/app-release.aab
+            signed-release-artifact-report.json
+          if-no-files-found: error
+      - name: Release signing not configured
+        if: env.FIT_SIGNING_AVAILABLE != 'true'
+        run: echo "Formal release skipped because required signing configuration is unavailable. Debug artifact is a test build only."
+  large-font:
+    needs: import-source
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 27fdbdbf38fa93a775052dacaaf90101247b3a61
+        with:
+          ref: 27fdbdbf38fa93a775052dacaaf90101247b3a61
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_c
+          disable-animations: true
+          script: |
+            adb shell wm size 2000x1200
+            adb shell wm density 240
+            adb shell settings put system font_scale 1.25
+            adb shell settings put system accelerometer_rotation 0
+            adb shell settings put system user_rotation 0
+            chmod +x gradlew
+            ./gradlew connectedDebugAndroidTest --stacktrace; test_result=$?; adb pull /sdcard/Download/fit-ui/ ui-screenshots/; exit $test_result
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-font-125-results
+          path: |
+            ui-screenshots/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+
+  legacy-window-bounds:
+    needs: import-source
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 27fdbdbf38fa93a775052dacaaf90101247b3a61
+        with:
+          ref: 27fdbdbf38fa93a775052dacaaf90101247b3a61
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_c
+          disable-animations: true
+          script: |
+            chmod +x gradlew
+            ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tw.fitcar.launcher.nav.CompanionPlacementLifecycleTest --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: companion-api29-results
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
