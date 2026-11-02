@@ -4,6 +4,7 @@ import android.os.Binder
 import android.os.Parcel
 import androidx.annotation.Keep
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
 
 /**
  * 由 Shizuku 以 shell 身分啟動的服務（不在車機桌面行程內執行）。
@@ -31,8 +32,29 @@ class ShellUserService : Binder {
         if (argv.isEmpty() || argv.first() !in ALLOWED) return -2 to "不允許的指令"
         return try {
             val p = ProcessBuilder(*argv).redirectErrorStream(true).start()
-            val out = p.inputStream.bufferedReader().use { it.readText() }
-            if (!p.waitFor(15, TimeUnit.SECONDS)) { p.destroy(); -3 to "逾時" } else p.exitValue() to out.take(2000)
+            val reader = Executors.newSingleThreadExecutor()
+            try {
+                val output = reader.submit<String> {
+                    p.inputStream.bufferedReader().use { stream ->
+                        val saved = StringBuilder()
+                        val buffer = CharArray(1024)
+                        while (true) {
+                            val count = stream.read(buffer)
+                            if (count < 0) break
+                            val keep = minOf(count, 2000 - saved.length)
+                            if (keep > 0) saved.append(buffer, 0, keep)
+                        }
+                        saved.toString()
+                    }
+                }
+                if (!p.waitFor(15, TimeUnit.SECONDS)) {
+                    p.destroyForcibly()
+                    -3 to "逾時"
+                } else p.exitValue() to output.get(2, TimeUnit.SECONDS)
+            } finally {
+                p.destroy()
+                reader.shutdownNow()
+            }
         } catch (e: Exception) { -1 to (e.javaClass.simpleName + ": " + (e.message ?: "")) }
     }
 
