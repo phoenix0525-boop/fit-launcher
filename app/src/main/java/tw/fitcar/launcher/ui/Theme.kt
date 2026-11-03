@@ -85,6 +85,16 @@ enum class VisualStyle(val id: String, val label: String, val description: Strin
     SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、中灰藍夜間與插畫"),
     MECHA("mecha", "機甲", "石墨黑、紫綠導航、橘白音樂與紅黑捷徑；地圖保持完整");
 
+    val defaultAccent: AccentTheme get() = when (this) {
+        ORIGINAL -> AccentTheme.MIST_BLUE
+        JAPANESE -> AccentTheme.SAND
+        WHITE -> AccentTheme.GRAPHITE
+        SPORT -> AccentTheme.SPORT
+        DYNAMIC, MECHA -> AccentTheme.DYNAMIC
+        POMPOMPURIN -> AccentTheme.CARAMEL
+        SPIDERMAN -> AccentTheme.HERO_RED
+    }
+
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
     }

@@ -93,7 +93,7 @@ class SettingsNavigationLayoutTest {
         section("關於").assertIsDisplayed()
         section("天氣").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(0, nav.scroll.value) }
-        compose.runOnIdle { nav.reset(); assertEquals("外觀與配色", nav.section); assertEquals("", nav.weatherKeyDraft) }
+        compose.runOnIdle { nav.reset(); assertEquals("主題", nav.section); assertEquals("", nav.weatherKeyDraft) }
     }
 
     private fun checkSize(w: Int, h: Int) {

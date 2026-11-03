@@ -259,10 +259,10 @@ private fun WeatherSettings(nav: SettingsNavState) {
 private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
     val p = LocalPalette.current
     actions.setStyle?.let { setStyle ->
-        Section("畫面風格") {
+        Section("主題選擇") {
             val unlocked = CharacterThemeAccess.isUnlocked(data.state.characterThemesUnlocked, data.state.visualStyle)
             var confirmHide by remember { mutableStateOf(false) }
-            Hint(if (unlocked) "風格與強調色可分別搭配；角色風格沿用日夜排程。" else "風格與強調色可分別搭配；各風格沿用日夜排程。", size = 14)
+            Hint("選一套主題即可套用外觀與建議配色。想微調時，再展開下方「主題細節」；螢幕明暗另到「亮度與日夜」。", size = 14)
             val current = VisualStyle.fromId(data.state.visualStyle)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 CharacterThemeAccess.visibleStyles(data.state.characterThemesUnlocked, data.state.visualStyle).forEach { style ->
@@ -272,11 +272,7 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
                             .border(if (style == current) 2.dp else 1.dp, if (style == current) p.accent else p.line, RadiusMd)
                             .clickable {
                                 setStyle(style)
-                                if (style == VisualStyle.POMPOMPURIN) actions.setAccent?.invoke(AccentTheme.CARAMEL)
-                                if (style == VisualStyle.SPIDERMAN) actions.setAccent?.invoke(AccentTheme.HERO_RED)
-                                if (style == VisualStyle.SPORT) actions.setAccent?.invoke(AccentTheme.SPORT)
-                                if (style == VisualStyle.DYNAMIC) actions.setAccent?.invoke(AccentTheme.DYNAMIC)
-                                if (style == VisualStyle.MECHA) actions.setAccent?.invoke(AccentTheme.DYNAMIC)
+                                actions.setAccent?.invoke(style.defaultAccent)
                             }.padding(16.dp),
                     ) {
                         if (preview.characterArt) CompositionLocalProvider(LocalPalette provides preview) {
@@ -305,27 +301,34 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
             )
         }
     }
-    actions.setAccent?.let { setAccent ->
-        Section("主題強調色") {
-            Hint("按鈕、選取項目與進度條的顏色；日間與夜間會自動調整亮度，文字對比都符合 4.5:1。", size = 14)
-            val current = AccentTheme.fromId(data.state.accentTheme)
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                AccentTheme.entries.forEach { t ->
-                    val swatch = androidx.compose.ui.graphics.Color(if (p.isNight) t.night.accent else t.day.accent)
-                    Row(
-                        Modifier.clip(RadiusMd).background(if (t == current) p.accentSoft else p.surface)
-                            .border(if (t == current) 2.dp else 1.dp, if (t == current) p.accent else p.line, RadiusMd)
-                            .clickable { setAccent(t) }.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        androidx.compose.foundation.layout.Box(Modifier.size(28.dp).clip(RadiusSm).background(swatch))
-                        Text(t.label, color = p.text, fontSize = 17.sp)
+    var detailsExpanded by rememberSaveable { mutableStateOf(false) }
+    Section("主題細節") {
+        SecondaryButton(if (detailsExpanded) "收起主題細節" else "調整配色、插畫與透明度", { detailsExpanded = !detailsExpanded })
+        if (!detailsExpanded) Hint("已套用主題即可正常使用，這些微調項目可以不設定。", size = 14)
+        if (detailsExpanded) {
+            actions.setAccent?.let { setAccent ->
+                Section("配色") {
+                    Hint("按鈕、選取項目與進度條的顏色；日間與夜間會自動調整亮度，文字對比都符合 4.5:1。", size = 14)
+                    val current = AccentTheme.fromId(data.state.accentTheme)
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        AccentTheme.entries.forEach { t ->
+                            val swatch = androidx.compose.ui.graphics.Color(if (p.isNight) t.night.accent else t.day.accent)
+                            Row(
+                                Modifier.clip(RadiusMd).background(if (t == current) p.accentSoft else p.surface)
+                                    .border(if (t == current) 2.dp else 1.dp, if (t == current) p.accent else p.line, RadiusMd)
+                                    .clickable { setAccent(t) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                androidx.compose.foundation.layout.Box(Modifier.size(28.dp).clip(RadiusSm).background(swatch))
+                                Text(t.label, color = p.text, fontSize = 17.sp)
+                            }
+                        }
                     }
                 }
             }
+            ThemeAppearanceSettings()
         }
     }
-    Section("全版主題與插畫") { ThemeAppearanceSettings() }
     Section("自訂桌布") { WallpaperSettings() }
     Hint("想調整螢幕明暗或自動切換時間，請到「亮度與日夜」。", size = 14)
 }

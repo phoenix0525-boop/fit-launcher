@@ -680,8 +680,8 @@ class LargeFontLayoutTest {
                     }
                 }
             }
-            listOf("全版角色主題", "顯示小插畫", "清楚", "✓ 均衡", "通透").forEach(::fullLabel)
-            compose.onNodeWithContentDescription("全版角色主題").performClick()
+            listOf("背景裝飾", "顯示小插畫", "清楚", "✓ 均衡", "通透").forEach(::fullLabel)
+            compose.onNodeWithContentDescription("背景裝飾").performClick()
             compose.onNodeWithContentDescription("蜘蛛人全版背景").assertDoesNotExist()
             compose.onNodeWithContentDescription("顯示小插畫").performClick()
             compose.onNodeWithText("通透").performClick()
