@@ -481,6 +481,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
 private fun MusicCardBody(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)?, lyricsResultOverride: tw.fitcar.launcher.lyrics.LyricsResult?) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
+    val cardGap = if (LocalLayoutSpec.current.shortHeight) 4.dp else 8.dp
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
     val resumeHint by tw.fitcar.launcher.media.MusicAutoResume.hint.collectAsState()
@@ -527,7 +528,7 @@ private fun MusicCardBody(music: AppEntry?, media: MediaUiState, actions: HomeAc
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(cardGap))
         // Original lyrics area: opt-in independent lookup, with honest metadata fallback.
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
@@ -565,7 +566,7 @@ private fun MusicCardBody(music: AppEntry?, media: MediaUiState, actions: HomeAc
         }
         }
         if (media.hasSession) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(cardGap))
             Progress(media, actions, compact = lyricsEnabled)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
