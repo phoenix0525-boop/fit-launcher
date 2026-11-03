@@ -133,6 +133,16 @@ class HiddenCharacterThemeLayoutTest {
         snapshot("settings-appearance-0431-125")
     }
 
+    @Test fun mechaIsSelectableWithoutUnlockingOtherCharacterThemes() {
+        state = LauncherState()
+        screen()
+        compose.onNode(styleLabel("機甲")).performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals("mecha", state.visualStyle) }
+        fullLabel("機甲")
+        compose.onNode(styleLabel("布丁狗")).assertDoesNotExist()
+        snapshot("settings-mecha-selected-125")
+    }
+
     @Test fun aboutShowsVersionAndSeparatesCompatibilityFromTestedHardware() {
         state = LauncherState()
         screen()

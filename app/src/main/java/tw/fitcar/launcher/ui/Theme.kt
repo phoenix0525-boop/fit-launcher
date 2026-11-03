@@ -82,7 +82,8 @@ enum class VisualStyle(val id: String, val label: String, val description: Strin
     DYNAMIC("dynamic", "動感風", "冰紫底色與電光紫，日夜各有層次"),
     WHITE("white", "白色", "清爽白底、灰白分層與深灰文字"),
     POMPOMPURIN("pompompurin", "布丁狗", "奶油黃、焦糖棕與布丁狗插畫"),
-    SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、中灰藍夜間與插畫");
+    SPIDERMAN("spiderman", "蜘蛛人", "霧白紅藍、中灰藍夜間與插畫"),
+    MECHA("mecha", "機甲", "石墨黑、紫綠導航、橘白音樂與紅黑捷徑；地圖保持完整");
 
     companion object {
         fun fromId(id: String?): VisualStyle = entries.firstOrNull { it.id == id } ?: ORIGINAL
@@ -93,6 +94,14 @@ fun styledBase(night: Boolean, style: VisualStyle): Palette {
     val base = if (night) NightPalette else DayPalette
     return when (style) {
         VisualStyle.ORIGINAL -> base
+        VisualStyle.MECHA -> base.copy(
+            bg = Color(0xFF15171D), bgDeep = Color(0xFF0D1015),
+            surface = Color(0xFF20232D), surfaceStrong = Color(0xFF292D38),
+            surfaceMuted = Color(0xFF181C25), text = Color(0xFFF4F5F8),
+            textSoft = Color(0xFFBEC5D4), line = Color(0xFF736288),
+            success = NightStatusSuccess, danger = NightStatusDanger,
+            characterArt = true, artworkStyle = VisualStyle.MECHA,
+        )
         VisualStyle.SPORT -> if (night) base.copy(
             bg = Color(0xFF1D2026), bgDeep = Color(0xFF12151A),
             surface = Color(0xFF292D34), surfaceStrong = Color(0xFF353A43),
@@ -199,7 +208,7 @@ fun FitTheme(palette: Palette, appearanceOverride: ThemeAppearanceOptions? = nul
     val context = androidx.compose.ui.platform.LocalContext.current
     val appearance by ThemeAppearanceStore.state.collectAsState()
     LaunchedEffect(context) { ThemeAppearanceStore.initialize(context) }
-    val scheme = if (palette.isNight && palette.artworkStyle != VisualStyle.SPIDERMAN) {
+    val scheme = if ((palette.isNight && palette.artworkStyle != VisualStyle.SPIDERMAN) || palette.artworkStyle == VisualStyle.MECHA) {
         darkColorScheme(
             primary = palette.accent, onPrimary = palette.onAccent,
             background = palette.bg, onBackground = palette.text,

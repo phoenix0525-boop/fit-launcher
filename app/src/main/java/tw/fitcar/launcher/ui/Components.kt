@@ -71,6 +71,10 @@ internal enum class ThemeArtPose(val drawable: Int, val description: String, val
 
 @Composable
 internal fun ThemeArtwork(size: Dp = 64.dp, pose: ThemeArtPose = ThemeArtPose.SHORTCUTS) {
+    if (LocalPalette.current.artworkStyle == VisualStyle.MECHA) {
+        MechaArtwork(size, pose)
+        return
+    }
     val spider = LocalPalette.current.artworkStyle == VisualStyle.SPIDERMAN
     LimitedThemeImage(if (spider) pose.spiderDrawable else pose.drawable,
         if (spider) pose.spiderDescription else pose.description, Modifier.size(size).clip(RadiusSm))
@@ -88,10 +92,12 @@ fun FitCard(
     val effectiveOpacity = effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha)
     val wallpaperOpacity = effectiveCardOpacity(.96f)
     val actualOpacity = if (backgroundContent != null) 1f else if (LocalFullThemeActive.current) effectiveOpacity else if (LocalWallpaperActive.current) wallpaperOpacity else 1f
-    val frame = modifier.clip(RadiusLg)
+    val shape = if (p.artworkStyle == VisualStyle.MECHA) androidx.compose.foundation.shape.CutCornerShape(12.dp) else RadiusLg
+    val frame = modifier.clip(shape)
          .semantics { this[CardOpacityKey] = actualOpacity }
         .background(p.surface.copy(alpha = actualOpacity))
-        .border(1.dp, p.line, RadiusLg)
+        .border(1.dp, p.line, shape)
+        .then(if (p.artworkStyle == VisualStyle.MECHA) Modifier.mechaTrim(p.line) else Modifier)
     if (backgroundContent == null) Column(frame.padding(padding), content = content)
     else Box(frame) {
         backgroundContent()
@@ -124,7 +130,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 56.dp),
-        shape = RadiusMd,
+        shape = if (p.artworkStyle == VisualStyle.MECHA) androidx.compose.foundation.shape.CutCornerShape(8.dp) else RadiusMd,
         contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 18.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = p.accent,
@@ -146,7 +152,7 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 56.dp),
-        shape = RadiusMd,
+        shape = if (p.artworkStyle == VisualStyle.MECHA) androidx.compose.foundation.shape.CutCornerShape(8.dp) else RadiusMd,
         border = BorderStroke(1.dp, p.line),
         contentPadding = PaddingValues(horizontal = if (compact) 12.dp else 16.dp, vertical = 10.dp),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = p.surfaceStrong, contentColor = p.text, disabledContentColor = p.textSoft),

@@ -276,6 +276,7 @@ private fun AppearanceSection(data: SettingsData, actions: SettingsActions) {
                                 if (style == VisualStyle.SPIDERMAN) actions.setAccent?.invoke(AccentTheme.HERO_RED)
                                 if (style == VisualStyle.SPORT) actions.setAccent?.invoke(AccentTheme.SPORT)
                                 if (style == VisualStyle.DYNAMIC) actions.setAccent?.invoke(AccentTheme.DYNAMIC)
+                                if (style == VisualStyle.MECHA) actions.setAccent?.invoke(AccentTheme.DYNAMIC)
                             }.padding(16.dp),
                     ) {
                         if (preview.characterArt) CompositionLocalProvider(LocalPalette provides preview) {

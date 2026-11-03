@@ -46,6 +46,7 @@ internal enum class ThemePage { HOME, APPS, SETTINGS }
 internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
     val p = LocalPalette.current
     if (!visible || !p.characterArt || !LocalThemeAppearance.current.fullTheme) return
+    if (p.artworkStyle == VisualStyle.MECHA) return // Mecha artwork stays in existing headers; never behind content.
     val spider = p.artworkStyle == VisualStyle.SPIDERMAN
     val drawable = if (spider) when (page) {
         ThemePage.HOME -> tw.fitcar.launcher.R.drawable.spiderman_reach
@@ -76,7 +77,7 @@ internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
 @Composable
 internal fun ThemePageFrame(page: ThemePage, content: @Composable () -> Unit) {
     val p = LocalPalette.current
-    val active = p.characterArt && LocalThemeAppearance.current.fullTheme
+    val active = p.characterArt && p.artworkStyle != VisualStyle.MECHA && LocalThemeAppearance.current.fullTheme
     Box(Modifier.fillMaxSize().clipToBounds().background(Brush.linearGradient(listOf(p.bg, p.bgDeep)))) {
         ThemeBackdrop(page)
         CompositionLocalProvider(LocalFullThemeActive provides active) { content() }
@@ -101,7 +102,9 @@ internal fun ThemeAppearanceSettings() {
         Switch(options.keepDrivingTransparency, { save(options.copy(keepDrivingTransparency=it)) }, Modifier.semantics { contentDescription="行車時保持我的透明度" })
     }
     Hint("預設行車中卡片自動變清楚（98%不透明），停車後恢復所選透明度，不改寫設定。",size=14)
-    Hint("主畫面僅時鐘旁保留小圖；所有 App、設定與關於頁各自配置。自訂桌布取代主畫面角色背景，地圖保持不透明。", size = 14)
+    Hint(if (LocalPalette.current.artworkStyle == VisualStyle.MECHA)
+        "機甲插畫僅放在原有時鐘、音樂與捷徑標題區；小螢幕自動隱藏部分裝飾。地圖不縮小、不放角色，機甲風格不使用全版人物背景。"
+        else "主畫面僅時鐘旁保留小圖；所有 App、設定與關於頁各自配置。自訂桌布取代主畫面角色背景，地圖保持不透明。", size = 14)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ThemeClarity.entries.forEach { choice -> SecondaryButton((if (choice == options.clarity) "✓ " else "") + choice.label,
             { save(options.copy(clarity = choice)) }, Modifier.weight(1f)) }
