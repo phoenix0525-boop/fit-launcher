@@ -76,7 +76,7 @@ val NightStatusSuccess = Color(0xFF93B5A5)
 
 /** 畫面風格與日夜／強調色分開保存，切換風格不改亮度排程。 */
 enum class VisualStyle(val id: String, val label: String, val description: String) {
-    ORIGINAL("original", "原有", "暖灰底色，保留目前配色"),
+    ORIGINAL("original", "原有", "暖灰底色與霧藍配色"),
     JAPANESE("japanese", "日系", "和紙米白、暖褐文字與柔和卡片"),
     SPORT("sport", "運動風", "冷灰分層與競速紅，俐落清楚"),
     DYNAMIC("dynamic", "動感風", "冰紫底色與電光紫，日夜各有層次"),
