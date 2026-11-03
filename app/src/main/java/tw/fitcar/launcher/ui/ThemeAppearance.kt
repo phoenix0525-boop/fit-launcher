@@ -46,6 +46,7 @@ internal enum class ThemePage { HOME, APPS, SETTINGS }
 internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
     val p = LocalPalette.current
     if (!visible || !p.characterArt || !LocalThemeAppearance.current.fullTheme) return
+    if (p.artworkStyle == VisualStyle.MECHA) return // Mecha artwork stays in existing headers; never behind content.
     val spider = p.artworkStyle == VisualStyle.SPIDERMAN
     val drawable = if (spider) when (page) {
         ThemePage.HOME -> tw.fitcar.launcher.R.drawable.spiderman_reach
@@ -76,7 +77,7 @@ internal fun BoxScope.ThemeBackdrop(page: ThemePage, visible: Boolean = true) {
 @Composable
 internal fun ThemePageFrame(page: ThemePage, content: @Composable () -> Unit) {
     val p = LocalPalette.current
-    val active = p.characterArt && LocalThemeAppearance.current.fullTheme
+    val active = p.characterArt && p.artworkStyle != VisualStyle.MECHA && LocalThemeAppearance.current.fullTheme
     Box(Modifier.fillMaxSize().clipToBounds().background(Brush.linearGradient(listOf(p.bg, p.bgDeep)))) {
         ThemeBackdrop(page)
         CompositionLocalProvider(LocalFullThemeActive provides active) { content() }
@@ -87,25 +88,34 @@ internal fun ThemePageFrame(page: ThemePage, content: @Composable () -> Unit) {
 internal fun ThemeAppearanceSettings() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val options by ThemeAppearanceStore.state.collectAsState()
+    val p = LocalPalette.current
+    val mecha = p.artworkStyle == VisualStyle.MECHA
     fun save(next: ThemeAppearanceOptions) = ThemeAppearanceStore.save(context, next)
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("全版角色主題", Modifier.weight(1f), color = LocalPalette.current.text, fontSize = 20.sp)
-        Switch(options.fullTheme, { save(options.copy(fullTheme = it)) }, Modifier.semantics { contentDescription = "全版角色主題" })
+    if (p.characterArt && !mecha) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("背景裝飾", Modifier.weight(1f), color = p.text, fontSize = 20.sp)
+            Switch(options.fullTheme, { save(options.copy(fullTheme = it)) }, Modifier.semantics { contentDescription = "背景裝飾" })
+        }
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("顯示小插畫", Modifier.weight(1f), color = LocalPalette.current.text, fontSize = 20.sp)
-        Switch(options.smallArt, { save(options.copy(smallArt = it)) }, Modifier.semantics { contentDescription = "顯示小插畫" })
+    if (p.characterArt) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("顯示小插畫", Modifier.weight(1f), color = p.text, fontSize = 20.sp)
+            Switch(options.smallArt, { save(options.copy(smallArt = it)) }, Modifier.semantics { contentDescription = "顯示小插畫" })
+        }
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("行車時保持我的透明度", Modifier.weight(1f), color=LocalPalette.current.text, fontSize=20.sp)
-        Switch(options.keepDrivingTransparency, { save(options.copy(keepDrivingTransparency=it)) }, Modifier.semantics { contentDescription="行車時保持我的透明度" })
-    }
-    Hint("預設行車中卡片自動變清楚（98%不透明），停車後恢復所選透明度，不改寫設定。",size=14)
-    Hint("主畫面僅時鐘旁保留小圖；所有 App、設定與關於頁各自配置。自訂桌布取代主畫面角色背景，地圖保持不透明。", size = 14)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ThemeClarity.entries.forEach { choice -> SecondaryButton((if (choice == options.clarity) "✓ " else "") + choice.label,
-            { save(options.copy(clarity = choice)) }, Modifier.weight(1f)) }
-    }
+    if (p.characterArt && !mecha) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("行車時保持我的透明度", Modifier.weight(1f), color = p.text, fontSize = 20.sp)
+            Switch(options.keepDrivingTransparency, { save(options.copy(keepDrivingTransparency = it)) }, Modifier.semantics { contentDescription = "行車時保持我的透明度" })
+        }
+        Hint("預設行車中卡片自動變清楚（98%不透明），停車後恢復所選透明度，不改寫設定。", size = 14)
+        Hint("主畫面僅時鐘旁保留小圖；所有 App、設定與關於頁各自配置。自訂桌布取代主畫面角色背景，地圖保持不透明。", size = 14)
+        Text("面板透明度", color = p.text, fontSize = 20.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeClarity.entries.forEach { choice -> SecondaryButton((if (choice == options.clarity) "✓ " else "") + choice.label,
+                { save(options.copy(clarity = choice)) }, Modifier.weight(1f)) }
+        }
+    } else Hint(if (mecha) "機甲面板保持不透明，插畫只放在原有標題區，不占用地圖。" else "此主題使用固定面板，無須另外調整插畫或透明度。", size = 14)
 }
 
 /** Visual-only override: never mutates stored appearance. No size/position animation. */

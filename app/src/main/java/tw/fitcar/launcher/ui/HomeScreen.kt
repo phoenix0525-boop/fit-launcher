@@ -139,7 +139,7 @@ fun HomeScreen(
         WallpaperLayer(wallpaper, p.isNight, Modifier.matchParentSize())
         val contentPalette = if (wallpaper.visible && !wallpaper.options.showArt) p.copy(characterArt = false) else p
         CompositionLocalProvider(LocalLayoutSpec provides spec, LocalDriving provides driving,
-            LocalMapControls provides mapControls, LocalWallpaperActive provides wallpaper.visible, LocalFullThemeActive provides (p.characterArt && LocalThemeAppearance.current.fullTheme), LocalPalette provides contentPalette) {
+            LocalMapControls provides mapControls, LocalWallpaperActive provides wallpaper.visible, LocalFullThemeActive provides (p.characterArt && p.artworkStyle != VisualStyle.MECHA && LocalThemeAppearance.current.fullTheme), LocalPalette provides contentPalette) {
             Column(Modifier.fillMaxSize().padding(spec.outerDp.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
                 StatusBar(shield, gps, actions, speedAlertKmh)
                 when (spec.arrangement) {
@@ -191,7 +191,9 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
             Text(timeFormat.format(date), color = p.text, fontSize = if (large) 40.sp else 30.sp, fontWeight = FontWeight.Medium, lineHeight = if (large) 44.sp else 34.sp, maxLines = 1)
             Text(dateFormat.format(date), color = p.textSoft, fontSize = if (large) 15.sp else 13.sp, maxLines = 1)
         }
-        if (hasArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(64.dp, ThemeArtPose.CLOCK)
+        if (hasArt && LocalThemeAppearance.current.smallArt) ThemeArtwork(
+            if (p.artworkStyle == VisualStyle.MECHA) { if (LocalDriving.current) 40.dp else 56.dp } else 64.dp,
+            ThemeArtPose.CLOCK)
     }
 }
 
@@ -199,8 +201,9 @@ fun Clock(modifier: Modifier = Modifier, big: Boolean = true) {
 internal fun StatusBar(shield: AppEntry?, gps: GpsState, actions: HomeActions, speedAlertKmh: Int = 0) {
     val p = LocalPalette.current
     val spec = LocalLayoutSpec.current
+    val shape = if (p.artworkStyle == VisualStyle.MECHA) androidx.compose.foundation.shape.CutCornerShape(12.dp) else RadiusLg
     Row(
-        Modifier.fillMaxWidth().heightIn(min = if (spec.compactChrome) 76.dp else 104.dp).clip(RadiusLg).background(p.surface).border(1.dp, p.line, RadiusLg)
+        Modifier.fillMaxWidth().heightIn(min = if (spec.compactChrome) 76.dp else 104.dp).clip(shape).background(p.surface).border(1.dp, p.line, shape)
             .padding(horizontal = if (spec.compactChrome) 12.dp else 18.dp, vertical = if (spec.compactChrome) 6.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (spec.compactChrome) 8.dp else 12.dp),
@@ -469,8 +472,16 @@ private fun formatMs(ms: Long): String {
 
 @Composable
 internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)? = null, lyricsResultOverride: tw.fitcar.launcher.lyrics.LyricsResult? = null) {
+    MechaPanelColors(MechaPanel.MUSIC) {
+        MusicCardBody(music, media, actions, recentPlayers, modifier, lyricsContent, lyricsResultOverride)
+    }
+}
+
+@Composable
+private fun MusicCardBody(music: AppEntry?, media: MediaUiState, actions: HomeActions, recentPlayers: List<Pair<String, String>>, modifier: Modifier, lyricsContent: (@Composable (MediaUiState) -> Unit)?, lyricsResultOverride: tw.fitcar.launcher.lyrics.LyricsResult?) {
     val p = LocalPalette.current
     val driving = LocalDriving.current
+    val cardGap = if (LocalLayoutSpec.current.shortHeight) 4.dp else 8.dp
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
     val resumeHint by tw.fitcar.launcher.media.MusicAutoResume.hint.collectAsState()
@@ -495,7 +506,8 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 SecondaryButton("開啟", actions.openMusicApp)
             }
         } else CardTitle(media.playerName ?: music?.label ?: "音樂") {
-            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp, ThemeArtPose.MUSIC)
+            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight)
+                ThemeArtwork(if (p.artworkStyle == VisualStyle.MECHA) 48.dp else 64.dp, ThemeArtPose.MUSIC)
             if (!lyricsEnabled) LyricsEnableButton()
             if (music != null || media.hasSession) SecondaryButton("開啟", actions.openMusicApp)
             else SecondaryButton("選擇音樂 App", actions.bindMusic)
@@ -516,7 +528,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(cardGap))
         // Original lyrics area: opt-in independent lookup, with honest metadata fallback.
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
         val spacious = maxHeight >= 240.dp && !LocalLayoutSpec.current.shortHeight
@@ -554,7 +566,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
         }
         }
         if (media.hasSession) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(cardGap))
             Progress(media, actions, compact = lyricsEnabled)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 val prev = media.supports(android.media.session.PlaybackState.ACTION_SKIP_TO_PREVIOUS)
@@ -651,12 +663,19 @@ private fun SimpleTrack(fraction: Float, modifier: Modifier) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ShortcutsCard(slots: List<SlotView>, actions: HomeActions, modifier: Modifier) {
+    MechaPanelColors(MechaPanel.SHORTCUTS) { ShortcutsCardBody(slots, actions, modifier) }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ShortcutsCardBody(slots: List<SlotView>, actions: HomeActions, modifier: Modifier) {
     val p = LocalPalette.current
     val pages = (slots.size / ShortcutSlots.PER_PAGE).coerceIn(1, ShortcutSlots.MAX_PAGES)
     val pager = rememberPagerState { pages }
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         CardTitle("捷徑") {
-            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight) ThemeArtwork(64.dp)
+            if (p.characterArt && !LocalFullThemeActive.current && LocalThemeAppearance.current.smallArt && !LocalLayoutSpec.current.shortHeight)
+                ThemeArtwork(if (p.artworkStyle == VisualStyle.MECHA) 28.dp else 64.dp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 repeat(pages) { i ->
                     Box(Modifier.size(12.dp).clip(CircleShape).background(if (pager.currentPage == i) p.accent else p.disabledContent))

@@ -5,6 +5,7 @@ import sys
 
 root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('.')
 expected = {
+    'mecha_units.png': '30c4a1ae6e834c2ea70cdf34fb2fa00ceef188574d2f3b79be160223cd99c2a4',
     'pompompurin.png': '387008c779913a234345d907486636d5d854e7f20e04da824c319c6c4b1046d7',
     'pompompurin_cheer.png': '2c48bcbf93353a779eb13870508d32cf5725910eb14188c8724c1e3f643ded2f',
     'pompompurin_sleep.png': '307bd4ff75600676a149545ec78c23d4a4816583a6cace597528db1c80465c48',
@@ -17,4 +18,4 @@ expected = {
 for name, sha in expected.items():
     path = root / 'app/src/main/res/drawable-nodpi' / name
     assert hashlib.sha256(path.read_bytes()).hexdigest() == sha, f'Theme image damaged or changed: {name}'
-print('All Pompompurin and Spider-Man assets match the user-provided originals.')
+print('Original character assets are intact; generated Mecha artwork matches the approved packaged asset.')

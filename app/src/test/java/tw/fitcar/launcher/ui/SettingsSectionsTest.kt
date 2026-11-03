@@ -26,4 +26,8 @@ class SettingsSectionsTest {
     @Test fun characterUnlockEntryExists() {
         assertTrue(SettingsSections.CHARACTER_UNLOCK in SettingsSections.ALL)
     }
+    @Test fun oldAppearanceEntryStillOpensUnifiedThemeSection() {
+        assertEquals(SettingsSections.APPEARANCE, SettingsSections.resolve("外觀與配色"))
+        assertEquals("主題", SettingsSections.APPEARANCE)
+    }
 }

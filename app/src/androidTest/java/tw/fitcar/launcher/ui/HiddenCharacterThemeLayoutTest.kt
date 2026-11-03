@@ -31,6 +31,7 @@ class HiddenCharacterThemeLayoutTest {
                         SettingsData(state, null, null, null, true, 50, true, true,
                             otherHomes = emptyList(), diagnostics = emptyList(), versionName = "0.4.34"),
                         SettingsActions(back = {}, setStyle = { state = state.copy(visualStyle = it.id) },
+                            setAccent = { state = state.copy(accentTheme = it.id) },
                             setCharacterThemesUnlocked = { unlocked -> state = state.copy(
                                 characterThemesUnlocked = unlocked,
                                 visualStyle = if (!unlocked && CharacterThemeAccess.isCharacter(state.visualStyle)) "original" else state.visualStyle,
@@ -72,7 +73,7 @@ class HiddenCharacterThemeLayoutTest {
         state = LauncherState()
         screen()
         val info = compose.onNode(hasText("關於") and hasClickAction())
-        val display = compose.onNode(hasText("外觀與配色") and hasClickAction())
+        val display = compose.onNode(hasText("主題") and hasClickAction())
         info.performScrollTo().performClick()
         repeat(2) { info.performClick() }
         display.performScrollTo().performClick()
@@ -100,7 +101,7 @@ class HiddenCharacterThemeLayoutTest {
         // 0.4.34：「實機資訊」併入實機檢測，隱藏入口改為連點「關於」五下
         compose.onNode(hasText("關於") and hasClickAction()).performScrollTo().performClick()
         repeat(4) { compose.onNode(hasText("關於") and hasClickAction()).performClick() }
-        compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
+        compose.onNode(hasText("主題") and hasClickAction()).performScrollTo().performClick()
         compose.onNode(styleLabel("布丁狗")).performScrollTo()
         fullLabel("布丁狗"); fullLabel("蜘蛛人")
         compose.onNodeWithText("隱藏角色主題").performScrollTo()
@@ -128,9 +129,36 @@ class HiddenCharacterThemeLayoutTest {
         compose.runOnIdle { org.junit.Assert.assertEquals("dynamic", state.visualStyle) }
         compose.onNode(hasText("亮度與日夜") and hasClickAction()).performScrollTo().performClick()
         compose.onNodeWithText("系統背光權限").assertIsDisplayed()
-        compose.onNode(hasText("外觀與配色") and hasClickAction()).performScrollTo().performClick()
-        compose.onNodeWithText("畫面風格").assertIsDisplayed()
+        compose.onNode(hasText("主題") and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("主題選擇").assertIsDisplayed()
         snapshot("settings-appearance-0431-125")
+    }
+
+    @Test fun mechaIsSelectableWithoutUnlockingOtherCharacterThemes() {
+        state = LauncherState()
+        screen()
+        compose.onNode(styleLabel("機甲")).performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals("mecha", state.visualStyle) }
+        fullLabel("機甲")
+        compose.onNode(styleLabel("布丁狗")).assertDoesNotExist()
+        snapshot("settings-mecha-selected-125")
+    }
+
+    @Test fun themeDetailsStartCollapsedAndKeepCustomColorWhenCollapsed() {
+        state = LauncherState()
+        screen()
+        compose.onNodeWithText("配色").assertDoesNotExist()
+        compose.onNodeWithText("背景裝飾").assertDoesNotExist()
+        compose.onNodeWithText("調整配色、插畫與透明度").performScrollTo().performClick()
+        compose.onNodeWithText("配色").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("石墨灰").performScrollTo().performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals("graphite", state.accentTheme) }
+        snapshot("settings-theme-details-125")
+        compose.onNodeWithText("收起主題細節").performScrollTo().performClick()
+        compose.onNodeWithText("配色").assertDoesNotExist()
+        compose.runOnIdle { org.junit.Assert.assertEquals("graphite", state.accentTheme) }
+        compose.onNodeWithText("主題選擇").performScrollTo()
+        snapshot("settings-theme-simple-125")
     }
 
     @Test fun aboutShowsVersionAndSeparatesCompatibilityFromTestedHardware() {
