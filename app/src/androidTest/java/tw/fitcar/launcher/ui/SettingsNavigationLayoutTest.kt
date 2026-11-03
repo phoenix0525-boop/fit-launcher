@@ -101,7 +101,7 @@ class SettingsNavigationLayoutTest {
         show(nav, DpSize(w.dp, h.dp))
         mapOf(
             "導航" to listOf("導航 App 與神盾", "常用地點（回家／去公司）", "導航時浮動回桌面鍵"),
-            "音樂與音效" to listOf("播放器", "音量控制", "原廠 DSP／EQ", "原廠整合可行性（只讀檢查）"),
+            "音樂與音效" to listOf("播放器", "上車自動續播", "音量控制", "原廠 DSP／EQ", "原廠整合可行性（只讀檢查）"),
             "捷徑與 App" to listOf("最近使用的 App", "桌面小工具"),
             "桌面接管" to listOf("開機啟動", "一鍵授權（Shizuku）", "預設桌面", "原廠桌面出現時切回", "開啟原廠桌面", "停用原廠桌面（進階）"),
             "權限總覽" to listOf("通知存取（音樂資訊）", "背景不被關閉", "系統服務（無障礙）"),
@@ -121,6 +121,28 @@ class SettingsNavigationLayoutTest {
     @Test fun common1024x600At125Percent() = checkSize(1024, 600)
     @Test fun hd853x480At125Percent() = checkSize(853, 480)
     @Test fun portrait720x1280At125Percent() = checkSize(720, 1280)
+
+    @Test fun autoResumeDefaultsOffAndTogglePersists() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val prefs = context.getSharedPreferences("music_auto_resume", android.content.Context.MODE_PRIVATE)
+        val hadValue = prefs.contains("enabled")
+        val previous = prefs.getBoolean("enabled", false)
+        prefs.edit().remove("enabled").commit()
+        try {
+            assertFalse(tw.fitcar.launcher.media.MusicAutoResume.enabled(context))
+            show(SettingsNavState())
+            section("音樂與音效").performScrollTo().performClick()
+            val toggle = compose.onNodeWithContentDescription("上車自動續播")
+            toggle.performScrollTo().assertIsOff().performClick().assertIsOn()
+            compose.runOnIdle { assertTrue(tw.fitcar.launcher.media.MusicAutoResume.enabled(context)) }
+            toggle.performClick().assertIsOff()
+            compose.runOnIdle { assertFalse(tw.fitcar.launcher.media.MusicAutoResume.enabled(context)) }
+        } finally {
+            compose.runOnIdle { tw.fitcar.launcher.media.MusicAutoResume.cancel() }
+            if (hadValue) prefs.edit().putBoolean("enabled", previous).commit()
+            else prefs.edit().remove("enabled").commit()
+        }
+    }
 
     /** 0.4.34：寬螢幕側欄顯示四個群組小標，順序為日常 → 初次設定 → 維護 → 診斷。 */
     @Test fun sidebarShowsGroupHeadingsInOrder() {

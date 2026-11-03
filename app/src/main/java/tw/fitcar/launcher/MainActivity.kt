@@ -468,6 +468,7 @@ class MainActivity : ComponentActivity() {
                 openNavFullscreen = { handleNav(NavLauncher.open(this@MainActivity, forceFullscreen = true)) },
                 bindNav = { screen = Screen.PickForBinding(BindingTarget.NAVIGATION, false) },
                 openMusicApp = {
+                    tw.fitcar.launcher.media.MusicAutoResume.manualControl()
                     val active = MediaRepository.resumePackage(this@MainActivity)
                     val intent = active?.let { packageManager.getLaunchIntentForPackage(it) }
                     if (intent != null) startActivity(intent)
@@ -476,6 +477,7 @@ class MainActivity : ComponentActivity() {
                 bindMusic = { screen = Screen.PickForBinding(BindingTarget.MUSIC, false) },
                 grantNotificationAccess = { openNotificationAccess() },
                 playPause = {
+                    tw.fitcar.launcher.media.MusicAutoResume.manualControl()
                     if (MediaRepository.state.value.hasSession) MediaRepository.playPause()
                     else {
                         val target = MediaRepository.resumePackage(this@MainActivity)
@@ -498,6 +500,7 @@ class MainActivity : ComponentActivity() {
                 goHome = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.homeAddress)) },
                 goWork = { handleNav(NavLauncher.openPlace(this@MainActivity, prefs.state.value.workAddress)) },
                 openPlayer = { pkg ->
+                    tw.fitcar.launcher.media.MusicAutoResume.manualControl()
                     val intent = packageManager.getLaunchIntentForPackage(pkg)
                     if (intent != null) safeStart(intent, "無法開啟播放器") else Toast.makeText(this@MainActivity, "找不到這個播放器", Toast.LENGTH_SHORT).show()
                 },

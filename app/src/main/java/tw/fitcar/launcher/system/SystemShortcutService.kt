@@ -38,6 +38,7 @@ class SystemShortcutService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = WeakReference(this)
+        tw.fitcar.launcher.media.MediaRepository.refresh(this)
         // 系統廣播仍會送達 NOT_EXPORTED 接收器；明確標示以符合 Android 14 規定
         try { androidx.core.content.ContextCompat.registerReceiver(this, screenReceiver, IntentFilter(Intent.ACTION_SCREEN_ON),
             androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED) } catch (_: Exception) { }
