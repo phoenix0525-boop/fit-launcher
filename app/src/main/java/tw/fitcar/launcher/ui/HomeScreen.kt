@@ -473,6 +473,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
     val driving = LocalDriving.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val lyricsEnabled by tw.fitcar.launcher.lyrics.LyricsRepository.enabled.collectAsState()
+    val resumeHint by tw.fitcar.launcher.media.MusicAutoResume.hint.collectAsState()
     LaunchedEffect(context) { tw.fitcar.launcher.lyrics.LyricsRepository.initialize(context) }
     val coverFallback by tw.fitcar.launcher.lyrics.LyricsRepository.coverFallback.collectAsState()
     val lyricResult = lyricsResultOverride ?: if (lyricsEnabled && media.hasSession && media.permissionGranted && lyricsContent == null) rememberLyricsResult(media) else null
@@ -524,6 +525,7 @@ internal fun MusicCard(music: AppEntry?, media: MediaUiState, actions: HomeActio
             verticalArrangement = Arrangement.spacedBy(if (lyricsEnabled) 4.dp else 6.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (resumeHint.isNotEmpty()) Text(resumeHint, color = p.textSoft, fontSize = 20.sp, textAlign = TextAlign.Center)
             when {
                 !media.permissionGranted -> {
                     GlyphIcon(Glyph.MUSIC, size = 32.dp, tint = p.textSoft)

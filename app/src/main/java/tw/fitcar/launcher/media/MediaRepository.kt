@@ -99,6 +99,7 @@ object MediaRepository {
 
     fun refresh(context: Context) {
         val ctx = context.applicationContext
+        MusicAutoResume.attach(ctx)
         appContext = ctx
         if (!isPermissionGranted(ctx)) {
             detach()
@@ -140,6 +141,7 @@ object MediaRepository {
             if (controller.sessionToken !in observers) {
                 val observer = object : MediaController.Callback() {
                     override fun onPlaybackStateChanged(state: PlaybackState?) {
+                        MusicAutoResume.playbackChanged(ctx, controller.packageName, state?.state)
                         appContext?.let { select(it, this@MediaRepository.controllers) }
                     }
                     override fun onSessionDestroyed() {
@@ -165,6 +167,7 @@ object MediaRepository {
             chosen?.registerCallback(callback, main)
         }
         if (chosen?.playbackState?.state == PlaybackState.STATE_PLAYING) rememberPlayer(ctx, chosen.packageName)
+        chosen?.let { MusicAutoResume.observed(ctx, it.packageName, it.playbackState?.state ?: PlaybackState.STATE_NONE) }
         publish(controllers)
     }
 
@@ -219,6 +222,7 @@ object MediaRepository {
     }
 
     fun play(): Boolean {
+        MusicAutoResume.manualControl()
         val controller = current ?: return false
         val s = _state.value
         if (!s.supports(PlaybackState.ACTION_PLAY) && !s.supports(PlaybackState.ACTION_PLAY_PAUSE)) return false
@@ -226,6 +230,7 @@ object MediaRepository {
         return true
     }
     fun pause(): Boolean {
+        MusicAutoResume.manualControl()
         val controller = current ?: return false
         val s = _state.value
         if (!s.supports(PlaybackState.ACTION_PAUSE) && !s.supports(PlaybackState.ACTION_PLAY_PAUSE)) return false
@@ -234,6 +239,7 @@ object MediaRepository {
     }
 
     fun playPause() {
+        MusicAutoResume.manualControl()
         val c = current ?: return
         val s = _state.value
         if (s.isPlaying) {
@@ -243,7 +249,15 @@ object MediaRepository {
         }
     }
 
-    fun next() { if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_NEXT)) current?.transportControls?.skipToNext() }
-    fun previous() { if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_PREVIOUS)) current?.transportControls?.skipToPrevious() }
+    /** Exact-session PLAY only; never a toggle or global media key. */
+    internal fun playForResume(pkg: String): Boolean {
+        val c = current ?: return false
+        if (c.packageName != pkg || c.playbackState?.state == PlaybackState.STATE_PLAYING ||
+            (c.playbackState?.actions ?: 0L) and PlaybackState.ACTION_PLAY == 0L) return false
+        return runCatching { c.transportControls.play(); true }.getOrDefault(false)
+    }
+
+    fun next() { MusicAutoResume.manualControl(); if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_NEXT)) current?.transportControls?.skipToNext() }
+    fun previous() { MusicAutoResume.manualControl(); if (_state.value.supports(PlaybackState.ACTION_SKIP_TO_PREVIOUS)) current?.transportControls?.skipToPrevious() }
     fun seekTo(ms: Long) { if (_state.value.canSeek) current?.transportControls?.seekTo(ms) }
 }
