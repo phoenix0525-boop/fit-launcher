@@ -58,14 +58,16 @@ internal fun MechaEnergyBars(media: MediaUiState, status: String) {
     }
     val seed = remember(media.packageName, media.title) { (media.packageName.orEmpty() + media.title.orEmpty()).hashCode() }
     Column(
-        Modifier.fillMaxWidth().semantics {
-            contentDescription = if (media.isPlaying) "機甲能量柱，播放中" else "機甲能量柱，已暫停"
-        },
+        Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Hint(status, size = 14, essential = true)
-        Canvas(Modifier.width(220.dp).height(92.dp).padding(vertical = 4.dp)) {
+        Canvas(
+            Modifier.fillMaxWidth(0.72f).height(64.dp).padding(vertical = 4.dp).semantics {
+                contentDescription = if (media.isPlaying) "機甲能量柱，播放中" else "機甲能量柱，已暫停"
+            },
+        ) {
             val count = 12
             val gap = 5.dp.toPx()
             val barWidth = (size.width - gap * (count - 1)) / count
