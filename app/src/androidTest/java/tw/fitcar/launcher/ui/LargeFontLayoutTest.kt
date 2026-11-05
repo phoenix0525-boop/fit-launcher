@@ -359,6 +359,25 @@ class LargeFontLayoutTest {
     @Test fun lyricsCurrentAndNextOnHomeAt125Percent() = lyricsCard(false, false)
     @Test fun lyricsCurrentAndNextDrivingAt125Percent() = lyricsCard(true, false)
     @Test fun lyricsCurrentAndNextNightAt125Percent() = lyricsCard(false, true)
+    @Test fun missingLyricsShowPausedMechaEnergyBarsAt125Percent() {
+        val media = MediaUiState(
+            permissionGranted = true,
+            packageName = "test.music",
+            playerName = "KKBOX",
+            title = "純音樂測試",
+            artist = "測試歌手",
+            playbackState = PlaybackState.STATE_PAUSED,
+        )
+        show(
+            media,
+            palette = paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.MECHA),
+            lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("純音樂，無歌詞"), state) },
+        )
+        compose.onNodeWithContentDescription("機甲能量柱，已暫停").assertIsDisplayed()
+        fullLabel("純音樂，無歌詞")
+        compose.onNodeWithText("純音樂測試").assertIsDisplayed()
+        screenshot("home-mecha-energy-paused-125")
+    }
     @Test fun homeLyricsEntryRequiresConsentAndPersistsChoice() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
