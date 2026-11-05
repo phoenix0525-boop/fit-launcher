@@ -360,6 +360,9 @@ class LargeFontLayoutTest {
     @Test fun lyricsCurrentAndNextDrivingAt125Percent() = lyricsCard(true, false)
     @Test fun lyricsCurrentAndNextNightAt125Percent() = lyricsCard(false, true)
     @Test fun missingLyricsShowPausedMechaEnergyBarsAt125Percent() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val old = tw.fitcar.launcher.lyrics.LyricsRepository.enabled.value
+        tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, true)
         val media = MediaUiState(
             permissionGranted = true,
             packageName = "test.music",
@@ -368,15 +371,17 @@ class LargeFontLayoutTest {
             artist = "測試歌手",
             playbackState = PlaybackState.STATE_PAUSED,
         )
-        show(
-            media,
-            palette = paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.MECHA),
-            lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("純音樂，無歌詞"), state) },
-        )
-        compose.onNodeWithContentDescription("機甲能量柱，已暫停").assertIsDisplayed()
-        fullLabel("純音樂，無歌詞")
-        compose.onNodeWithText("純音樂測試").assertIsDisplayed()
-        screenshot("home-mecha-energy-paused-125")
+        try {
+            show(
+                media,
+                palette = paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.MECHA),
+                lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("純音樂，無歌詞"), state) },
+            )
+            compose.onNodeWithContentDescription("機甲能量柱，已暫停").assertIsDisplayed()
+            fullLabel("純音樂，無歌詞")
+            compose.onNodeWithText("純音樂測試").assertIsDisplayed()
+            screenshot("home-mecha-energy-paused-125")
+        } finally { tw.fitcar.launcher.lyrics.LyricsRepository.setEnabled(context, old) }
     }
     @Test fun homeLyricsEntryRequiresConsentAndPersistsChoice() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
