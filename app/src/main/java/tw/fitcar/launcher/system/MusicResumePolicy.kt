@@ -1,5 +1,12 @@
 package tw.fitcar.launcher.system
 
+object MusicResumeDefaults {
+    const val AUTO_CONNECT = true
+    const val AUTO_RESUME = true
+    const val SOURCE = "last"
+    const val WAIT_MS = 3_000L
+}
+
 /** One wake attempt. It never launches an app, toggles playback, or retries a play command. */
 class MusicResumePolicy(val packageName: String, private val wasPlaying: Boolean, private val startedAt: Long) {
     enum class Action { WAIT, PLAY, MANUAL, SKIP }
@@ -12,7 +19,7 @@ class MusicResumePolicy(val packageName: String, private val wasPlaying: Boolean
         val action = when {
             !enabled || !wasPlaying || anyPlaying -> Action.SKIP
             now - startedAt >= 60_000 -> Action.MANUAL
-            now - startedAt < 3_000 || blocked || sessionPackage != packageName || !canPlay -> Action.WAIT
+            now - startedAt < MusicResumeDefaults.WAIT_MS || blocked || sessionPackage != packageName || !canPlay -> Action.WAIT
             else -> Action.PLAY
         }
         if (action != Action.WAIT) finished = true

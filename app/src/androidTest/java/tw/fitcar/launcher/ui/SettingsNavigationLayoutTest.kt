@@ -122,25 +122,33 @@ class SettingsNavigationLayoutTest {
     @Test fun hd853x480At125Percent() = checkSize(853, 480)
     @Test fun portrait720x1280At125Percent() = checkSize(720, 1280)
 
-    @Test fun autoResumeDefaultsOffAndTogglePersists() {
+    @Test fun musicStartupDefaultsOnAndTogglesPersist() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val prefs = context.getSharedPreferences("music_auto_resume", android.content.Context.MODE_PRIVATE)
-        val hadValue = prefs.contains("enabled")
-        val previous = prefs.getBoolean("enabled", false)
-        prefs.edit().remove("enabled").commit()
+        val hadResume = prefs.contains("enabled")
+        val previousResume = prefs.getBoolean("enabled", false)
+        val hadConnect = prefs.contains("auto_connect")
+        val previousConnect = prefs.getBoolean("auto_connect", false)
+        prefs.edit().remove("enabled").remove("auto_connect").commit()
         try {
-            assertFalse(tw.fitcar.launcher.media.MusicAutoResume.enabled(context))
+            assertTrue(tw.fitcar.launcher.media.MusicAutoResume.autoConnectEnabled(context))
+            assertTrue(tw.fitcar.launcher.media.MusicAutoResume.enabled(context))
             show(SettingsNavState())
             section("音樂與音效").performScrollTo().performClick()
-            val toggle = compose.onNodeWithContentDescription("上車自動續播")
-            toggle.performScrollTo().assertIsOff().performClick().assertIsOn()
-            compose.runOnIdle { assertTrue(tw.fitcar.launcher.media.MusicAutoResume.enabled(context)) }
-            toggle.performClick().assertIsOff()
-            compose.runOnIdle { assertFalse(tw.fitcar.launcher.media.MusicAutoResume.enabled(context)) }
+            val connect = compose.onNodeWithContentDescription("開機自動連接上次播放器")
+            val resume = compose.onNodeWithContentDescription("開機自動續播")
+            connect.performScrollTo().assertIsOn().performClick().assertIsOff()
+            resume.performScrollTo().assertIsOn().performClick().assertIsOff()
+            compose.runOnIdle {
+                assertFalse(tw.fitcar.launcher.media.MusicAutoResume.autoConnectEnabled(context))
+                assertFalse(tw.fitcar.launcher.media.MusicAutoResume.enabled(context))
+            }
         } finally {
             compose.runOnIdle { tw.fitcar.launcher.media.MusicAutoResume.cancel() }
-            if (hadValue) prefs.edit().putBoolean("enabled", previous).commit()
-            else prefs.edit().remove("enabled").commit()
+            prefs.edit().apply {
+                if (hadResume) putBoolean("enabled", previousResume) else remove("enabled")
+                if (hadConnect) putBoolean("auto_connect", previousConnect) else remove("auto_connect")
+            }.commit()
         }
     }
 

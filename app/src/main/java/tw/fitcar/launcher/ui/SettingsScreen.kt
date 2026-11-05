@@ -489,12 +489,17 @@ private fun MusicBindingSection(data: SettingsData, actions: SettingsActions) {
 @Composable
 private fun MusicAutoResumeSetting() {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var autoConnect by remember { mutableStateOf(tw.fitcar.launcher.media.MusicAutoResume.autoConnectEnabled(context)) }
     var enabled by remember { mutableStateOf(tw.fitcar.launcher.media.MusicAutoResume.enabled(context)) }
-    TakeoverToggle("上車自動續播", enabled) {
+    TakeoverToggle("開機自動連接上次播放器", autoConnect) {
+        autoConnect = it
+        tw.fitcar.launcher.media.MusicAutoResume.setAutoConnectEnabled(context, it)
+    }
+    TakeoverToggle("開機自動續播", enabled) {
         enabled = it
         tw.fitcar.launcher.media.MusicAutoResume.setEnabled(context, it)
     }
-    Hint("預設關閉。冷開機或螢幕喚醒後，只嘗試一次恢復上次正在播放的 App；手動暫停不續播。需開啟通知存取與系統服務，等待音訊就緒，已辨識的倒車畫面或通話期間延後。", size = 14)
+    Hint("預設：自動連接開啟、自動續播開啟、來源為上次播放器、等待 3 秒。冷開機或螢幕喚醒後只嘗試一次；手動暫停不續播。", size = 14)
     Hint("跟隨模式支援輪流使用 KKBOX、Spotify、YouTube Music；實際續播依播放器支援。播放器被關閉、60 秒內未就緒或未能辨識前景時，請手動按播放／連接上次播放器；不自動切換畫面。", size = 14)
 }
 

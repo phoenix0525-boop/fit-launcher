@@ -38,7 +38,15 @@ class MusicResumePolicyTest {
         assertEquals(MusicResumePolicy.Action.SKIP, attempt().decide(5000, false, target, false, true, false))
     }
     @Test fun waitsAtLeastThreeSecondsForWakeToSettle() {
-        assertEquals(MusicResumePolicy.Action.WAIT, attempt().decide(1000, true, target, false, true, false))
+        val p = attempt()
+        assertEquals(3_000L, MusicResumeDefaults.WAIT_MS)
+        assertEquals(MusicResumePolicy.Action.WAIT, p.decide(2_999, true, target, false, true, false))
+        assertEquals(MusicResumePolicy.Action.PLAY, p.decide(3_000, true, target, false, true, false))
+    }
+    @Test fun requestedStartupDefaultsUseLastPlayer() {
+        assertTrue(MusicResumeDefaults.AUTO_CONNECT)
+        assertTrue(MusicResumeDefaults.AUTO_RESUME)
+        assertEquals("last", MusicResumeDefaults.SOURCE)
     }
     @Test fun fixedPlayerMismatchDoesNotResumeLastFollowedPlayer() {
         assertNull(MusicResumePolicy.target("com.kkbox", target, true))

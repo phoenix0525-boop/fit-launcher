@@ -18,6 +18,7 @@ import tw.fitcar.launcher.data.MediaMode
 import tw.fitcar.launcher.data.Prefs
 import tw.fitcar.launcher.system.DesktopGuard
 import tw.fitcar.launcher.system.LaunchGate
+import tw.fitcar.launcher.system.MusicResumeDefaults
 import tw.fitcar.launcher.system.MusicResumePolicy
 import tw.fitcar.launcher.system.SystemShortcutService
 
@@ -29,7 +30,14 @@ object MusicAutoResume {
     private val _hint = MutableStateFlow("")
     val hint = _hint.asStateFlow()
     private fun prefs(c: Context) = c.getSharedPreferences("music_auto_resume", Context.MODE_PRIVATE)
-    fun enabled(c: Context) = prefs(c).getBoolean("enabled", false)
+    fun autoConnectEnabled(c: Context) = prefs(c).getBoolean("auto_connect", MusicResumeDefaults.AUTO_CONNECT)
+    fun enabled(c: Context) = prefs(c).getBoolean("enabled", MusicResumeDefaults.AUTO_RESUME)
+    fun setAutoConnectEnabled(c: Context, value: Boolean) {
+        prefs(c).edit().putBoolean("auto_connect", value).apply()
+        cancel()
+        attach(c)
+        MediaRepository.refresh(c)
+    }
     fun setEnabled(c: Context, value: Boolean) {
         prefs(c).edit().putBoolean("enabled", value).putBoolean("eligible", false).apply()
         cancel()
@@ -102,17 +110,18 @@ object MusicAutoResume {
         _hint.value = ""
     }
     private fun begin(c: Context) {
-        if (!enabled(c) || pending != null) return
+        if (pending != null) return
         val sp = prefs(c)
         val s = Prefs.get(c).state.value
         val selected = s.bindings.music?.let { ComponentName.unflattenFromString(it)?.packageName }
         val target = MusicResumePolicy.target(selected, sp.getString("package", null), s.mediaMode == MediaMode.FIXED)
-        if (target == null || !sp.getBoolean("eligible", false)) return
-        pending = MusicResumePolicy(target, true, SystemClock.elapsedRealtime())
+        val resumeEligible = enabled(c) && sp.getBoolean("eligible", false)
+        if (target == null || (!autoConnectEnabled(c) && !resumeEligible)) return
+        pending = MusicResumePolicy(target, resumeEligible, SystemClock.elapsedRealtime())
         // Consume eligibility now. A crash/reconnect cannot send a second play.
-        sp.edit().putBoolean("eligible", false).commit()
-        _hint.value = "等待播放器恢復，準備續播"
-        handler.postDelayed(tick, 3000)
+        if (resumeEligible) sp.edit().putBoolean("eligible", false).commit()
+        _hint.value = if (resumeEligible) "等待播放器恢復，準備續播" else ""
+        handler.postDelayed(tick, MusicResumeDefaults.WAIT_MS)
     }
 
     private val tick = object : Runnable {
