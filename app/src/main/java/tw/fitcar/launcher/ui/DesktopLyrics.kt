@@ -82,6 +82,10 @@ internal fun DesktopLyrics(media: MediaUiState) { LyricsLines(rememberLyricsResu
  */
 @Composable
 internal fun LyricsLines(result: LyricsResult, media: MediaUiState) {
+    if (shouldShowMechaEnergyBars(result)) {
+        MechaEnergyBars(media, result.status)
+        return
+    }
     val p = LocalPalette.current
     val driving = LocalDriving.current
     var position by remember { mutableLongStateOf(media.livePosition()) }
