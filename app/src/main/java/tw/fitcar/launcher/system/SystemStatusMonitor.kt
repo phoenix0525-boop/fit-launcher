@@ -114,8 +114,8 @@ object SystemStatusMonitor {
         val btOn = try { adapter?.isEnabled } catch (_: SecurityException) { null }
         val btConnected = if (adapter != null && btOn == true && canReadBluetoothConnection(ctx)) {
             try {
-                adapter.getProfileConnectionState(BluetoothProfile.A2DP) == BluetoothProfile.STATE_CONNECTED ||
-                    adapter.getProfileConnectionState(BluetoothProfile.HEADSET) == BluetoothProfile.STATE_CONNECTED
+                adapter.getProfileConnectionState(BluetoothProfile.A2DP) == BluetoothAdapter.STATE_CONNECTED ||
+                    adapter.getProfileConnectionState(BluetoothProfile.HEADSET) == BluetoothAdapter.STATE_CONNECTED
             } catch (_: SecurityException) { null }
         } else null
         val usb = try {

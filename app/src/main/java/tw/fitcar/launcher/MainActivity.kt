@@ -258,10 +258,15 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME)) screen = Screen.Home
     }
 
-    /** 實機檢測的按鍵測試：記錄後照常交給系統處理。 */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    /** 實機檢測的按鍵測試：使用公開 Activity 回呼記錄後照常交給系統處理。 */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         KeyLog.onKey(event)
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        KeyLog.onKey(event)
+        return super.onKeyUp(keyCode, event)
     }
 
     private fun runChecks() {
