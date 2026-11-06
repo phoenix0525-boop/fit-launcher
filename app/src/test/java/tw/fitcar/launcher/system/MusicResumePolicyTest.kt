@@ -53,4 +53,16 @@ class MusicResumePolicyTest {
         assertEquals(target, MusicResumePolicy.target(target, target, true))
         assertEquals(target, MusicResumePolicy.target("com.kkbox", target, false))
     }
+    // 0.4.39：熄火時車機自動暫停不應取消續播
+    @Test fun accOffPauseRightBeforeScreenOffKeepsResumeIntent() {
+        assertTrue(MusicResumePolicy.pauseLooksAutomatic(pausedAt = 100_000, offAt = 101_500, manualAt = null))
+        assertTrue(MusicResumePolicy.pauseLooksAutomatic(100_000, 115_000, 50_000))
+        assertFalse(MusicResumePolicy.pauseLooksAutomatic(100_000, 115_001, null))
+        assertFalse(MusicResumePolicy.pauseLooksAutomatic(null, 101_000, null))
+        assertFalse(MusicResumePolicy.pauseLooksAutomatic(100_000, 99_000, null))
+    }
+    @Test fun desktopPauseRightBeforeIsStillManual() {
+        assertFalse(MusicResumePolicy.pauseLooksAutomatic(pausedAt = 100_500, offAt = 101_000, manualAt = 100_000))
+        assertFalse(MusicResumePolicy.pauseLooksAutomatic(100_000, 101_000, 100_000))
+    }
 }

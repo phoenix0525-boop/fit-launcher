@@ -500,7 +500,7 @@ private fun MusicAutoResumeSetting() {
         tw.fitcar.launcher.media.MusicAutoResume.setEnabled(context, it)
     }
     Hint("預設：自動連接開啟、自動續播開啟、來源為上次播放器、等待 3 秒。冷開機或螢幕喚醒後只嘗試一次；手動暫停不續播。", size = 14)
-    Hint("跟隨模式支援輪流使用 KKBOX、Spotify、YouTube Music；實際續播依播放器支援。播放器被關閉、60 秒內未就緒或未能辨識前景時，請手動按播放／連接上次播放器；不自動切換畫面。", size = 14)
+    Hint("跟隨模式支援輪流使用 KKBOX、Spotify、YouTube Music；實際續播依播放器支援。熄火前在播放、發動後會自動續播（熄火時車機自動暫停不算手動暫停）。播放器被系統關閉或 60 秒內未就緒時，請手動按播放／連接上次播放器；不自動切換畫面，也不需要開啟系統服務。", size = 14)
 }
 
 @Composable

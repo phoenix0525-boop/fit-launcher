@@ -51,6 +51,7 @@ object MusicAutoResume {
         ContextCompat.registerReceiver(context!!, receiver, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SHUTDOWN)
         }, ContextCompat.RECEIVER_NOT_EXPORTED)
         val sp = prefs(c)
         val boot = DesktopGuard.bootCount(c)
@@ -68,9 +69,10 @@ object MusicAutoResume {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
-                Intent.ACTION_SCREEN_OFF -> {
+                Intent.ACTION_SCREEN_OFF, Intent.ACTION_SHUTDOWN -> {
                     cancel()
-                    prefs(c).edit().putBoolean("sleeping", true).apply()
+                    keepIntentAcrossAccPause(c)
+                    prefs(c).edit().putBoolean("sleeping", true).commit()
                 }
                 Intent.ACTION_SCREEN_ON -> wake(c)
             }
@@ -86,22 +88,39 @@ object MusicAutoResume {
     /** Record only real session observations; missing sessions never erase the last known intent. */
     fun observed(c: Context, pkg: String, state: Int) {
         if (!interactive(c) || prefs(c).getBoolean("sleeping", false) || pending != null) return
+        val sp = prefs(c)
         if (state == PlaybackState.STATE_PLAYING) {
             _hint.value = ""
-            prefs(c).edit().putString("package", pkg).putBoolean("eligible", true).apply()
+            sp.edit().putString("package", pkg).putBoolean("eligible", true).putBoolean("was_playing", true).remove("paused_at").apply()
         }
         else if (state == PlaybackState.STATE_PAUSED || state == PlaybackState.STATE_STOPPED)
-            if (prefs(c).getString("package", null) == pkg) prefs(c).edit().putBoolean("eligible", false).apply()
+            if (sp.getString("package", null) == pkg && sp.getBoolean("eligible", false)) {
+                // 0.4.39：記下「由播放轉為暫停」的時間；熄火時再判斷是不是車機自動暫停
+                sp.edit().putBoolean("eligible", false).putLong("paused_at", SystemClock.elapsedRealtime()).apply()
+            }
+    }
+
+    /**
+     * 0.4.39：FYT 熄火時會先暫停播放器、再關螢幕。原本這個暫停會讓續播資格被清掉，
+     * 所以熄火前在播放的歌，發動後也不會續播。關螢幕／關機時，若暫停發生在 15 秒內且不是在桌面手動暫停，恢復續播資格。
+     */
+    private fun keepIntentAcrossAccPause(c: Context) {
+        val sp = prefs(c)
+        if (sp.getBoolean("eligible", false) || !sp.getBoolean("was_playing", false)) return
+        val pausedAt = if (sp.contains("paused_at")) sp.getLong("paused_at", 0) else null
+        val manualAt = if (sp.contains("manual_at")) sp.getLong("manual_at", 0) else null
+        if (MusicResumePolicy.pauseLooksAutomatic(pausedAt, SystemClock.elapsedRealtime(), manualAt))
+            sp.edit().putBoolean("eligible", true).commit()
     }
 
     fun manualControl() {
-        context?.let { prefs(it).edit().putBoolean("eligible", false).apply() }
+        context?.let { prefs(it).edit().putBoolean("eligible", false).putBoolean("was_playing", false)
+            .putLong("manual_at", SystemClock.elapsedRealtime()).apply() }
         cancel()
     }
     fun playbackChanged(c: Context, pkg: String, state: Int?) {
-        // A pause after wake may be a user action or audio-focus loss; both cancel conservatively.
-        if (interactive(c) && pending?.packageName == pkg &&
-            (state == PlaybackState.STATE_PAUSED || state == PlaybackState.STATE_STOPPED)) manualControl()
+        // 0.4.39：播放器在喚醒後重建工作階段時，通常先回報「暫停」；那不是使用者操作，不可取消續播。
+        // 使用者在桌面按的暫停／切歌會經過 manualControl()；方向盤暫停則代表播放器原本就在播，decide() 會判定 SKIP。
     }
     fun cancel() {
         pending?.cancel()
@@ -135,8 +154,9 @@ object MusicAutoResume {
             val config = Prefs.get(c).state.value
             val selected = config.bindings.music?.let { ComponentName.unflattenFromString(it)?.packageName }
             val targetAllowed = MusicResumePolicy.target(selected, attempt.packageName, config.mediaMode == MediaMode.FIXED) != null
-            val blocked = !interactive(c) || !SystemShortcutService.connected() || foreground == null ||
-                LaunchGate.isCamera(foreground) || audio.mode != AudioManager.MODE_NORMAL ||
+            // 0.4.39：續播只送出播放指令、不切換畫面，不需要系統服務（無障礙）。
+            // 前景未知（服務未開或剛啟動）時照常續播；只有確定是倒車／相機畫面時才等待。
+            val blocked = !interactive(c) || LaunchGate.isCamera(foreground) || audio.mode != AudioManager.MODE_NORMAL ||
                 audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).isEmpty()
             val action = attempt.decide(SystemClock.elapsedRealtime(), enabled(c) && targetAllowed, media.packageName,
                 media.sessions.any { it.state == PlaybackState.STATE_PLAYING },
