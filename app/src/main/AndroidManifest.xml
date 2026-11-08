@@ -6,6 +6,8 @@
     <!-- User-confirmed self-updates only; never silent installation. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 真實音樂 FFT：只取低品質頻譜資料；未授權時顯示靜態待命，不使用假動畫。 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 狀態列藍牙：Android 11 以下讀開關；Android 12 以上「已連線」需使用者另外允許附近裝置 -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

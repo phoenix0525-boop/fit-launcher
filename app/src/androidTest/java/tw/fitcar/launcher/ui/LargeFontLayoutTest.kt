@@ -377,7 +377,7 @@ class LargeFontLayoutTest {
                 palette = paletteFor(tw.fitcar.launcher.data.ThemeChoice.NIGHT, AccentTheme.HERO_RED, VisualStyle.MECHA),
                 lyricsContent = { state -> LyricsLines(tw.fitcar.launcher.lyrics.LyricsResult("純音樂，無歌詞"), state) },
             )
-            compose.onNodeWithContentDescription("機甲能量柱，已暫停").assertIsDisplayed()
+            compose.onNodeWithContentDescription("機甲能量柱，已暫停，能量柱歸零").assertIsDisplayed()
             fullLabel("純音樂，無歌詞")
             compose.onNodeWithText("純音樂測試").assertIsDisplayed()
             screenshot("home-mecha-energy-paused-125")
@@ -613,11 +613,11 @@ class LargeFontLayoutTest {
         }
         compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
         if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist() else fullLabel("自動縮放")
-        listOf("Google 地圖導航通知", "→ 300 公尺後右轉", "進入中山路", "通知到達時間 12:40", "導航王", "Google 地圖", "更多", "回到目前位置").forEach(::fullLabel)
+        listOf("300 公尺後右轉", "進入中山路", "導航王", "Google 地圖", "更多", "回到目前位置").forEach(::fullLabel)
         screenshot("google-notification-panel-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
-        compose.onNodeWithText("→ 300 公尺後右轉").assertDoesNotExist()
-        fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.onNodeWithText("300 公尺後右轉").assertDoesNotExist()
+        compose.onNodeWithText("導航提示已過期，請開啟 Google 地圖確認").assertDoesNotExist()
         compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
         screenshot("google-map-expired-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now,
@@ -627,20 +627,20 @@ class LargeFontLayoutTest {
         screenshot("google-distance-road-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = guidance.value.copy(receivedElapsed = now - tw.fitcar.launcher.nav.GuidanceFreshness.MAX_AGE_MS) }
         compose.onNodeWithText("260 公尺").assertDoesNotExist()
-        fullLabel("導航提示已過期，請開啟 Google 地圖確認")
+        compose.onNodeWithText("導航提示已過期，請開啟 Google 地圖確認").assertDoesNotExist()
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true, activeNavigation = true) }
-        fullLabel("導航提示暫不可用，請開啟 Google 地圖確認")
+        compose.onNodeWithText("導航提示暫不可用，請開啟 Google 地圖確認").assertDoesNotExist()
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState(connected = true) }
-        fullLabel("未收到 Google 導航提示，顯示定位地圖")
+        compose.onNodeWithText("未收到 Google 導航提示，顯示定位地圖").assertDoesNotExist()
         compose.onNodeWithText("免費底圖測試").assertIsDisplayed()
         screenshot("google-ended-map-${if (driving) "driving" else if (night) "night" else "day"}-125")
         compose.runOnIdle { guidance.value = tw.fitcar.launcher.nav.GoogleGuidanceState() }
-        fullLabel("導航通知服務未連線")
+        compose.onNodeWithText("導航通知服務未連線").assertDoesNotExist()
         compose.runOnIdle { permission.value = false }
-        fullLabel("請開啟通知存取以顯示導航提示")
-        fullLabel("通知權限")
+        compose.onNodeWithText("請開啟通知存取以顯示導航提示").assertDoesNotExist()
+        compose.onNodeWithText("通知權限").assertDoesNotExist()
         compose.runOnIdle { google.value = false }
-        compose.onNodeWithText("Google 地圖導航通知").assertDoesNotExist()
+        compose.onNodeWithText("300 公尺後右轉").assertDoesNotExist()
         fullLabel("免費底圖測試")
         // Switching providers must preserve the same driving-safe controls as a fresh map.
         if (driving) compose.onNodeWithText("自動縮放").assertDoesNotExist()
@@ -914,23 +914,29 @@ class LargeFontLayoutTest {
         compose.onAllNodesWithContentDescription("新增捷徑")[0].assertIsDisplayed()
         screenshot("home-location-prompt-125")
     }
-    @Test fun allAppsSearchAndRecentAt125Percent() {
+    @Test fun allAppsSixColumnsWithoutSearchOrRecentAt125Percent() {
         val apps = (1..12).map { AppEntry("工具程式$it", ComponentName("test.app$it", "Main"), null) }
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, 1.25f)) {
                 FitTheme(paletteFor(tw.fitcar.launcher.data.ThemeChoice.DAY, AccentTheme.HERO_RED, VisualStyle.SPIDERMAN)) {
-                    FullScreenAppList("所有 App", "選擇要開啟的程式", apps, "返回桌面", {}, {}, recentKeys = listOf(apps[4].key))
+                    FullScreenAppList("所有 App", "選擇要開啟的程式", apps, "返回桌面", {}, {},
+                        recentKeys = emptyList(), searchable = false, fixedColumns = 6)
                 }
             }
         }
-        listOf("最近使用", "全部", "搜尋 App 名稱").forEach(::fullLabel)
+        compose.onNodeWithText("最近使用").assertDoesNotExist()
+        compose.onNodeWithText("全部").assertDoesNotExist()
+        compose.onNodeWithText("搜尋 App 名稱").assertDoesNotExist()
         // 不再顯示套件名稱
         compose.onNodeWithText("test.app1").assertDoesNotExist()
-        compose.onNodeWithText("搜尋 App 名稱").performTextInput("程式12")
+        val firstRow = (1..6).map { compose.onNodeWithText("工具程式$it").fetchSemanticsNode().boundsInRoot.top }
+        assertTrue(firstRow.maxOrNull()!! - firstRow.minOrNull()!! < 2f)
+        val secondRowTop = compose.onNodeWithText("工具程式7").fetchSemanticsNode().boundsInRoot.top
+        assertTrue(secondRowTop > firstRow.first())
         fullLabel("工具程式12")
-        compose.onNodeWithText("工具程式3").assertDoesNotExist()
-        screenshot("apps-search-125")
+        fullLabel("工具程式3")
+        screenshot("apps-six-columns-125")
     }
     @Test fun splitArrangementChoicesAndWarningAt125Percent() {
         val side=androidx.compose.runtime.mutableStateOf(tw.fitcar.launcher.nav.NavigationSide.LEFT)

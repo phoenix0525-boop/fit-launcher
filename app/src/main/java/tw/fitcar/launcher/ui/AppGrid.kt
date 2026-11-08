@@ -34,6 +34,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tw.fitcar.launcher.data.AppEntry
 
+internal data class AppGridPresentation(
+    val fixedColumns: Int? = null,
+    val searchable: Boolean = true,
+    val showRecent: Boolean = true,
+    val showHeader: Boolean = true,
+)
+
+internal object AppGridPolicy {
+    val ALL_APPS = AppGridPresentation(
+        fixedColumns = 6,
+        searchable = false,
+        showRecent = false,
+        showHeader = false,
+    )
+}
+
 /**
  * 全螢幕 App 清單（「所有 App」與「選擇 App」共用）。
  * 不透明背景、右上固定大尺寸返回按鈕。
@@ -51,6 +67,8 @@ fun FullScreenAppList(
     recentKeys: List<String> = emptyList(),
     /** 是否提供搜尋框；行車中自動隱藏。 */
     searchable: Boolean = true,
+    /** 固定欄數；未指定時維持自適應欄寬。 */
+    fixedColumns: Int? = null,
     /** 清單上方的額外內容（「所有 App」放桌面小工具）；行車中不顯示。 */
     header: (@Composable () -> Unit)? = null,
 ) {
@@ -87,7 +105,7 @@ fun FullScreenAppList(
             }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 150.dp),
+                columns = if (fixedColumns != null) GridCells.Fixed(fixedColumns) else GridCells.Adaptive(minSize = 150.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth().clip(RadiusLg).background(p.surface.copy(alpha = if (LocalFullThemeActive.current) effectiveCardOpacity(LocalThemeAppearance.current.clarity.alpha) else 1f)).border(1.dp, p.line, RadiusLg),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),

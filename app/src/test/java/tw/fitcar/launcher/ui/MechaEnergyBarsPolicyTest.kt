@@ -25,4 +25,27 @@ class MechaEnergyBarsPolicyTest {
         assertFalse(MechaEnergyFrameGate.shouldAnimate(isPlaying = true, visible = false))
         assertTrue(MechaEnergyFrameGate.shouldAnimate(isPlaying = true, visible = true))
     }
+
+    @Test fun silenceProducesZeroEnergyInsteadOfFakeMotion() {
+        assertEquals(List(12) { 0f }, FftBands.levels(ByteArray(256), 12))
+    }
+
+    @Test fun lowAndHighFrequenciesLandInDifferentBars() {
+        val low = ByteArray(256).apply { this[2] = 120 }
+        val high = ByteArray(256).apply { this[240] = 120 }
+
+        val lowLevels = FftBands.levels(low, 12)
+        val highLevels = FftBands.levels(high, 12)
+
+        assertTrue(lowLevels.indexOf(lowLevels.maxOrNull()) < 3)
+        assertTrue(highLevels.indexOf(highLevels.maxOrNull()) >= 9)
+    }
+
+    @Test fun pausedOrUnavailableCaptureAlwaysRendersZero() {
+        val captured = List(12) { 0.8f }
+
+        assertEquals(List(12) { 0f }, SpectrumDisplayPolicy.levels(false, true, captured))
+        assertEquals(List(12) { 0f }, SpectrumDisplayPolicy.levels(true, false, captured))
+        assertEquals(captured, SpectrumDisplayPolicy.levels(true, true, captured))
+    }
 }

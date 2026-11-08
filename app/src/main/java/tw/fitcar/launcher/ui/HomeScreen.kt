@@ -277,23 +277,34 @@ private fun NavPanel(nav: AppEntry?, gps: GpsState, actions: HomeActions, mapCon
     FitCard(modifier, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         val guidance by tw.fitcar.launcher.nav.GoogleGuidanceRepository.state.collectAsState()
         val currentGuidance = guidanceOverride ?: guidance
+        var guidanceClock by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+        LaunchedEffect(googleSelected) {
+            if (googleSelected) while (true) {
+                guidanceClock = android.os.SystemClock.elapsedRealtime()
+                delay(1000)
+            }
+        }
+        val guidanceNowValue = guidanceNow ?: guidanceClock
+        val visibleGuidance = NavigationPanelPolicy.visibleGuidance(
+            googleSelected,
+            notificationAccess,
+            currentGuidance,
+            guidanceNowValue,
+            gps.speedKmh.takeIf { gps.isFresh() },
+        )
         // Keep the same map composition during active/expired/removed notification updates.
         Box(Modifier.weight(1f).fillMaxWidth()) {
             mapContent(gps, Modifier.fillMaxSize())
-            if (NavigationPanelPolicy.showGooglePanel(googleSelected)) {
-                var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
-                LaunchedEffect(Unit) { while (true) { now = android.os.SystemClock.elapsedRealtime(); delay(1000) } }
-                GoogleGuidanceCard(currentGuidance, notificationAccess, guidanceNow ?: now,
-                    actions.grantNotificationAccess,
-                    Modifier.align(Alignment.TopCenter).fillMaxWidth().height(168.dp)
-                        .clip(RadiusMd).background(LocalPalette.current.surfaceStrong.copy(alpha = .96f))
-                        .border(1.dp, LocalPalette.current.line, RadiusMd), compact = true,
-                    speedKmh = gps.speedKmh.takeIf { gps.isFresh() })
-            }
             // 縮放與回到定位改成浮在地圖右下角，不再佔用下方工具列與地圖高度
             MapFloatingControls(Modifier.align(Alignment.BottomEnd).padding(10.dp))
         }
-        Spacer(Modifier.height(10.dp))
+        if (NavigationPanelPolicy.showGooglePanel(googleSelected)) {
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth().height(72.dp)) {
+                visibleGuidance?.let { GoogleGuidanceStrip(it, { openGoogleNavigation(context) }) }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         // 下方只留最常用的動作；其餘收進「更多」，避免換成兩排吃掉地圖高度
         Row(Modifier.fillMaxWidth().semantics { contentDescription = "地圖工具列" }, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             // 0.4.25：導航王與 Google 地圖固定並排，選定的那顆為主要按鈕；點另一顆即切換綁定並開啟

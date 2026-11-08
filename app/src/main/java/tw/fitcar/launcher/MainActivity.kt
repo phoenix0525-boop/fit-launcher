@@ -42,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.delay
 import tw.fitcar.launcher.check.AutoChecks
 import tw.fitcar.launcher.check.CheckStore
@@ -66,6 +68,7 @@ import tw.fitcar.launcher.ui.CheckerActions
 import tw.fitcar.launcher.ui.CheckerScreen
 import tw.fitcar.launcher.ui.FitTheme
 import tw.fitcar.launcher.ui.FullScreenAppList
+import tw.fitcar.launcher.ui.AppGridPolicy
 import tw.fitcar.launcher.ui.HomeActions
 import tw.fitcar.launcher.ui.HomeScreen
 import tw.fitcar.launcher.ui.SettingsActions
@@ -193,6 +196,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        applyImmersiveMode()
         tw.fitcar.launcher.ui.DesktopDimStore.initialize(this)
         BrightnessController.scheduleNext(this)
         widgets.load()
@@ -217,7 +222,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) tw.fitcar.launcher.system.DesktopStartup.confirm(this, intent)
+        if (hasFocus) {
+            applyImmersiveMode()
+            tw.fitcar.launcher.system.DesktopStartup.confirm(this, intent)
+        }
+    }
+
+    /** Only this launcher window is immersive; apps opened from it retain their own system-bar policy. */
+    private fun applyImmersiveMode() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     /** 依目前設定計算並套用本視窗亮度；只影響車機桌面自己的視窗，不寫系統亮度。 */
@@ -552,13 +568,13 @@ class MainActivity : ComponentActivity() {
                     Screen.Home -> Unit
                     Screen.AllApps -> CompositionLocalProvider(tw.fitcar.launcher.ui.LocalDriving provides tw.fitcar.launcher.ui.rememberDriving(gps)) {
                         // 最近使用只存在車機；行車中自動隱藏搜尋框
-                        val recentApps = remember(tick, screen, apps) {
+                        val recentApps = if (AppGridPolicy.ALL_APPS.showRecent) remember(tick, screen, apps) {
                             // 自己的紀錄在前；已允許使用情況存取時以系統紀錄補足（只讀、只存在車機）
                             tw.fitcar.launcher.data.AppUsagePolicy.merge(tw.fitcar.launcher.data.AppUsage.recent(this@MainActivity),
                                 tw.fitcar.launcher.system.LauncherPermissions.recentPackages(this@MainActivity)) { pkg ->
                                 apps.firstOrNull { it.component.packageName == pkg }?.key
                             }
-                        }
+                        } else emptyList()
                         FullScreenAppList(
                             title = "所有 App",
                             subtitle = "共 ${apps.size} 個可啟動的 App",
@@ -569,8 +585,10 @@ class MainActivity : ComponentActivity() {
                                 tw.fitcar.launcher.data.AppUsage.record(this@MainActivity, app.key)
                                 safeStart(AppRepository.launchIntent(app.component), "無法啟動 ${app.label}")
                             },
-                            recentKeys = recentApps,
-                            header = { widgets.Panel() },
+                            recentKeys = if (AppGridPolicy.ALL_APPS.showRecent) recentApps else emptyList(),
+                            searchable = AppGridPolicy.ALL_APPS.searchable,
+                            fixedColumns = AppGridPolicy.ALL_APPS.fixedColumns,
+                            header = if (AppGridPolicy.ALL_APPS.showHeader) ({ widgets.Panel() }) else null,
                         )
                     }
                     is Screen.PickForSlot -> FullScreenAppList(
