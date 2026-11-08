@@ -29,10 +29,10 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
             .background(palette.surfaceStrong.copy(alpha = .96f))
             .border(1.dp, palette.line, RadiusMd)
             .combinedClickableCompat(onClick = onOpenMaps)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics { contentDescription = "Google 導航通知：${guidance.primary}" },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(guidance.arrow, color = palette.accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -46,7 +46,7 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
                 overflow = TextOverflow.Ellipsis,
             )
             guidance.secondary?.takeIf(String::isNotBlank)?.let {
-                Text(it, color = palette.textSoft, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Clip)
+                Text(it, color = palette.textSoft, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Clip)
             }
         }
         guidance.distance?.takeIf { !guidance.primary.contains(it) }?.let {
