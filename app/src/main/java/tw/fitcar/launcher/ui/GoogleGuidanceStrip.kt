@@ -43,10 +43,10 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
                 lineHeight = 27.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                overflow = TextOverflow.Clip,
+                overflow = TextOverflow.Ellipsis,
             )
             guidance.secondary?.takeIf(String::isNotBlank)?.let {
-                Text(it, color = palette.textSoft, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Clip)
+                Text(it, color = palette.textSoft, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Clip)
             }
         }
         guidance.distance?.takeIf { !guidance.primary.contains(it) }?.let {
