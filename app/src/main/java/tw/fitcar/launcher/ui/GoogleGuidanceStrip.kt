@@ -29,10 +29,10 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
             .background(palette.surfaceStrong.copy(alpha = .96f))
             .border(1.dp, palette.line, RadiusMd)
             .combinedClickableCompat(onClick = onOpenMaps)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
             .semantics { contentDescription = "Google 導航通知：${guidance.primary}" },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(guidance.arrow, color = palette.accent, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
