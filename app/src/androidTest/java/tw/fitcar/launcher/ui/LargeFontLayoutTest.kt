@@ -157,14 +157,14 @@ class LargeFontLayoutTest {
         // fractional rounding/unused alignment space beyond the integer Text node width.
         val visible = node.fetchSemanticsNode().boundsInRoot
         val clipped = layouts.isEmpty() || layouts.any { layout ->
-            visible.height + 1f < layout.size.height || visible.width + 1f < layout.size.width ||
+            visible.height + 1f < layout.size.height ||
             layout.didOverflowHeight || (0 until layout.lineCount).any { line ->
                 layout.isLineEllipsized(line) || layout.getLineLeft(line) < -1f ||
-                    layout.getLineRight(line) > layout.size.width + 1f
+                    layout.getLineRight(line) > visible.width + 1f
             }
         }
         assertFalse("文字裁切：$text layouts=${layouts.map { layout ->
-            "${layout.size} paragraph=${layout.multiParagraph.width} lines=${(0 until layout.lineCount).map { layout.getLineLeft(it) to layout.getLineRight(it) }}"
+            "${layout.size} visible=${visible.width}x${visible.height} paragraph=${layout.multiParagraph.width} lines=${(0 until layout.lineCount).map { layout.getLineLeft(it) to layout.getLineRight(it) }}"
         }}", clipped)
     }
     private fun screenshot(name: String, dialog: Boolean = false) {

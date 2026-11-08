@@ -46,15 +46,7 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
                 overflow = TextOverflow.Ellipsis,
             )
             guidance.secondary?.takeIf(String::isNotBlank)?.let {
-                Text(
-                    it,
-                    modifier = Modifier.padding(end = 3.dp),
-                    color = palette.textSoft,
-                    fontSize = 16.sp,
-                    lineHeight = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(it, color = palette.textSoft, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         guidance.distance?.takeIf { !guidance.primary.contains(it) }?.let {
