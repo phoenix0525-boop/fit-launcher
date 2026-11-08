@@ -238,7 +238,8 @@ class LargeFontLayoutTest {
     }
     @Test fun googleNotificationCardKeepsButtonsVisibleAt125Percent() {
         show(MediaUiState(), google = true)
-        listOf("更多", "導航王", "語音", "所有 App", "設定", "通知權限").forEach(::fullLabel)
+        listOf("更多", "導航王", "語音", "所有 App", "設定").forEach(::fullLabel)
+        compose.onNodeWithText("通知權限").assertDoesNotExist()
         screenshot("home-google-voice-125")
     }
     @Test fun drivingModeAt125Percent() {
