@@ -48,6 +48,7 @@ internal fun GoogleGuidanceStrip(guidance: GoogleGuidance, onOpenMaps: () -> Uni
             guidance.secondary?.takeIf(String::isNotBlank)?.let {
                 Text(
                     it,
+                    modifier = Modifier.padding(end = 3.dp),
                     color = palette.textSoft,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
