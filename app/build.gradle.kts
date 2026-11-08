@@ -12,8 +12,8 @@ android {
         applicationId = "tw.fitcar.launcher"
         minSdk = 26
         targetSdk = 34
-        versionCode = 46
-        versionName = "0.4.39"
+        versionCode = 47
+        versionName = "0.4.40"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
