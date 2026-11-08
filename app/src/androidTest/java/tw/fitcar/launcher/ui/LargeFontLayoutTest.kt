@@ -158,8 +158,9 @@ class LargeFontLayoutTest {
         val visible = node.fetchSemanticsNode().boundsInRoot
         val clipped = layouts.isEmpty() || layouts.any { layout ->
             visible.height + 1f < layout.size.height ||
-            layout.didOverflowWidth || layout.didOverflowHeight || (0 until layout.lineCount).any { line ->
-                layout.getLineLeft(line) < -1f ||
+            layout.didOverflowHeight || (0 until layout.lineCount).any { line ->
+                (layout.layoutInput.overflow == androidx.compose.ui.text.style.TextOverflow.Ellipsis &&
+                    layout.isLineEllipsized(line)) || layout.getLineLeft(line) < -1f ||
                     layout.getLineRight(line) > visible.width + 1f
             }
         }
